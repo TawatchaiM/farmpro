@@ -32,6 +32,7 @@ function App() {
           if (freshData && freshData.profile) {
             setCurrentUser(freshData.profile);
             setAuthSession(freshData.session);
+            setAuthView('authenticated');
             
             // Sync active portal if role changes from cache to live
             const role = freshData.profile.role;

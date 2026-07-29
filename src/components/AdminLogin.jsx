@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, db, sanitizeProfile } from '../supabase';
+import { Eye, EyeOff } from 'lucide-react';
 
 export const AdminLogin = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('');
@@ -11,6 +12,8 @@ export const AdminLogin = ({ onLoginSuccess }) => {
   // Check if we are in "Update Password" mode (from email link)
   const isUpdatePasswordMode = window.location.pathname === '/admin/reset-password';
   const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   useEffect(() => {
     // If we land on /admin/reset-password, check if session exists (Supabase auto-logs in via URL hash)
@@ -175,14 +178,23 @@ export const AdminLogin = ({ onLoginSuccess }) => {
         <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
             <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>รหัสผ่านใหม่</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              style={{ width: '100%', padding: '0.75rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '0.5rem', color: 'white' }}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                style={{ width: '100%', padding: '0.75rem', paddingRight: '2.5rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '0.5rem', color: 'white' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           <button
             type="submit"
@@ -253,14 +265,23 @@ export const AdminLogin = ({ onLoginSuccess }) => {
               ลืมรหัสผ่าน?
             </button>
           </div>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            required
-            style={{ width: '100%', padding: '0.75rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '0.5rem', color: 'white' }}
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              style={{ width: '100%', padding: '0.75rem', paddingRight: '2.5rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '0.5rem', color: 'white' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
         </div>
         <button
           type="submit"

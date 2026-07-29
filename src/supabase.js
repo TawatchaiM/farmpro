@@ -1748,8 +1748,21 @@ export const db = {
             .eq('id', item.id)
             .maybeSingle();
 
+          const profileSchemaKeys = [
+            'id', 'user_id', 'username', 'email', 'role', 'full_name', 
+            'phone_number', 'subdistrict', 'district', 'province', 'postal_code', 
+            'latitude', 'longitude', 'google_maps_url', 'store_name', 
+            'vendor_category', 'vendor_description', 'business_hours', 'created_at', 'status', 'plan_id'
+          ];
+          const dbPayload = {};
+          for (const key of profileSchemaKeys) {
+            if (item.data[key] !== undefined) {
+              dbPayload[key] = item.data[key];
+            }
+          }
+
           if (existing) {
-            const { id: _, ...updateData } = item.data;
+            const { id: _, ...updateData } = dbPayload;
             const { error } = await supabase
               .from('profiles')
               .update(updateData)
@@ -1758,7 +1771,7 @@ export const db = {
           } else {
             const { error } = await supabase
               .from('profiles')
-              .insert(item.data);
+              .insert(dbPayload);
             if (error) throw error;
           }
         }

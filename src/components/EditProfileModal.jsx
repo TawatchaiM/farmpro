@@ -136,8 +136,9 @@ function EditProfileModal({ profile, activePortal, onClose, onSaveSuccess }) {
       postal_code: postalCode
     };
 
+    updateData.store_name = storeName;
+
     if ((activePortal || profile?.role) === 'vendor') {
-      updateData.store_name = storeName;
       updateData.business_hours = businessHours;
       updateData.vendor_category = vendorCategory;
       updateData.vendor_description = vendorDescription;
@@ -327,6 +328,38 @@ function EditProfileModal({ profile, activePortal, onClose, onSaveSuccess }) {
             />
           </div>
 
+          <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+            <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+              <span>ชื่อร้าน / ลานรับซื้อ / สวน</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', cursor: 'pointer', color: '#94a3b8' }}>
+                <input 
+                  type="checkbox" 
+                  checked={storeName === fullName && fullName !== ''}
+                  onChange={(e) => {
+                    if (e.target.checked) setStoreName(fullName);
+                    else setStoreName('');
+                  }}
+                />
+                ใช้ชื่อเดียวกับชื่อ-นามสกุล
+              </label>
+            </label>
+            <input
+              type="text"
+              value={storeName}
+              onChange={(e) => setStoreName(e.target.value)}
+              placeholder="ระบุชื่อร้านหรือกิจการของคุณ"
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#fff',
+                padding: '0.75rem',
+                borderRadius: '10px',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
           {/* Conditional Vendor details */}
           {(activePortal || profile?.role) === 'vendor' && (
             <div style={{
@@ -338,26 +371,6 @@ function EditProfileModal({ profile, activePortal, onClose, onSaveSuccess }) {
             }}>
               <div style={{ fontSize: '0.875rem', color: '#4ade80', marginBottom: '1rem', fontWeight: '600' }}>
                 🏪 ข้อมูลร้านค้า / บริการ:
-              </div>
-
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'block', fontSize: '0.85rem' }}>
-                  ชื่อร้านค้า / บริการ
-                </label>
-                <input
-                  type="text"
-                  value={storeName}
-                  onChange={(e) => setStoreName(e.target.value)}
-                  style={{
-                    background: '#0f172a',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    color: '#fff',
-                    padding: '0.75rem',
-                    borderRadius: '10px',
-                    width: '100%',
-                    boxSizing: 'border-box'
-                  }}
-                />
               </div>
 
               <div className="form-group" style={{ marginBottom: '1rem' }}>

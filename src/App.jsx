@@ -32,6 +32,13 @@ function App() {
           if (freshData && freshData.profile) {
             setCurrentUser(freshData.profile);
             setAuthSession(freshData.session);
+            
+            // Sync active portal if role changes from cache to live
+            const role = freshData.profile.role;
+            if (role === 'vendor') setActivePortal('marketplace');
+            else if (role === 'buyer' || role === 'CLERK' || role === 'DRC_LAB') setActivePortal('buyer');
+            else if (role === 'seller') setActivePortal('seller');
+            else if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BASIC_ADMIN') setActivePortal('admin');
           }
         });
 

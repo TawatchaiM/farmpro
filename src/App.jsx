@@ -213,17 +213,17 @@ function App() {
             className="sidebar-logo" 
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', cursor: 'pointer' }}
             onClick={() => {
-              if (window.confirm('คุณต้องการออกจากระบบและกลับไปหน้าลงทะเบียนใช่หรือไม่?')) {
-                db.signOut().then(() => {
-                  setCurrentUser(null);
-                  setAuthSession(null);
-                  setAuthView('register');
-                  setIsLoggedInAdmin(false);
-                  setShowEditProfile(false);
-                });
+              if (currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || currentUser?.role === 'BASIC_ADMIN') {
+                setActivePortal('admin');
+              } else if (currentUser?.role === 'vendor') {
+                setActivePortal('marketplace');
+              } else if (currentUser?.role === 'seller') {
+                setActivePortal('seller');
+              } else {
+                setActivePortal('buyer');
               }
             }}
-            title="กลับสู่หน้าแรก (ออกจากระบบ)"
+            title="กลับสู่หน้าหลัก"
           >
             <Leaf color="#4ade80" size={32} style={{ transform: 'rotate(-15deg)', flexShrink: 0 }} />
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
@@ -426,6 +426,19 @@ function App() {
             >
               🛒 หมวดบริการ
             </div>
+
+            {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || currentUser?.role === 'BASIC_ADMIN') && (
+              <>
+                <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0.75rem 0' }}></div>
+                <div 
+                  className={`sidebar-item ${activePortal === 'admin' ? 'active' : ''}`}
+                  onClick={() => setActivePortal('admin')}
+                  style={activePortal === 'admin' ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', color: 'white', boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.39)' } : { color: '#3b82f6', fontWeight: 'bold' }}
+                >
+                  🛡️ แดชบอร์ดผู้ดูแล
+                </div>
+              </>
+            )}
 
 
             <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0.75rem 0' }}></div>

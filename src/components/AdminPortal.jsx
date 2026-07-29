@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../supabase';
 
 function AdminPortal() {
-  const [activeTab, setActiveTab] = useState('approvals');
+  const [activeTab, setActiveTab] = useState('users');
   const [filterStatus, setFilterStatus] = useState('pending'); // 'pending', 'approved', 'rejected', 'all'
   const [searchTerm, setSearchTerm] = useState('');
   const [profiles, setProfiles] = useState([]);
@@ -204,29 +204,31 @@ function AdminPortal() {
       )}
 
       {/* Tabs Header - Eye Pleasing Soft Palette */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '0.5rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
         <button 
-          onClick={() => setActiveTab('approvals')}
+          onClick={() => setActiveTab('users')}
           style={{
             flex: 1,
+            minWidth: '150px',
             padding: '0.75rem 1rem',
             borderRadius: '10px',
             fontSize: '0.925rem',
             fontWeight: 'bold',
-            border: activeTab === 'approvals' ? 'none' : '1px solid #e2e8f0',
-            background: activeTab === 'approvals' ? 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)' : '#f8fafc',
-            color: activeTab === 'approvals' ? '#ffffff' : '#64748b',
-            boxShadow: activeTab === 'approvals' ? '0 4px 12px rgba(15, 118, 110, 0.25)' : 'none',
+            border: activeTab === 'users' ? 'none' : '1px solid #e2e8f0',
+            background: activeTab === 'users' ? 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)' : '#f8fafc',
+            color: activeTab === 'users' ? '#ffffff' : '#64748b',
+            boxShadow: activeTab === 'users' ? '0 4px 12px rgba(15, 118, 110, 0.25)' : 'none',
             cursor: 'pointer',
             transition: 'all 0.2s ease'
           }}
         >
-          📝 ตรวจสอบ & อนุมัติผู้ลงทะเบียน ({pendingCount > 0 ? `${pendingCount} รายรออนุมัติ` : 'เรียบร้อยทั้งหมด'})
+          👥 จัดการผู้ใช้งาน
         </button>
         <button 
           onClick={() => setActiveTab('dashboard')}
           style={{
             flex: 1,
+            minWidth: '150px',
             padding: '0.75rem 1rem',
             borderRadius: '10px',
             fontSize: '0.925rem',
@@ -239,12 +241,31 @@ function AdminPortal() {
             transition: 'all 0.2s ease'
           }}
         >
-          📊 ภาพรวมระบบ & สถิติ
+          📊 ภาพรวมและสถิติ
+        </button>
+        <button 
+          onClick={() => setActiveTab('subscriptions')}
+          style={{
+            flex: 1,
+            minWidth: '150px',
+            padding: '0.75rem 1rem',
+            borderRadius: '10px',
+            fontSize: '0.925rem',
+            fontWeight: 'bold',
+            border: activeTab === 'subscriptions' ? 'none' : '1px solid #e2e8f0',
+            background: activeTab === 'subscriptions' ? 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)' : '#f8fafc',
+            color: activeTab === 'subscriptions' ? '#ffffff' : '#64748b',
+            boxShadow: activeTab === 'subscriptions' ? '0 4px 12px rgba(15, 118, 110, 0.25)' : 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          💎 แพ็กเกจ & รายได้
         </button>
       </div>
 
-      {/* TAB 1: APPROVALS & USER PROFILES */}
-      {activeTab === 'approvals' && (
+      {/* TAB 1: USERS & APPROVALS */}
+      {activeTab === 'users' && (
         <div>
           {/* Traffic Light Status Filter Pills (เหลือง 🟡 - เขียว 🟢 - แดง 🔴 - เทา ⚪) */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
@@ -536,6 +557,43 @@ function AdminPortal() {
                 <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#92400e', marginTop: '0.2rem' }}>{vendorsCount} ร้าน</div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: SUBSCRIPTIONS & REVENUE */}
+      {activeTab === 'subscriptions' && (
+        <div>
+          <div className="stat-grid" style={{ marginBottom: '1.5rem' }}>
+            <div className="stat-card" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
+              <div className="stat-title">สมาชิกระดับ Pro & Premium</div>
+              <div className="stat-value" style={{ color: '#d97706' }}>
+                {profiles.filter(p => p.subscription_plan && p.subscription_plan !== 'free').length} ราย
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#b45309', marginTop: '0.35rem' }}>
+                จากผู้ใช้ทั้งหมด {totalProfiles} ราย
+              </div>
+            </div>
+
+            <div className="stat-card" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
+              <div className="stat-title">รายรับรวม (Mock)</div>
+              <div className="stat-value" style={{ color: '#475569' }}>
+                {/* Mock calculation: 990 THB per pro user roughly */}
+                {(profiles.filter(p => p.subscription_plan && p.subscription_plan !== 'free').length * 990).toLocaleString()} ฿
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.35rem' }}>
+                ยอดประมาณการรอบบิลนี้
+              </div>
+            </div>
+          </div>
+
+          <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.25rem', border: '1px dashed #cbd5e1', textAlign: 'center' }}>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#475569', marginBottom: '0.5rem' }}>
+              🚀 ระบบจัดการแพ็กเกจ (เร็วๆ นี้)
+            </h4>
+            <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+              ส่วนนี้จะเป็นพื้นที่สำหรับตรวจสอบประวัติการชำระเงิน การต่ออายุ และจัดการสิทธิ์การใช้งานของแพ็กเกจ
+            </p>
           </div>
         </div>
       )}

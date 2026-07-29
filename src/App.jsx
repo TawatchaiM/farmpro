@@ -441,14 +441,14 @@ function App() {
           )}
         </div>
 
-        {/* Admin Login Toggle (Mock) */}
-        {(!currentUser || (currentUser.role !== 'CLERK' && currentUser.role !== 'DRC_LAB')) && (
+        {/* Admin Login Link */}
+        {(!currentUser || (currentUser.role !== 'CLERK' && currentUser.role !== 'DRC_LAB' && currentUser.role !== 'SUPER_ADMIN' && currentUser.role !== 'ADMIN' && currentUser.role !== 'BASIC_ADMIN')) && (
           <div style={{ marginTop: 'auto', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
            <button 
-             onClick={toggleAdmin} 
+             onClick={() => window.location.href = '/admin'} 
              style={{ 
                width: '100%', 
-               background: isLoggedInAdmin ? '#fef2f2' : 'transparent', 
+               background: 'transparent', 
                border: '1px dashed #ef4444', 
                color: '#ef4444', 
                padding: '0.75rem', 
@@ -459,7 +459,7 @@ function App() {
                transition: 'all 0.2s'
              }}
            >
-             {isLoggedInAdmin ? '🛡️ ออกจากโหมดแอดมิน' : '🔒 Admin Login (Mock)'}
+             🔒 เข้าสู่ระบบผู้ดูแล
            </button>
           </div>
         )}

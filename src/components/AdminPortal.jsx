@@ -9,6 +9,11 @@ function AdminPortal() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState('');
+  
+  // Subscriptions Tab State
+  const [subFilterPlan, setSubFilterPlan] = useState('all');
+  const [subFilterCycle, setSubFilterCycle] = useState('all');
+  const [subSearchTerm, setSubSearchTerm] = useState('');
 
   const loadData = async () => {
     setLoading(true);
@@ -150,6 +155,55 @@ function AdminPortal() {
         );
     }
   };
+
+  // --- Subscriptions & Revenue Calculations ---
+  const subProfiles = profiles.map(p => {
+    let plan = 'free';
+    if (p.plan_id === 'standard' || p.subscription_plan === 'standard') plan = 'standard';
+    else if (p.plan_id === 'pro' || p.subscription_plan === 'pro') plan = 'pro';
+    
+    // Mock billing cycle deterministically
+    let cycle = p.billing_cycle;
+    if (!cycle && plan !== 'free') {
+      cycle = (p.id?.charCodeAt(0) || 0) % 2 === 0 ? 'yearly' : 'monthly';
+    } else if (plan === 'free') {
+      cycle = '-';
+    }
+
+    let mrr = 0;
+    if (plan === 'standard') {
+      mrr = cycle === 'yearly' ? (4704 / 12) : 490;
+    } else if (plan === 'pro') {
+      mrr = cycle === 'yearly' ? (12384 / 12) : 1290;
+    }
+
+    return { ...p, subPlan: plan, subCycle: cycle, mrr };
+  });
+
+  const countFree = subProfiles.filter(p => p.subPlan === 'free').length;
+  
+  const standardProfiles = subProfiles.filter(p => p.subPlan === 'standard');
+  const countStandardMonthly = standardProfiles.filter(p => p.subCycle === 'monthly').length;
+  const countStandardYearly = standardProfiles.filter(p => p.subCycle === 'yearly').length;
+
+  const proProfiles = subProfiles.filter(p => p.subPlan === 'pro');
+  const countProMonthly = proProfiles.filter(p => p.subCycle === 'monthly').length;
+  const countProYearly = proProfiles.filter(p => p.subCycle === 'yearly').length;
+
+  const totalMRR = subProfiles.reduce((sum, p) => sum + (p.mrr || 0), 0);
+
+  const filteredSubProfiles = subProfiles.filter(p => {
+    if (subFilterPlan !== 'all' && p.subPlan !== subFilterPlan) return false;
+    if (subFilterCycle !== 'all' && p.subCycle !== subFilterCycle) return false;
+    if (subSearchTerm.trim()) {
+      const q = subSearchTerm.trim().toLowerCase();
+      const nameMatch = (p.full_name || '').toLowerCase().includes(q) || (p.store_name || '').toLowerCase().includes(q);
+      const phoneMatch = (p.phone_number || '').includes(q);
+      return nameMatch || phoneMatch;
+    }
+    return true;
+  });
+  // ---------------------------------------------
 
   return (
     <div className="card" style={{ borderTop: '4px solid #0f766e', boxShadow: '0 10px 25px rgba(0,0,0,0.04)' }}>
@@ -564,36 +618,120 @@ function AdminPortal() {
       {/* TAB 3: SUBSCRIPTIONS & REVENUE */}
       {activeTab === 'subscriptions' && (
         <div>
-          <div className="stat-grid" style={{ marginBottom: '1.5rem' }}>
-            <div className="stat-card" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
-              <div className="stat-title">สมาชิกระดับ Pro & Premium</div>
-              <div className="stat-value" style={{ color: '#d97706' }}>
-                {profiles.filter(p => p.subscription_plan && p.subscription_plan !== 'free').length} ราย
-              </div>
-              <div style={{ fontSize: '0.8rem', color: '#b45309', marginTop: '0.35rem' }}>
-                จากผู้ใช้ทั้งหมด {totalProfiles} ราย
+          {/* Dashboard Stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+            <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+              <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>🌱 Free Plan</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#334155', marginTop: '0.2rem' }}>{countFree} <span style={{fontSize: '1rem'}}>ราย</span></div>
+            </div>
+            
+            <div style={{ background: '#f0fdf4', padding: '1.25rem', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+              <div style={{ color: '#166534', fontSize: '0.85rem', fontWeight: 'bold' }}>⚡ Standard Plan</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#16a34a', marginTop: '0.2rem' }}>{standardProfiles.length} <span style={{fontSize: '1rem'}}>ราย</span></div>
+              <div style={{ fontSize: '0.75rem', color: '#15803d', marginTop: '0.4rem' }}>
+                รายเดือน: {countStandardMonthly} | รายปี: {countStandardYearly}
               </div>
             </div>
 
-            <div className="stat-card" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
-              <div className="stat-title">รายรับรวม (Mock)</div>
-              <div className="stat-value" style={{ color: '#475569' }}>
-                {/* Mock calculation: 990 THB per pro user roughly */}
-                {(profiles.filter(p => p.subscription_plan && p.subscription_plan !== 'free').length * 990).toLocaleString()} ฿
+            <div style={{ background: '#faf5ff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
+              <div style={{ color: '#6b21a8', fontSize: '0.85rem', fontWeight: 'bold' }}>🚀 Pro Plan</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#9333ea', marginTop: '0.2rem' }}>{proProfiles.length} <span style={{fontSize: '1rem'}}>ราย</span></div>
+              <div style={{ fontSize: '0.75rem', color: '#7e22ce', marginTop: '0.4rem' }}>
+                รายเดือน: {countProMonthly} | รายปี: {countProYearly}
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.35rem' }}>
-                ยอดประมาณการรอบบิลนี้
+            </div>
+
+            <div style={{ background: 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)', padding: '1.25rem', borderRadius: '12px', border: 'none', color: '#fff', boxShadow: '0 4px 15px rgba(15,118,110,0.3)' }}>
+              <div style={{ color: '#ccfbf1', fontSize: '0.85rem', fontWeight: 'bold' }}>💰 รายรับเฉลี่ย (MRR)</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#fff', marginTop: '0.2rem' }}>
+                ฿{totalMRR.toLocaleString(undefined, {maximumFractionDigits: 0})} <span style={{fontSize: '1rem'}}>/เดือน</span>
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#99f6e4', marginTop: '0.4rem' }}>
+                ประมาณการต่อปี (ARR): ฿{(totalMRR * 12).toLocaleString(undefined, {maximumFractionDigits: 0})}
               </div>
             </div>
           </div>
 
-          <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.25rem', border: '1px dashed #cbd5e1', textAlign: 'center' }}>
-            <h4 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#475569', marginBottom: '0.5rem' }}>
-              🚀 ระบบจัดการแพ็กเกจ (เร็วๆ นี้)
-            </h4>
-            <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
-              ส่วนนี้จะเป็นพื้นที่สำหรับตรวจสอบประวัติการชำระเงิน การต่ออายุ และจัดการสิทธิ์การใช้งานของแพ็กเกจ
-            </p>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 'bold', color: '#1e293b', marginBottom: '1rem' }}>รายชื่อผู้สมัครแพ็กเกจ (Deep Dive)</h3>
+          
+          {/* Filters */}
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+            <select 
+              value={subFilterPlan}
+              onChange={(e) => setSubFilterPlan(e.target.value)}
+              style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
+            >
+              <option value="all">ทุกแพ็กเกจ</option>
+              <option value="free">Free Plan</option>
+              <option value="standard">Standard Plan</option>
+              <option value="pro">Pro Plan</option>
+            </select>
+
+            <select 
+              value={subFilterCycle}
+              onChange={(e) => setSubFilterCycle(e.target.value)}
+              style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
+            >
+              <option value="all">ทุกรอบบิล</option>
+              <option value="monthly">รายเดือน</option>
+              <option value="yearly">รายปี</option>
+            </select>
+
+            <input 
+              type="text" 
+              value={subSearchTerm}
+              onChange={(e) => setSubSearchTerm(e.target.value)}
+              placeholder="🔍 พิมพ์ชื่อ, เบอร์โทร..."
+              style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', flex: 1, minWidth: '200px' }}
+            />
+          </div>
+
+          {/* Data Table */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                  <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>ชื่อ / ร้านค้า</th>
+                  <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>เบอร์โทรศัพท์</th>
+                  <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>แพ็กเกจปัจจุบัน</th>
+                  <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>รอบบิล (Mock)</th>
+                  <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>วันที่สมัคร</th>
+                  <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem', textAlign: 'right' }}>รายรับ (MRR)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSubProfiles.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                      📭 ไม่พบผู้ใช้งานตามเงื่อนไขที่เลือก
+                    </td>
+                  </tr>
+                ) : (
+                  filteredSubProfiles.map((p, idx) => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                      <td style={{ padding: '1rem', fontWeight: 'bold', color: '#1e293b' }}>
+                        {p.store_name ? `${p.store_name} (${p.full_name})` : p.full_name}
+                      </td>
+                      <td style={{ padding: '1rem', color: '#64748b' }}>{p.phone_number || '-'}</td>
+                      <td style={{ padding: '1rem' }}>
+                        {p.subPlan === 'pro' && <span style={{ background: '#f3e8ff', color: '#7e22ce', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>🚀 Pro</span>}
+                        {p.subPlan === 'standard' && <span style={{ background: '#dcfce7', color: '#15803d', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>⚡ Standard</span>}
+                        {p.subPlan === 'free' && <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>🌱 Free</span>}
+                      </td>
+                      <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
+                        {p.subCycle === 'yearly' ? 'รายปี' : (p.subCycle === 'monthly' ? 'รายเดือน' : '-')}
+                      </td>
+                      <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.85rem' }}>
+                        {p.created_at ? new Date(p.created_at).toLocaleDateString('th-TH') : '-'}
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold', color: p.mrr > 0 ? '#0f766e' : '#94a3b8' }}>
+                        ฿{p.mrr.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

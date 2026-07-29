@@ -275,7 +275,7 @@ function App() {
                     {displayStoreName}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#15803d', fontWeight: '600' }}>
-                    {activePortal === 'buyer' ? '🏪 หมวดผู้ซื้อ' : (activePortal === 'seller' ? '🧑‍🌾 หมวดผู้ขาย' : (activePortal === 'marketplace' ? '🛒 หมวดบริการ' : (roleLabels[currentUser.role] || currentUser.role)))}
+                    {currentUser.role === 'BUYER' ? '🏪 หมวดผู้ซื้อ' : (currentUser.role === 'SELLER' ? '🧑‍🌾 หมวดผู้ขาย' : (currentUser.role === 'VENDOR' ? '🛒 หมวดบริการ' : (currentUser.role === 'SUPER_ADMIN' ? '👑 ผู้ดูแลระบบสูงสุด' : (currentUser.role === 'ADMIN' ? '🛡️ ผู้ดูแลระบบ' : currentUser.role))))}
                   </div>
                 </div>
               </div>

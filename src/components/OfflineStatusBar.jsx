@@ -21,25 +21,28 @@ function OfflineStatusBar({ pendingCount = 0, onSync }) {
     };
   }, []);
 
+  const syncingRef = React.useRef(false);
+
   const handleSyncClick = useCallback(async () => {
-    if (syncing || typeof onSync !== 'function') return;
+    if (syncingRef.current || typeof onSync !== 'function') return;
+    syncingRef.current = true;
     setSyncing(true);
     try {
       await onSync();
     } catch (err) {
       console.error('Manual sync failed:', err);
     } finally {
+      syncingRef.current = false;
       setSyncing(false);
     }
-  }, [syncing, onSync]);
+  }, [onSync]);
 
   // Auto sync when coming online
   useEffect(() => {
     if (isOnline && pendingCount > 0 && !isMock) {
       handleSyncClick();
     }
-  }, [isOnline, pendingCount, handleSyncClick]);
-
+  }, [isOnline]); // Only trigger when isOnline state changes
 
   return (
     <div className={`status-bar ${isOnline ? 'online' : 'offline'}`}>

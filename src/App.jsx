@@ -287,61 +287,63 @@ function App() {
               )}
 
               {/* Package Badge Chip inside Profile Box */}
-              <div 
-                onClick={() => { setShowPricingModal(true); setIsLoggedInAdmin(false); }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  background: (currentUser.plan_id === 'pro') 
-                    ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(147, 51, 234, 0.08) 100%)'
-                    : ((currentUser.plan_id === 'free')
-                      ? 'linear-gradient(135deg, rgba(100, 116, 139, 0.15) 0%, rgba(71, 85, 105, 0.08) 100%)'
-                      : 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.08) 100%)'),
-                  border: (currentUser.plan_id === 'pro')
-                    ? '1px solid rgba(168, 85, 247, 0.35)'
-                    : ((currentUser.plan_id === 'free')
-                      ? '1px solid rgba(148, 163, 184, 0.35)'
-                      : '1px solid rgba(16, 185, 129, 0.35)'),
-                  borderRadius: '10px',
-                  padding: '0.45rem 0.65rem',
-                  marginBottom: '0.6rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                }}
-                title="คลิกเพื่อดูรายละเอียดแพ็กเกจและอัปเกรด"
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ fontSize: '0.85rem' }}>
-                    {currentUser.plan_id === 'pro' ? '🚀' : (currentUser.plan_id === 'free' ? '🌱' : '⚡')}
-                  </span>
-                  <div>
-                    <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: '500', lineHeight: 1.1 }}>
-                      แพ็กเกจปัจจุบัน
-                    </div>
-                    <div style={{ 
-                      fontWeight: 'bold', 
-                      fontSize: '0.825rem', 
-                      color: currentUser.plan_id === 'pro' ? '#7e22ce' : (currentUser.plan_id === 'free' ? '#334155' : '#047857') 
-                    }}>
-                      {currentUser.plan_id === 'pro' ? 'Pro Plan' : (currentUser.plan_id === 'free' ? 'Free Plan' : 'Standard Plan')}
+              {(currentUser.role !== 'SUPER_ADMIN' && currentUser.role !== 'ADMIN' && currentUser.role !== 'BASIC_ADMIN') && (
+                <div 
+                  onClick={() => { setShowPricingModal(true); setIsLoggedInAdmin(false); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: (currentUser.plan_id === 'pro') 
+                      ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(147, 51, 234, 0.08) 100%)'
+                      : ((currentUser.plan_id === 'free')
+                        ? 'linear-gradient(135deg, rgba(100, 116, 139, 0.15) 0%, rgba(71, 85, 105, 0.08) 100%)'
+                        : 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.08) 100%)'),
+                    border: (currentUser.plan_id === 'pro')
+                      ? '1px solid rgba(168, 85, 247, 0.35)'
+                      : ((currentUser.plan_id === 'free')
+                        ? '1px solid rgba(148, 163, 184, 0.35)'
+                        : '1px solid rgba(16, 185, 129, 0.35)'),
+                    borderRadius: '10px',
+                    padding: '0.45rem 0.65rem',
+                    marginBottom: '0.6rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                  }}
+                  title="คลิกเพื่อดูรายละเอียดแพ็กเกจและอัปเกรด"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ fontSize: '0.85rem' }}>
+                      {currentUser.plan_id === 'pro' ? '🚀' : (currentUser.plan_id === 'free' ? '🌱' : '⚡')}
+                    </span>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: '500', lineHeight: 1.1 }}>
+                        แพ็กเกจปัจจุบัน
+                      </div>
+                      <div style={{ 
+                        fontWeight: 'bold', 
+                        fontSize: '0.825rem', 
+                        color: currentUser.plan_id === 'pro' ? '#7e22ce' : (currentUser.plan_id === 'free' ? '#334155' : '#047857') 
+                      }}>
+                        {currentUser.plan_id === 'pro' ? 'Pro Plan' : (currentUser.plan_id === 'free' ? 'Free Plan' : 'Standard Plan')}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <span style={{
-                  fontSize: '0.7rem',
-                  color: currentUser.plan_id === 'pro' ? '#7e22ce' : (currentUser.plan_id === 'free' ? '#475569' : '#047857'),
-                  fontWeight: 'bold',
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  padding: '2px 6px',
-                  borderRadius: '6px',
-                  border: '1px solid rgba(0,0,0,0.05)'
-                }}>
-                  ดูรายละเอียด &gt;
-                </span>
-              </div>
+                  <span style={{
+                    fontSize: '0.7rem',
+                    color: currentUser.plan_id === 'pro' ? '#7e22ce' : (currentUser.plan_id === 'free' ? '#475569' : '#047857'),
+                    fontWeight: 'bold',
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    padding: '2px 6px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(0,0,0,0.05)'
+                  }}>
+                    ดูรายละเอียด &gt;
+                  </span>
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>
                 <button

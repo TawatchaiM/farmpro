@@ -1572,12 +1572,31 @@ export const db = {
           dbUpdatePayload[key] = updateData[key];
         }
       }
-      const { error } = await supabase
+      // Always set updated_at so the DB row reflects the latest change time
+      dbUpdatePayload.updated_at = new Date().toISOString();
+
+      // Step 1: Try updating by primary key (id)
+      const { data: updatedRows, error } = await supabase
         .from('profiles')
         .update(dbUpdatePayload)
-        .eq('id', id);
+        .eq('id', id)
+        .select('id');
 
       if (error) throw error;
+
+      // Step 2: If no row matched the id (profile was created locally with a different UUID),
+      // fall back to matching by phone_number so the correct Supabase record gets updated
+      if (!updatedRows || updatedRows.length === 0) {
+        const phone = mergedProfile.phone_number || updateData.phone_number;
+        if (phone) {
+          const { error: phoneErr } = await supabase
+            .from('profiles')
+            .update(dbUpdatePayload)
+            .eq('phone_number', phone);
+          if (phoneErr) throw phoneErr;
+        }
+      }
+
       return { success: true, data: mergedProfile };
     } catch (err) {
       console.warn('Error updating profile in Supabase, updated locally:', err);

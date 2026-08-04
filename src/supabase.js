@@ -1499,11 +1499,13 @@ export const db = {
       let error;
       
       // Strict sanitization for DB schema to prevent 400 Bad Request
+      // Keep this list in sync with public.profiles columns in Supabase
       const profileSchemaKeys = [
-        'id', 'user_id', 'username', 'email', 'role', 'full_name', 
-        'phone_number', 'subdistrict', 'district', 'province', 'postal_code', 
-        'latitude', 'longitude', 'google_maps_url', 'store_name', 
-        'vendor_category', 'vendor_description', 'business_hours', 'created_at'
+        'id', 'user_id', 'username', 'email', 'role', 'full_name',
+        'phone_number', 'subdistrict', 'district', 'province', 'postal_code',
+        'latitude', 'longitude', 'google_maps_url', 'store_name',
+        'vendor_category', 'vendor_description', 'business_hours',
+        'status', 'plan_id', 'address_details', 'created_at', 'updated_at'
       ];
       const dbPayload = {};
       for (const key of profileSchemaKeys) {
@@ -1556,9 +1558,23 @@ export const db = {
     }
 
     try {
+      // Filter updateData to only known DB columns to prevent 400 Bad Request
+      const profileSchemaKeys = [
+        'id', 'user_id', 'username', 'email', 'role', 'full_name',
+        'phone_number', 'subdistrict', 'district', 'province', 'postal_code',
+        'latitude', 'longitude', 'google_maps_url', 'store_name',
+        'vendor_category', 'vendor_description', 'business_hours',
+        'status', 'plan_id', 'address_details', 'created_at', 'updated_at'
+      ];
+      const dbUpdatePayload = {};
+      for (const key of profileSchemaKeys) {
+        if (updateData[key] !== undefined) {
+          dbUpdatePayload[key] = updateData[key];
+        }
+      }
       const { error } = await supabase
         .from('profiles')
-        .update(updateData)
+        .update(dbUpdatePayload)
         .eq('id', id);
 
       if (error) throw error;
@@ -1592,7 +1608,7 @@ export const db = {
           postal_code: '84130',
           business_hours: 'จันทร์-เสาร์ 06:00 - 18:00 น.',
           rubber_types: 'น้ำยางสด,ยางก้อนถ้วย',
-          status: 'pending',
+          status: 'approved', // Auto-approved on registration
           created_at: new Date(Date.now() - 3600000 * 2).toISOString()
         },
         {
@@ -1607,7 +1623,7 @@ export const db = {
           postal_code: '90110',
           business_hours: 'ทุกวัน 07:00 - 17:00 น.',
           rubber_types: 'น้ำยางสด,ยางแผ่นดิบ',
-          status: 'pending',
+          status: 'approved', // Auto-approved on registration
           created_at: new Date(Date.now() - 3600000 * 5).toISOString()
         }
       ];

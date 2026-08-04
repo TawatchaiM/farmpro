@@ -1490,14 +1490,6 @@ export const db = {
     }
 
     try {
-      const { data: existing } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', id)
-        .maybeSingle();
-
-      let error;
-      
       // Strict sanitization for DB schema to prevent 400 Bad Request
       // Keep this list in sync with public.profiles columns in Supabase
       const profileSchemaKeys = [
@@ -1513,21 +1505,51 @@ export const db = {
           dbPayload[key] = fullProfile[key];
         }
       }
-
-      if (existing) {
-        const { error: err } = await supabase
-          .from('profiles')
-          .update(dbPayload)
-          .eq('id', id);
-        error = err;
-      } else {
-        const { error: err } = await supabase
-          .from('profiles')
-          .insert(dbPayload);
-        error = err;
+      // user_id is a FK to auth.users -- only send it when user registered via Supabase Auth
+      // (i.e. when the id was obtained from supabase.auth.signUp, not a local uuidv4)
+      // We detect this by checking if user_id === id (locally-generated profiles have this pattern)
+      // and the id doesn't exist in auth.users yet. Safest: just set user_id = null for local UUIDs.
+      const isLocalUUID = !profileData.user_id || profileData.user_id === id;
+      if (isLocalUUID) {
+        dbPayload.user_id = null;
       }
+      dbPayload.updated_at = new Date().toISOString();
+
+      // Step 1: Try upsert by primary key (id) — works when UUID came from Supabase Auth
+      const { data: upserted, error } = await supabase
+        .from('profiles')
+        .upsert(dbPayload, { onConflict: 'id' })
+        .select('id');
 
       if (error) throw error;
+
+      // Step 2: If upsert matched nothing (id not in DB), fall back to update by phone_number
+      if (!upserted || upserted.length === 0) {
+        const phone = fullProfile.phone_number;
+        if (phone) {
+          const { data: byPhone } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('phone_number', phone)
+            .maybeSingle();
+
+          if (byPhone) {
+            // Update existing row by phone
+            const { error: phoneErr } = await supabase
+              .from('profiles')
+              .update(dbPayload)
+              .eq('phone_number', phone);
+            if (phoneErr) throw phoneErr;
+          } else {
+            // No row at all — insert fresh (FK on id removed, so safe with local UUID)
+            const { error: insErr } = await supabase
+              .from('profiles')
+              .insert(dbPayload);
+            if (insErr) throw insErr;
+          }
+        }
+      }
+
       return { success: true, data: fullProfile };
     } catch (err) {
       console.warn('Failed to save profile to Supabase, cached offline:', err);
@@ -1777,17 +1799,12 @@ export const db = {
             .eq('id', item.id);
           if (error) throw error;
         } else if (item.action === 'save_profile') {
-          const { data: existing } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('id', item.id)
-            .maybeSingle();
-
           const profileSchemaKeys = [
-            'id', 'user_id', 'username', 'email', 'role', 'full_name', 
-            'phone_number', 'subdistrict', 'district', 'province', 'postal_code', 
-            'latitude', 'longitude', 'google_maps_url', 'store_name', 
-            'vendor_category', 'vendor_description', 'business_hours', 'created_at', 'status', 'plan_id'
+            'id', 'user_id', 'username', 'email', 'role', 'full_name',
+            'phone_number', 'subdistrict', 'district', 'province', 'postal_code',
+            'latitude', 'longitude', 'google_maps_url', 'store_name',
+            'vendor_category', 'vendor_description', 'business_hours',
+            'created_at', 'status', 'plan_id', 'updated_at', 'address_details'
           ];
           const dbPayload = {};
           for (const key of profileSchemaKeys) {
@@ -1795,19 +1812,41 @@ export const db = {
               dbPayload[key] = item.data[key];
             }
           }
+          // Strip user_id to avoid FK violation for locally-generated UUIDs
+          dbPayload.user_id = null;
+          dbPayload.updated_at = new Date().toISOString();
 
-          if (existing) {
-            const { id: _, ...updateData } = dbPayload;
-            const { error } = await supabase
+          const phone = item.data.phone_number;
+
+          // Try upsert by id first (works if the UUID is already in the DB)
+          const { data: upserted, error: upsertErr } = await supabase
+            .from('profiles')
+            .upsert(dbPayload, { onConflict: 'id' })
+            .select('id');
+
+          if (upsertErr) throw upsertErr;
+
+          // Fallback: update by phone_number if id didn't match
+          if ((!upserted || upserted.length === 0) && phone) {
+            const { data: byPhone } = await supabase
               .from('profiles')
-              .update(updateData)
-              .eq('id', item.id);
-            if (error) throw error;
-          } else {
-            const { error } = await supabase
-              .from('profiles')
-              .insert(dbPayload);
-            if (error) throw error;
+              .select('id')
+              .eq('phone_number', phone)
+              .maybeSingle();
+
+            if (byPhone) {
+              const { error: phoneErr } = await supabase
+                .from('profiles')
+                .update(dbPayload)
+                .eq('phone_number', phone);
+              if (phoneErr) throw phoneErr;
+            } else {
+              // Insert as new record
+              const { error: insErr } = await supabase
+                .from('profiles')
+                .insert(dbPayload);
+              if (insErr) throw insErr;
+            }
           }
         }
         successCount++;

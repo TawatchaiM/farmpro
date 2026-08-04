@@ -410,37 +410,67 @@ function App() {
             
             <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0.75rem 0' }}></div>
 
-            <div 
-              className={`sidebar-item ${activePortal === 'buyer' ? 'active' : ''}`}
-              onClick={() => handlePortalSwitch('buyer')}
-            >
-              🏪 หมวดผู้ซื้อ
-            </div>
-            <div 
-              className={`sidebar-item ${activePortal === 'seller' ? 'active' : ''}`}
-              onClick={() => handlePortalSwitch('seller')}
-            >
-              🧑‍🌾 หมวดผู้ขาย (ชาวสวน)
-            </div>
-            <div 
-              className={`sidebar-item ${activePortal === 'marketplace' ? 'active' : ''}`}
-              onClick={() => handlePortalSwitch('marketplace')}
-            >
-              🛒 หมวดบริการ
-            </div>
+            {/* --- Role-Based Menu Visibility --- */}
+            {/* SUPER_ADMIN/ADMIN/BASIC_ADMIN: เห็นทุกเมนู */}
+            {/* buyer/CLERK/DRC_LAB: เห็นแค่หมวดผู้ซื้อ */}
+            {/* seller: เห็นแค่หมวดผู้ขาย */}
+            {/* vendor: เห็นแค่หมวดบริการ */}
+            {(() => {
+              const role = currentUser?.role;
+              const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BASIC_ADMIN';
+              const isBuyer = role === 'buyer' || role === 'CLERK' || role === 'DRC_LAB';
+              const isSeller = role === 'seller';
+              const isVendor = role === 'vendor';
 
-            {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || currentUser?.role === 'BASIC_ADMIN') && (
-              <>
-                <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0.75rem 0' }}></div>
-                <div 
-                  className={`sidebar-item ${activePortal === 'admin' ? 'active' : ''}`}
-                  onClick={() => setActivePortal('admin')}
-                  style={activePortal === 'admin' ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', color: 'white', boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.39)' } : { color: '#3b82f6', fontWeight: 'bold' }}
-                >
-                  🛡️ แดชบอร์ดผู้ดูแล
-                </div>
-              </>
-            )}
+              return (
+                <>
+                  {/* หมวดผู้ซื้อ: แสดงเมื่อ buyer หรือ admin */}
+                  {(isBuyer || isAdmin) && (
+                    <div
+                      className={`sidebar-item ${activePortal === 'buyer' ? 'active' : ''}`}
+                      onClick={() => handlePortalSwitch('buyer')}
+                    >
+                      🏪 หมวดผู้ซื้อ
+                    </div>
+                  )}
+
+                  {/* หมวดผู้ขาย: แสดงเมื่อ seller หรือ admin */}
+                  {(isSeller || isAdmin) && (
+                    <div
+                      className={`sidebar-item ${activePortal === 'seller' ? 'active' : ''}`}
+                      onClick={() => handlePortalSwitch('seller')}
+                    >
+                      🧑‍🌾 หมวดผู้ขาย (ชาวสวน)
+                    </div>
+                  )}
+
+                  {/* หมวดบริการ: แสดงเมื่อ vendor หรือ admin */}
+                  {(isVendor || isAdmin) && (
+                    <div
+                      className={`sidebar-item ${activePortal === 'marketplace' ? 'active' : ''}`}
+                      onClick={() => handlePortalSwitch('marketplace')}
+                    >
+                      🛒 หมวดบริการ
+                    </div>
+                  )}
+
+                  {/* แดชบอร์ดผู้ดูแล: เฉพาะ admin */}
+                  {isAdmin && (
+                    <>
+                      <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0.75rem 0' }}></div>
+                      <div
+                        className={`sidebar-item ${activePortal === 'admin' ? 'active' : ''}`}
+                        onClick={() => setActivePortal('admin')}
+                        style={activePortal === 'admin' ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', color: 'white', boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.39)' } : { color: '#3b82f6', fontWeight: 'bold' }}
+                      >
+                        🛡️ แดชบอร์ดผู้ดูแล
+                      </div>
+                    </>
+                  )}
+                </>
+              );
+            })()}
+
 
 
             <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0.75rem 0' }}></div>

@@ -56,11 +56,18 @@ function FarmManagement({ currentUser }) {
   const handleSave = async (e) => {
     e.preventDefault();
     try {
+      // Ensure owner_share_percent is sent as integer (HTML select returns string)
+      const payload = {
+        ...formData,
+        user_id: currentUser.id,
+        owner_share_percent: parseInt(formData.owner_share_percent, 10),
+        is_default: Boolean(formData.is_default)
+      };
       if (editingId) {
-        await db.updateUserFarm(editingId, { ...formData, user_id: currentUser.id });
+        await db.updateUserFarm(editingId, payload);
         alert('แก้ไขข้อมูลสวนเรียบร้อย');
       } else {
-        await db.addUserFarm({ ...formData, user_id: currentUser.id });
+        await db.addUserFarm(payload);
         alert('เพิ่มข้อมูลสวนใหม่เรียบร้อย');
       }
       handleCancel();

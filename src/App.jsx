@@ -444,13 +444,13 @@ function App() {
                     </div>
                   )}
 
-                  {/* หมวดบริการ: แสดงเมื่อ vendor หรือ admin */}
-                  {(isVendor || isAdmin) && (
+                  {/* หมวดบริการ: แสดงทุก role ยกเว้น CLERK/DRC_LAB */}
+                  {(isBuyer || isSeller || isVendor || isAdmin) && (
                     <div
                       className={`sidebar-item ${activePortal === 'marketplace' ? 'active' : ''}`}
                       onClick={() => handlePortalSwitch('marketplace')}
                     >
-                      🛒 หมวดบริการ
+                      🛒 หมวดร้านค้าและบริการ
                     </div>
                   )}
 

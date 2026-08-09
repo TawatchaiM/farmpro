@@ -106,3 +106,44 @@ CREATE POLICY "Users can insert their own profile"
   ON profiles 
   FOR INSERT 
   WITH CHECK (auth.uid() = user_id);
+
+-- 6. Create user_farms Table
+CREATE TABLE IF NOT EXISTS user_farms (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id),
+  farm_name VARCHAR(255) NOT NULL,
+  owner_name VARCHAR(255) NOT NULL,
+  owner_share_percent INTEGER DEFAULT 50,
+  is_default BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE user_farms ENABLE ROW LEVEL SECURITY;
+
+-- Drop Existing Policies (ถ้ามี เพื่อป้องกัน Policy ซ้ำซ้อน):
+DROP POLICY IF EXISTS "Users can view their own farms" ON user_farms;
+DROP POLICY IF EXISTS "Users can insert their own farms" ON user_farms;
+DROP POLICY IF EXISTS "Users can update their own farms" ON user_farms;
+DROP POLICY IF EXISTS "Users can delete their own farms" ON user_farms;
+
+-- Policies for user_farms
+CREATE POLICY "Users can view their own farms" 
+  ON user_farms 
+  FOR SELECT 
+  USING (auth.uid()::text = user_id::text);
+
+CREATE POLICY "Users can insert their own farms" 
+  ON user_farms 
+  FOR INSERT 
+  WITH CHECK (auth.uid()::text = user_id::text);
+
+CREATE POLICY "Users can update their own farms" 
+  ON user_farms 
+  FOR UPDATE 
+  USING (auth.uid()::text = user_id::text);
+
+CREATE POLICY "Users can delete their own farms" 
+  ON user_farms 
+  FOR DELETE 
+  USING (auth.uid()::text = user_id::text);

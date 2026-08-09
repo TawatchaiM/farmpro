@@ -21,7 +21,7 @@ function FarmManagement({ currentUser }) {
     if (!currentUser) return;
     setLoading(true);
     try {
-      const data = await db.getUserFarms(currentUser.id);
+      const data = await db.getUserFarms(currentUser.user_id || currentUser.id);
       setFarms(data);
     } catch (err) {
       console.error(err);
@@ -59,7 +59,7 @@ function FarmManagement({ currentUser }) {
       // Ensure owner_share_percent is sent as integer (HTML select returns string)
       const payload = {
         ...formData,
-        user_id: currentUser.id,
+        user_id: currentUser.user_id || currentUser.id,
         owner_share_percent: parseInt(formData.owner_share_percent, 10),
         is_default: Boolean(formData.is_default)
       };

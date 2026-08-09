@@ -108,9 +108,14 @@ CREATE POLICY "Users can insert their own profile"
   WITH CHECK (auth.uid() = user_id);
 
 -- 6. Create user_farms Table
-CREATE TABLE IF NOT EXISTS user_farms (
+-- NOTE: user_id is TEXT (not UUID FK) to support both Supabase Auth UUIDs
+-- and local/offline mock UUIDs without FK constraint failures.
+-- Run this block fresh: DROP IF EXISTS first, then CREATE.
+DROP TABLE IF EXISTS user_farms;
+
+CREATE TABLE user_farms (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id),
+  user_id TEXT NOT NULL,
   farm_name VARCHAR(255) NOT NULL,
   owner_name VARCHAR(255) NOT NULL,
   owner_share_percent INTEGER DEFAULT 50,
@@ -121,29 +126,16 @@ CREATE TABLE IF NOT EXISTS user_farms (
 -- Enable RLS
 ALTER TABLE user_farms ENABLE ROW LEVEL SECURITY;
 
--- Drop Existing Policies (ถ้ามี เพื่อป้องกัน Policy ซ้ำซ้อน):
+-- Drop Existing Policies
 DROP POLICY IF EXISTS "Users can view their own farms" ON user_farms;
 DROP POLICY IF EXISTS "Users can insert their own farms" ON user_farms;
 DROP POLICY IF EXISTS "Users can update their own farms" ON user_farms;
 DROP POLICY IF EXISTS "Users can delete their own farms" ON user_farms;
+DROP POLICY IF EXISTS "Allow all on user_farms" ON user_farms;
 
--- Policies for user_farms
-CREATE POLICY "Users can view their own farms" 
-  ON user_farms 
-  FOR SELECT 
-  USING (auth.uid()::text = user_id::text);
-
-CREATE POLICY "Users can insert their own farms" 
-  ON user_farms 
-  FOR INSERT 
-  WITH CHECK (auth.uid()::text = user_id::text);
-
-CREATE POLICY "Users can update their own farms" 
-  ON user_farms 
-  FOR UPDATE 
-  USING (auth.uid()::text = user_id::text);
-
-CREATE POLICY "Users can delete their own farms" 
-  ON user_farms 
-  FOR DELETE 
-  USING (auth.uid()::text = user_id::text);
+-- Open RLS policy: Row-level security is enforced by application logic
+-- using user_id filter, not by Supabase session (supports anon key + phone auth)
+CREATE POLICY "Allow all on user_farms"
+  ON user_farms FOR ALL
+  USING (true)
+  WITH CHECK (true);

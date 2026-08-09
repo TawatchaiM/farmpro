@@ -258,6 +258,11 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
   const [selectedPlanId, setSelectedPlanId] = useState(savedDraft?.selectedPlanId || 'standard');
   const [billingCycle, setBillingCycle] = useState(savedDraft?.billingCycle || 'monthly');
 
+  // Farm Management States (for seller onboarding step)
+  const [onboardingFarms, setOnboardingFarms] = useState([]);
+  const [farmForm, setFarmForm] = useState({ farm_name: '', owner_name: '', owner_share_percent: 55, is_default: true });
+  const [farmFormError, setFarmFormError] = useState('');
+
   // Auto-save form draft to sessionStorage whenever any field changes
   useEffect(() => {
     try {
@@ -395,12 +400,46 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
       });
 
       if (authRes && authRes.success && authRes.profile) {
+        const userId = authRes.profile.user_id || authRes.profile.id;
+        // Save onboarding farms if seller added any
+        if (role === 'seller' && onboardingFarms.length > 0 && userId) {
+          for (const farm of onboardingFarms) {
+            try {
+              await db.addUserFarm({
+                user_id: userId,
+                farm_name: farm.farm_name,
+                owner_name: farm.owner_name,
+                owner_share_percent: parseInt(farm.owner_share_percent, 10),
+                is_default: Boolean(farm.is_default)
+              });
+            } catch (farmErr) {
+              console.warn('Could not save farm during onboarding:', farmErr);
+            }
+          }
+        }
         sessionStorage.removeItem('farmpro_onboarding_draft');
         onComplete(authRes.profile, authRes.user);
       } else {
         const isOffline = !window.navigator.onLine;
         const response = await db.saveProfile(profileData, isOffline);
         if (response && response.success) {
+          const userId = response.data?.user_id || response.data?.id;
+          // Save onboarding farms if seller added any
+          if (role === 'seller' && onboardingFarms.length > 0 && userId) {
+            for (const farm of onboardingFarms) {
+              try {
+                await db.addUserFarm({
+                  user_id: userId,
+                  farm_name: farm.farm_name,
+                  owner_name: farm.owner_name,
+                  owner_share_percent: parseInt(farm.owner_share_percent, 10),
+                  is_default: Boolean(farm.is_default)
+                });
+              } catch (farmErr) {
+                console.warn('Could not save farm during onboarding:', farmErr);
+              }
+            }
+          }
           sessionStorage.removeItem('farmpro_onboarding_draft');
           onComplete(response.data, null);
         } else {
@@ -420,9 +459,10 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
     }
   };
 
-  // Dynamic step navigation mapping (6 steps total)
-  const stepsList = role === 'seller' 
-    ? [1, 2, 4, 5, 6] 
+  // Dynamic step navigation mapping
+  // Seller steps: 1=Role, 2=Personal, 4=Address, 7=Farm Setup, 5=Pricing, 6=Submit
+  const stepsList = role === 'seller'
+    ? [1, 2, 4, 7, 5, 6]
     : [1, 2, 3, 4, 5, 6];
 
   const getStepProgressPercentage = () => {
@@ -457,7 +497,7 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
       }
       if (role === 'seller') {
         setErrorMsg('');
-        setStep(4);
+        setStep(4); // seller skips store details (step 3)
         return;
       }
     }
@@ -476,6 +516,12 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
         setErrorMsg('กรุณาเลือกจังหวัด อำเภอ และตำบลให้ครบถ้วน');
         return;
       }
+      // Seller: go to farm setup step (7) next
+      if (role === 'seller') {
+        setErrorMsg('');
+        setStep(7);
+        return;
+      }
     }
     setErrorMsg('');
     setStep(prev => prev + 1);
@@ -484,7 +530,15 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
   const prevStep = () => {
     setErrorMsg('');
     if (step === 4 && role === 'seller') {
-      setStep(2); // Go back directly to personal info
+      setStep(2);
+      return;
+    }
+    if (step === 7) {
+      setStep(4); // farm setup -> back to address
+      return;
+    }
+    if (step === 5 && role === 'seller') {
+      setStep(7); // pricing -> back to farm setup
       return;
     }
     setStep(prev => prev - 1);
@@ -1381,6 +1435,116 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
               </button>
               <button type="button" onClick={nextStep} className="onboarding-btn-primary">
                 ถัดไป (เลือกแพ็กเกจ) &rarr;
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 7: Farm Setup (Seller only — ตั้งค่าสวนยาง) */}
+        {step === 7 && (
+          <div>
+            <h2 style={{ textAlign: 'center', marginBottom: '0.5rem', fontSize: '1.5rem' }}>🌳 ตั้งค่าสวนยางของคุณ</h2>
+            <p style={{ textAlign: 'center', color: '#94a3b8', marginBottom: '1.5rem' }}>
+              เพิ่มข้อมูลสวนที่คุณรับจ้างกรีด (สามารถข้ามและเพิ่มภายหลังได้)
+            </p>
+
+            {/* Add farm form */}
+            <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px', padding: '1.25rem', marginBottom: '1.25rem' }}>
+              <div style={{ fontSize: '0.875rem', color: '#4ade80', marginBottom: '1rem', fontWeight: '600' }}>
+                ➕ เพิ่มสวนใหม่
+              </div>
+              {farmFormError && (
+                <div style={{ color: '#fca5a5', fontSize: '0.8rem', marginBottom: '0.75rem' }}>⚠️ {farmFormError}</div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '0.85rem' }}>
+                <div>
+                  <label style={{ color: '#cbd5e1', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>ชื่อสวน (เช่น สวนลุงบุญ)</label>
+                  <input
+                    type="text"
+                    value={farmForm.farm_name}
+                    onChange={e => setFarmForm(prev => ({ ...prev, farm_name: e.target.value }))}
+                    placeholder="สวนอีไลน์ / สวนลุงสมชาย"
+                    style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '0.7rem', borderRadius: '8px', width: '100%', boxSizing: 'border-box', fontSize: '0.875rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ color: '#cbd5e1', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>ชื่อเจ้าของสวน (ระบุในบิล)</label>
+                  <input
+                    type="text"
+                    value={farmForm.owner_name}
+                    onChange={e => setFarmForm(prev => ({ ...prev, owner_name: e.target.value }))}
+                    placeholder="นายสมชาย ใจดี"
+                    style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '0.7rem', borderRadius: '8px', width: '100%', boxSizing: 'border-box', fontSize: '0.875rem' }}
+                  />
+                </div>
+              </div>
+              <div style={{ marginBottom: '0.85rem' }}>
+                <label style={{ color: '#cbd5e1', fontSize: '0.85rem', display: 'block', marginBottom: '0.3rem' }}>สัดส่วนเจ้าของสวน (%)</label>
+                <select
+                  value={farmForm.owner_share_percent}
+                  onChange={e => setFarmForm(prev => ({ ...prev, owner_share_percent: parseInt(e.target.value, 10) }))}
+                  style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '0.7rem', borderRadius: '8px', width: '100%', cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  <option value={50}>50% (แบ่งคนละครึ่ง)</option>
+                  <option value={55}>55% (เจ้าของ 55 / คนกรีด 45)</option>
+                  <option value={60}>60% (เจ้าของ 60 / คนกรีด 40)</option>
+                  <option value={70}>70% (เจ้าของ 70 / คนกรีด 30)</option>
+                  <option value={100}>100% (เจ้าของกรีดเอง)</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                <input type="checkbox" id="ob_is_default" checked={farmForm.is_default} onChange={e => setFarmForm(prev => ({ ...prev, is_default: e.target.checked }))} style={{ accentColor: '#4ade80' }} />
+                <label htmlFor="ob_is_default" style={{ color: '#cbd5e1', fontSize: '0.875rem', margin: 0, fontWeight: 'normal' }}>ตั้งเป็นสวนหลัก</label>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!farmForm.farm_name.trim() || !farmForm.owner_name.trim()) {
+                    setFarmFormError('กรุณากรอกชื่อสวนและชื่อเจ้าของสวน');
+                    return;
+                  }
+                  setFarmFormError('');
+                  const newFarm = { ...farmForm, id: 'pending-' + Date.now() };
+                  // If this farm is_default, unset others
+                  setOnboardingFarms(prev => {
+                    const updated = newFarm.is_default ? prev.map(f => ({ ...f, is_default: false })) : [...prev];
+                    return [...updated, newFarm];
+                  });
+                  setFarmForm({ farm_name: '', owner_name: '', owner_share_percent: 55, is_default: false });
+                }}
+                style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', border: 'none', color: '#fff', padding: '0.7rem 1.5rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '600', width: '100%' }}
+              >
+                + เพิ่มสวนนี้
+              </button>
+            </div>
+
+            {/* Farm list */}
+            {onboardingFarms.length > 0 && (
+              <div style={{ marginBottom: '1.25rem' }}>
+                <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.5rem' }}>สวนที่เพิ่มแล้ว ({onboardingFarms.length} สวน):</div>
+                {onboardingFarms.map((farm, idx) => (
+                  <div key={farm.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: '10px', padding: '0.75rem 1rem', marginBottom: '0.5rem' }}>
+                    <div>
+                      <span style={{ color: '#4ade80', fontWeight: '600', fontSize: '0.9rem' }}>{farm.farm_name}</span>
+                      {farm.is_default && <span style={{ fontSize: '0.7rem', background: '#1d4ed8', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginLeft: '0.5rem' }}>หลัก</span>}
+                      <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.1rem' }}>เจ้าของ: {farm.owner_name} | เจ้าของ {farm.owner_share_percent}%</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setOnboardingFarms(prev => prev.filter((_, i) => i !== idx))}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.1rem', padding: '0.25rem' }}
+                    >🗑️</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
+              <button type="button" onClick={prevStep} className="onboarding-btn-secondary">
+                ย้อนกลับ
+              </button>
+              <button type="button" onClick={() => { setErrorMsg(''); setStep(5); }} className="onboarding-btn-primary">
+                {onboardingFarms.length > 0 ? `ถัดไป (${onboardingFarms.length} สวน) →` : 'ข้ามขั้นตอนนี้ →'}
               </button>
             </div>
           </div>

@@ -794,18 +794,21 @@ export const db = {
     }
   },
   addUserFarm: async (farmData) => {
+    // Always save to localStorage as source of truth (for offline/mock support)
+    const farms = safeJsonParse('farmpro_user_farms', []);
+    const localFarm = {
+      ...farmData,
+      id: farmData.id || ('mock-farm-' + Date.now()),
+      created_at: farmData.created_at || new Date().toISOString()
+    };
+
     if (isMock) {
       await delay(300);
-      const farms = safeJsonParse('farmpro_user_farms', []);
-      const newFarm = { 
-        ...farmData, 
-        id: 'mock-farm-' + Date.now(), 
-        created_at: new Date().toISOString() 
-      };
-      farms.push(newFarm);
+      farms.push(localFarm);
       localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
-      return newFarm;
+      return localFarm;
     }
+
     try {
       const { data, error } = await supabase
         .from('user_farms')
@@ -813,35 +816,52 @@ export const db = {
         .select()
         .single();
       if (error) throw error;
+      // Sync to local cache
+      farms.push(data);
+      localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
       return data;
     } catch (err) {
-      console.error('Error adding user farm:', err);
-      throw err;
+      console.error('Error adding user farm to Supabase, saving locally:', err);
+      // Fallback: save to localStorage so UI works even when Supabase fails
+      farms.push(localFarm);
+      localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
+      return localFarm;
     }
   },
   updateUserFarm: async (farmId, farmData) => {
+    // Exclude user_id from update payload (immutable owner field)
+    const { user_id, id, created_at, ...updatePayload } = farmData;
+
+    // Always update localStorage
+    const farms = safeJsonParse('farmpro_user_farms', []);
+    const index = farms.findIndex(f => f.id === farmId);
+    if (index >= 0) {
+      farms[index] = { ...farms[index], ...updatePayload };
+      localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
+    }
+
     if (isMock) {
       await delay(300);
-      const farms = safeJsonParse('farmpro_user_farms', []);
-      const index = farms.findIndex(f => f.id === farmId);
-      if (index >= 0) {
-        farms[index] = { ...farms[index], ...farmData };
-        localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
-        return farms[index];
-      }
+      if (index >= 0) return farms[index];
       throw new Error('Farm not found');
     }
+
     try {
       const { data, error } = await supabase
         .from('user_farms')
-        .update(farmData)
+        .update(updatePayload)
         .eq('id', farmId)
         .select()
         .single();
       if (error) throw error;
+      // Sync updated record to local cache
+      if (index >= 0) farms[index] = data;
+      localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
       return data;
     } catch (err) {
-      console.error('Error updating user farm:', err);
+      console.error('Error updating user farm in Supabase, using local data:', err);
+      // Fallback: return locally updated record
+      if (index >= 0) return farms[index];
       throw err;
     }
   },

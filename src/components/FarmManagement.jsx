@@ -55,6 +55,10 @@ function FarmManagement({ currentUser }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (!currentUser) {
+      alert('ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่อีกครั้ง');
+      return;
+    }
     try {
       // Ensure owner_share_percent is sent as integer (HTML select returns string)
       const payload = {
@@ -63,6 +67,7 @@ function FarmManagement({ currentUser }) {
         owner_share_percent: parseInt(formData.owner_share_percent, 10),
         is_default: Boolean(formData.is_default)
       };
+      console.log('[FarmManagement] handleSave payload:', payload);
       if (editingId) {
         await db.updateUserFarm(editingId, payload);
         alert('แก้ไขข้อมูลสวนเรียบร้อย');
@@ -73,8 +78,9 @@ function FarmManagement({ currentUser }) {
       handleCancel();
       loadFarms();
     } catch (err) {
-      console.error(err);
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      console.error('[FarmManagement] handleSave error:', err);
+      const msg = err?.message || err?.details || JSON.stringify(err);
+      alert(`เกิดข้อผิดพลาดในการบันทึกข้อมูล\n\nรายละเอียด: ${msg}`);
     }
   };
 

@@ -794,19 +794,13 @@ export const db = {
     }
   },
   addUserFarm: async (farmData) => {
-    // Always save to localStorage as source of truth (for offline/mock support)
-    const farms = safeJsonParse('farmpro_user_farms', []);
-    const localFarm = {
-      ...farmData,
-      id: farmData.id || ('mock-farm-' + Date.now()),
-      created_at: farmData.created_at || new Date().toISOString()
-    };
-
     if (isMock) {
       await delay(300);
-      farms.push(localFarm);
+      const farms = safeJsonParse('farmpro_user_farms', []);
+      const newFarm = { ...farmData, id: 'mock-farm-' + Date.now(), created_at: new Date().toISOString() };
+      farms.push(newFarm);
       localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
-      return localFarm;
+      return newFarm;
     }
 
     try {
@@ -815,17 +809,24 @@ export const db = {
         .insert([farmData])
         .select()
         .single();
-      if (error) throw error;
-      // Sync to local cache
+      if (error) {
+        console.error('[addUserFarm] Supabase insert error:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          payload: farmData
+        });
+        throw error;
+      }
+      // Sync to local cache for offline access
+      const farms = safeJsonParse('farmpro_user_farms', []);
       farms.push(data);
       localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
       return data;
     } catch (err) {
-      console.error('Error adding user farm to Supabase, saving locally:', err);
-      // Fallback: save to localStorage so UI works even when Supabase fails
-      farms.push(localFarm);
-      localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
-      return localFarm;
+      // Re-throw so FarmManagement can display the real Supabase error
+      throw err;
     }
   },
   updateUserFarm: async (farmId, farmData) => {

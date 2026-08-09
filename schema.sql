@@ -139,3 +139,8 @@ CREATE POLICY "Allow all on user_farms"
   ON user_farms FOR ALL
   USING (true)
   WITH CHECK (true);
+
+-- Grant table-level privileges to anon and authenticated roles
+-- (Required when table is created via raw SQL, not Supabase dashboard)
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_farms TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_farms TO authenticated;

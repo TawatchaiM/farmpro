@@ -773,6 +773,187 @@ export const db = {
     }
   },
 
+  /**
+   * ค้นหาโปรไฟล์ seller แบบ partial match ด้วยชื่อหรือเบอร์โทร
+   * Best Practice: ใช้ ILIKE + limit=10 เพื่อประหยัด DB resource
+   * รองรับ optional location filter (province/district/subdistrict)
+   * @param {string} query - คำค้นหา (ชื่อหรือเบอร์โทร)
+   * @param {object} filters - { province, district, subdistrict } (optional)
+   * @param {number} limit - จำนวนผลลัพธ์สูงสุด (default 8)
+   */
+  searchSellerProfiles: async (query, filters = {}, limit = 8) => {
+    if (!query || query.trim().length < 2) return [];
+
+    const q = query.trim();
+
+    // ---- MOCK MODE: ค้นหาจาก localStorage ----
+    if (isMock) {
+      await delay(150);
+      // รวม profiles จาก farmpro_profiles + seller address book
+      const registeredProfiles = safeJsonParse('farmpro_profiles', []);
+      const addressBook = safeJsonParse('farmpro_seller_address_book', []);
+
+      // Mock: สร้าง seed sellers ถ้าว่าง
+      const seedProfiles = [
+        { id: 'mock-seller-001', full_name: 'สมชาย รักสวน', phone_number: '0812345678', role: 'seller', province: 'สุราษฎร์ธานี', district: 'ไชยา', is_app_user: true },
+        { id: 'mock-seller-002', full_name: 'มานี ใจดี', phone_number: '0898765432', role: 'seller', province: 'สุราษฎร์ธานี', district: 'พุนพิน', is_app_user: true },
+        { id: 'mock-seller-003', full_name: 'สุภาพ ขยันกรีด', phone_number: '0934567890', role: 'seller', province: 'ชุมพร', district: 'เมือง', is_app_user: true },
+      ];
+
+      const allSellers = [
+        ...seedProfiles,
+        ...registeredProfiles.filter(p => p.role === 'seller' || p.role === 'SELLER'),
+        ...addressBook
+      ];
+
+      // ค้นหา partial match
+      const lower = q.toLowerCase();
+      let results = allSellers.filter(p => {
+        const nameMatch = (p.full_name || '').toLowerCase().includes(lower);
+        const phoneMatch = (p.phone_number || '').includes(q);
+        return nameMatch || phoneMatch;
+      });
+
+      // Apply location filters
+      if (filters.province) results = results.filter(p => p.province === filters.province);
+      if (filters.district) results = results.filter(p => p.district === filters.district);
+      if (filters.subdistrict) results = results.filter(p => p.subdistrict === filters.subdistrict);
+
+      // Deduplicate by phone_number
+      const seen = new Set();
+      results = results.filter(p => {
+        const key = p.phone_number || p.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      return results.slice(0, limit).map(p => ({
+        id: p.id,
+        full_name: p.full_name,
+        phone_number: p.phone_number,
+        province: p.province || null,
+        district: p.district || null,
+        subdistrict: p.subdistrict || null,
+        is_app_user: p.is_app_user ?? true,
+        source: p.source || 'registered',
+      }));
+    }
+
+    // ---- REAL SUPABASE MODE ----
+    // Strategy: ค้นหาทั้งชื่อและเบอร์โทรพร้อมกัน, จำกัด limit เพื่อ performance
+    try {
+      let queryBuilder = supabase
+        .from('profiles')
+        .select('id, full_name, phone_number, province, district, subdistrict')
+        .or(`full_name.ilike.%${q}%,phone_number.ilike.%${q}%`)
+        .in('role', ['seller', 'SELLER'])
+        .limit(limit);
+
+      // Apply optional location filters (ประหยัด resource เมื่อ user มาก)
+      if (filters.province) queryBuilder = queryBuilder.eq('province', filters.province);
+      if (filters.district) queryBuilder = queryBuilder.eq('district', filters.district);
+      if (filters.subdistrict) queryBuilder = queryBuilder.eq('subdistrict', filters.subdistrict);
+
+      const { data, error } = await queryBuilder;
+      if (error) throw error;
+
+      const registeredResults = (data || []).map(p => ({ ...p, is_app_user: true, source: 'registered' }));
+
+      // Merge with local address book (ผู้ขายที่ไม่ได้ใช้แอป)
+      const addressBook = safeJsonParse('farmpro_seller_address_book', []);
+      const lower = q.toLowerCase();
+      const localResults = addressBook.filter(p => {
+        const nameMatch = (p.full_name || '').toLowerCase().includes(lower);
+        const phoneMatch = (p.phone_number || '').includes(q);
+        let locMatch = true;
+        if (filters.province && p.province !== filters.province) locMatch = false;
+        if (filters.district && p.district !== filters.district) locMatch = false;
+        return (nameMatch || phoneMatch) && locMatch;
+      }).map(p => ({ ...p, is_app_user: false, source: 'address_book' }));
+
+      // Merge, deduplicate (registered wins over address_book)
+      const merged = [...registeredResults];
+      const registeredPhones = new Set(registeredResults.map(p => p.phone_number));
+      for (const p of localResults) {
+        if (!registeredPhones.has(p.phone_number)) merged.push(p);
+      }
+
+      return merged.slice(0, limit);
+    } catch (err) {
+      console.error('Error searching seller profiles:', err);
+      // Fallback: ค้นหาจาก address book เท่านั้น
+      const addressBook = safeJsonParse('farmpro_seller_address_book', []);
+      const lower = q.toLowerCase();
+      return addressBook
+        .filter(p => (p.full_name || '').toLowerCase().includes(lower) || (p.phone_number || '').includes(q))
+        .slice(0, limit)
+        .map(p => ({ ...p, is_app_user: false, source: 'address_book' }));
+    }
+  },
+
+  // --- Seller Address Book (Local Cache สำหรับผู้ขายที่ไม่ได้ใช้แอป) ---
+  // TTL: 30 วัน นับจากวันที่ทำ transaction ล่าสุด
+  // ไม่กินทรัพยากร server เพราะเก็บใน localStorage เท่านั้น
+
+  /**
+   * บันทึกหรืออัปเดตผู้ขายใน address book (localStorage)
+   * เรียกหลังจาก Weight In สำเร็จ เพื่อเก็บข้อมูลผู้ขายไว้ใช้ครั้งหน้า
+   */
+  saveSellerToAddressBook: (sellerData) => {
+    if (!sellerData?.full_name && !sellerData?.phone_number) return;
+    const book = safeJsonParse('farmpro_seller_address_book', []);
+    const now = new Date().toISOString();
+
+    const existing = book.findIndex(p =>
+      p.phone_number && p.phone_number === sellerData.phone_number
+    );
+
+    const entry = {
+      id: sellerData.id || ('ab-' + Date.now()),
+      full_name: sellerData.full_name || '',
+      phone_number: sellerData.phone_number || '',
+      province: sellerData.province || null,
+      district: sellerData.district || null,
+      subdistrict: sellerData.subdistrict || null,
+      is_app_user: sellerData.is_app_user || false,
+      source: 'address_book',
+      last_transaction_at: now,
+      created_at: existing >= 0 ? (book[existing].created_at || now) : now,
+    };
+
+    if (existing >= 0) {
+      book[existing] = entry;
+    } else {
+      book.push(entry);
+    }
+
+    localStorage.setItem('farmpro_seller_address_book', JSON.stringify(book));
+  },
+
+  /**
+   * ลบ seller จาก address book ที่ไม่มี transaction เกิน 30 วัน
+   * เรียกอัตโนมัติตอน app โหลด (ไม่กระทบ performance)
+   */
+  cleanupStaleSellerCache: () => {
+    const book = safeJsonParse('farmpro_seller_address_book', []);
+    if (book.length === 0) return;
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+
+    const cleaned = book.filter(p => {
+      if (!p.last_transaction_at) return false; // ไม่มีวันที่ → ลบทิ้ง
+      return new Date(p.last_transaction_at) > cutoff;
+    });
+
+    if (cleaned.length !== book.length) {
+      const removed = book.length - cleaned.length;
+      console.info(`[FarmPro] ลบ seller cache ที่หมดอายุ ${removed} รายการ (>30 วัน)`);
+      localStorage.setItem('farmpro_seller_address_book', JSON.stringify(cleaned));
+    }
+  },
+
   // --- User Farms Management ---
   getUserFarms: async (userId) => {
     if (isMock) {

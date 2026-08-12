@@ -954,7 +954,54 @@ export const db = {
     }
   },
 
+  /**
+   * คำนวณราคารับซื้อจาก tier ที่ตรงกับ %DRC
+   * Best Practice: tier เรียงจากสูงไปต่ำ (drc_min DESC) เพื่อให้ match tier สูงสุดก่อนเสมอ
+   * @param {number} drcPct - %DRC จริงที่ได้จากห้องแล็บ
+   * @param {Array} tiers - [{ drc_min, drc_max, price_per_kg, label }] จาก dailySettings.price_tiers
+   * @param {number} basePrice - ราคา fallback ถ้าไม่ตรง tier ใดเลย
+   * @returns {{ price: number, tier_label: string, from_tier: boolean, needs_manual: boolean }}
+   */
+  resolvePriceFromTiers: (drcPct, tiers, basePrice) => {
+    const pct = parseFloat(drcPct) || 0;
+
+    // ถ้าไม่มี tiers หรือไม่ได้ใช้ tiered mode → ใช้ base_price
+    if (!tiers || !Array.isArray(tiers) || tiers.length === 0) {
+      return {
+        price: parseFloat(basePrice) || 0,
+        tier_label: 'ราคาปกติ',
+        from_tier: false,
+        needs_manual: false,
+      };
+    }
+
+    // เรียง tiers จาก drc_min สูงไปต่ำ
+    const sorted = [...tiers].sort((a, b) => parseFloat(b.drc_min) - parseFloat(a.drc_min));
+
+    for (const tier of sorted) {
+      const min = parseFloat(tier.drc_min);
+      const max = tier.drc_max != null ? parseFloat(tier.drc_max) : Infinity;
+      if (pct >= min && pct <= max) {
+        return {
+          price: parseFloat(tier.price_per_kg) || 0,
+          tier_label: tier.label || `${tier.drc_min}–${tier.drc_max != null ? tier.drc_max : '↑'}%`,
+          from_tier: true,
+          needs_manual: false,
+        };
+      }
+    }
+
+    // ไม่ตรง tier ใด → ต้องให้กรอกราคาเอง
+    return {
+      price: 0,
+      tier_label: 'ไม่ตรงช่วง DRC ที่กำหนด',
+      from_tier: false,
+      needs_manual: true,
+    };
+  },
+
   // --- User Farms Management ---
+
   getUserFarms: async (userId) => {
     if (isMock) {
       await delay(200);

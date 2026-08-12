@@ -241,6 +241,7 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
         {activeSubTab === 'drc' && (
           <DrcPortal 
             currentUser={currentUser}
+            dailySettings={dailySettings}
             transactions={transactions}
             onUpdateTransaction={handleUpdateTransaction}
           />

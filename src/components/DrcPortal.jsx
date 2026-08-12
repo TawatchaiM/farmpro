@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { db } from '../supabase';
 
-function DrcPortal({ currentUser, transactions, onUpdateTransaction }) {
+function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransaction }) {
   const [selectedTx, setSelectedTx] = useState(null);
   const [dryWeightInput, setDryWeightInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -122,11 +123,45 @@ function DrcPortal({ currentUser, transactions, onUpdateTransaction }) {
     try {
       const calculatedDrc = parseFloat(drcPercentage.toFixed(2));
       const rawWeight = parseFloat(selectedTx.raw_weight_kg);
-      const pricePerKg = parseFloat(selectedTx.price_per_kg || 0);
       const ownerSharePercent = parseFloat(selectedTx.owner_share_percentage || 50);
 
+      // ---- Price Resolution Logic ----
+      let finalPricePerKg;
+      let priceSource; // 'manual_override' | 'tier' | 'flat'
+
+      if (selectedTx.manual_price_override) {
+        // เสมียนตั้งราคาเองไว้แล้ว → ใช้ราคานั้น
+        finalPricePerKg = parseFloat(selectedTx.price_per_kg || 0);
+        priceSource = 'manual_override';
+      } else {
+        // ลอง resolve จาก tier
+        const tiers = dailySettings?.price_tiers;
+        const basePrice = dailySettings?.base_price || 0;
+        const resolved = db.resolvePriceFromTiers(calculatedDrc, tiers, basePrice);
+
+        if (resolved.needs_manual) {
+          // %DRC ไม่ตรง tier ใด → แจ้งเตือน ให้กรอกเอง
+          const enteredPrice = window.prompt(
+            `⚠️ %DRC ${calculatedDrc}% ไม่ตรงกับช่วง Tier ที่ตั้งไว้\n\n` +
+            `กรุณากรอกราคารับซื้อ (บาท/กก.) สำหรับคิวนี้:\n` +
+            `ผู้ขาย: ${selectedTx.seller_name}`,
+            '0'
+          );
+          if (!enteredPrice || parseFloat(enteredPrice) <= 0) {
+            alert('ยกเลิก: กรุณากรอกราคาที่ถูกต้องเพื่อดำเนินการต่อ');
+            setSubmitting(false);
+            return;
+          }
+          finalPricePerKg = parseFloat(enteredPrice);
+          priceSource = 'manual_fallback';
+        } else {
+          finalPricePerKg = resolved.price;
+          priceSource = resolved.from_tier ? 'tier' : 'flat';
+        }
+      }
+
       const dryWeightKg = parseFloat(((rawWeight * calculatedDrc) / 100).toFixed(2));
-      const totalAmount = parseFloat((dryWeightKg * pricePerKg).toFixed(2));
+      const totalAmount = parseFloat((dryWeightKg * finalPricePerKg).toFixed(2));
       const ownerShareAmount = parseFloat(((totalAmount * ownerSharePercent) / 100).toFixed(2));
       const tapperShareAmount = parseFloat((totalAmount - ownerShareAmount).toFixed(2));
 
@@ -134,6 +169,8 @@ function DrcPortal({ currentUser, transactions, onUpdateTransaction }) {
         dry_weight_sample_g: dryWeightG,
         drc_percentage: calculatedDrc,
         dry_weight_kg: dryWeightKg,
+        price_per_kg: finalPricePerKg,
+        price_source: priceSource,
         total_amount: totalAmount,
         owner_share_amount: ownerShareAmount,
         tapper_share_amount: tapperShareAmount,
@@ -339,7 +376,51 @@ function DrcPortal({ currentUser, transactions, onUpdateTransaction }) {
                 <button type="button" className="numpad-btn backspace" style={{ gridColumn: 'span 3' }} onClick={handleBackspace}>
                   ⌫ ลบทีละตัว
                 </button>
-                
+
+                {/* Price Preview (live calculation based on current DRC%) */}
+                {dryWeightG > 0 && !isImpossibleDrc && (() => {
+                  const isTiered = dailySettings?.pricing_mode === 'tiered' && dailySettings?.price_tiers?.length > 0;
+                  let previewPrice = 0;
+                  let previewLabel = '';
+                  let needsManual = false;
+
+                  if (selectedTx?.manual_price_override) {
+                    previewPrice = parseFloat(selectedTx.price_per_kg || 0);
+                    previewLabel = `✏️ ราคาพิเศษ (${selectedTx.override_reason || 'Manual'})`;
+                  } else {
+                    const resolved = db.resolvePriceFromTiers(drcPercentage, dailySettings?.price_tiers, dailySettings?.base_price);
+                    previewPrice = resolved.price;
+                    previewLabel = resolved.from_tier ? `📊 ${resolved.tier_label}` : resolved.needs_manual ? '⚠️ นอกช่วง Tier' : '💰 ราคาปกติ';
+                    needsManual = resolved.needs_manual;
+                  }
+
+                  const rawKg = parseFloat(selectedTx?.raw_weight_kg || 0);
+                  const estDryKg = parseFloat(((rawKg * drcPercentage) / 100).toFixed(2));
+                  const estTotal = parseFloat((estDryKg * previewPrice).toFixed(2));
+
+                  return (
+                    <div style={{
+                      gridColumn: 'span 3',
+                      padding: '0.65rem 0.75rem',
+                      borderRadius: '8px',
+                      background: needsManual ? '#fffbeb' : '#f0fdf4',
+                      border: needsManual ? '1px solid #fde047' : '1px solid #86efac',
+                      fontSize: '0.8rem',
+                      color: needsManual ? '#713f12' : '#166534',
+                    }}>
+                      <div style={{ fontWeight: '700', marginBottom: '0.25rem' }}>{previewLabel}</div>
+                      {needsManual ? (
+                        <div>ไม่พบช่วง Tier ที่ตรง → ระบบจะขอให้กรอกราคาเมื่อ submit</div>
+                      ) : (
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>ยางแห้ง ~{estDryKg} กก. × ฿{previewPrice.toFixed(2)}</span>
+                          <span style={{ fontWeight: '800', fontSize: '0.9rem' }}>≈ ฿{estTotal.toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <button 
                   type="button" 
                   className="numpad-btn submit" 
@@ -350,6 +431,7 @@ function DrcPortal({ currentUser, transactions, onUpdateTransaction }) {
                 </button>
               </div>
             </>
+
           ) : (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔬</div>

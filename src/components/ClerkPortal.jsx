@@ -28,6 +28,14 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
   const [selectedFarmId, setSelectedFarmId] = useState('new');
   const [fetchingFarms, setFetchingFarms] = useState(false);
 
+  // ---- Manual Price Override States ----
+  const [manualPriceOverride, setManualPriceOverride] = useState(false);
+  const [manualPrice, setManualPrice] = useState('');
+  const [overrideReason, setOverrideReason] = useState('ตกลงพิเศษ');
+
+  // Pricing mode from daily settings
+  const isTieredMode = dailySettings?.pricing_mode === 'tiered' && dailySettings?.price_tiers?.length > 0;
+
   // Filter queues
   const safeTxList = Array.isArray(transactions) ? transactions : [];
   const readyToPayList = safeTxList.filter(t => t.status === 'ready_to_pay' || t.status === 'READY_TO_PAY');
@@ -170,6 +178,26 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
       alert('กรุณากรอกน้ำหนักน้ำยางสดให้ถูกต้อง');
       return;
     }
+
+    // ---- Manual Price Override Validation ----
+    if (manualPriceOverride) {
+      if (!manualPrice || parseFloat(manualPrice) <= 0) {
+        alert('กรุณากรอกราคาที่ต้องการใช้แทนราคา Tier ให้ถูกต้อง');
+        return;
+      }
+      // Confirmation popup สำหรับ manual override
+      const priceLabel = isTieredMode ? 'ราคาตาม Tier' : 'ราคาปกติ';
+      const confirmed = window.confirm(
+        `⚠️ ยืนยันการใช้ราคาพิเศษ?\n\n` +
+        `ผู้ขาย: ${sellerName}\n` +
+        `ราคาที่ตั้งเอง: ฿${parseFloat(manualPrice).toFixed(2)}/กก.\n` +
+        `เหตุผล: ${overrideReason}\n\n` +
+        `⚠️ ราคานี้จะใช้แทน${priceLabel}สำหรับคิวนี้เท่านั้น\n` +
+        `ระบบจะบันทึก log ว่า ${currentUser?.full_name || 'เสมียน'} เป็นผู้ตั้งราคา\n\nกดตกลงเพื่อยืนยัน`
+      );
+      if (!confirmed) return;
+    }
+
     setCreatingTx(true);
     try {
       await onCreateTransaction({
@@ -180,7 +208,11 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
         owner_name: ownerName || sellerName,
         raw_weight_kg: parseFloat(rawWeightKg),
         wet_weight_sample_g: parseFloat(dailySettings.wet_sample_weight_g),
-        price_per_kg: parseFloat(dailySettings.base_price),
+        // ถ้า manual override → ส่งราคาเลย, ถ้าไม่ → ส่ง 0 (DRC portal จะ resolve tier)
+        price_per_kg: manualPriceOverride ? parseFloat(manualPrice) : (isTieredMode ? 0 : parseFloat(dailySettings.base_price || 0)),
+        manual_price_override: manualPriceOverride,
+        override_reason: manualPriceOverride ? overrideReason : null,
+        override_by_name: manualPriceOverride ? (currentUser?.full_name || 'เสมียน') : null,
         owner_share_percentage: parseFloat(ownerSharePercentage),
         status: 'waiting_drc',
         created_by_user_id: currentUser?.id,
@@ -197,6 +229,9 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
 
       handleClearSelection();
       setRawWeightKg('');
+      setManualPriceOverride(false);
+      setManualPrice('');
+      setOverrideReason('ตกลงพิเศษ');
       alert('บันทึกน้ำหนักขาเข้าเรียบร้อย ส่งคิวเข้าระบบตรวจ DRC สำเร็จ');
     } catch (err) {
       console.error(err);
@@ -591,6 +626,79 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                   <option value="0">0% (ไม่หัก)</option>
                 </select>
               </div>
+
+              {/* ===== PRICE INFO / MANUAL OVERRIDE ===== */}
+              <div style={{
+                padding: '0.85rem 1rem',
+                borderRadius: '10px',
+                border: manualPriceOverride ? '1.5px solid #f59e0b' : '1px solid #e2e8f0',
+                background: manualPriceOverride ? '#fffbeb' : '#f8fafc',
+                marginBottom: '0.5rem'
+              }}>
+                {/* Price info badge */}
+                {!manualPriceOverride && (
+                  <div style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '0.5rem' }}>
+                    {isTieredMode ? (
+                      <span>📊 <strong>Tiered Pricing:</strong> ราคาจะคำนวณจาก %DRC หลังตรวจแล็บ</span>
+                    ) : (
+                      <span>💰 <strong>ราคาวันนี้:</strong> ฿{parseFloat(dailySettings?.base_price || 0).toFixed(2)}/กก. (Flat Price)</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Toggle manual override */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={manualPriceOverride}
+                    onChange={e => {
+                      setManualPriceOverride(e.target.checked);
+                      if (!e.target.checked) setManualPrice('');
+                    }}
+                    style={{ width: '16px', height: '16px', accentColor: '#f59e0b' }}
+                  />
+                  <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#92400e' }}>
+                    ✏️ ตั้งราคาเองสำหรับผู้ขายรายนี้ (Manual Override)
+                  </span>
+                </label>
+
+                {manualPriceOverride && (
+                  <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <div className="input-with-icon" style={{ flex: 1 }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="form-input"
+                          placeholder="ระบุราคา เช่น 78.50"
+                          value={manualPrice}
+                          onChange={e => setManualPrice(e.target.value)}
+                          style={{ borderColor: '#f59e0b', background: '#fffbeb', fontWeight: '700' }}
+                        />
+                        <span className="input-unit">฿/กก.</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.78rem', color: '#78350f', fontWeight: '600' }}>เหตุผล</label>
+                      <select
+                        className="form-input"
+                        value={overrideReason}
+                        onChange={e => setOverrideReason(e.target.value)}
+                        style={{ borderColor: '#f59e0b', marginTop: '0.25rem', fontSize: '0.85rem' }}
+                      >
+                        <option value="ตกลงพิเศษ">ตกลงพิเศษ</option>
+                        <option value="ลูกค้า VIP">ลูกค้า VIP</option>
+                        <option value="ยางคุณภาพสูงพิเศษ">ยางคุณภาพสูงพิเศษ</option>
+                        <option value="ปรับราคาตามตลาด">ปรับราคาตามตลาด</option>
+                        <option value="อื่น ๆ">อื่น ๆ</option>
+                      </select>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#b45309', background: '#fef3c7', padding: '0.4rem 0.6rem', borderRadius: '6px' }}>
+                      ⚠️ ระบบจะบันทึก log ว่า <strong>{currentUser?.full_name || 'เสมียน'}</strong> เป็นผู้ตั้งราคาพิเศษ
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <button
@@ -601,6 +709,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
               {creatingTx ? 'กำลังบันทึกน้ำหนัก...' : '🚗 บันทึก Weight In & ส่งห้อง DRC'}
             </button>
           </form>
+
 
           {/* Quick status counters */}
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem' }}>

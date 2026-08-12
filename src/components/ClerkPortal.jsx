@@ -207,7 +207,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
         farm_id: selectedFarmId === 'new' ? null : selectedFarmId,
         owner_name: ownerName || sellerName,
         raw_weight_kg: parseFloat(rawWeightKg),
-        wet_weight_sample_g: parseFloat(dailySettings.wet_sample_weight_g),
+        wet_weight_sample_g: parseFloat(dailySettings?.wet_sample_weight_g || 10),
         // ถ้า manual override → ส่งราคาเลย, ถ้าไม่ → ส่ง 0 (DRC portal จะ resolve tier)
         price_per_kg: manualPriceOverride ? parseFloat(manualPrice) : (isTieredMode ? 0 : parseFloat(dailySettings.base_price || 0)),
         manual_price_override: manualPriceOverride,

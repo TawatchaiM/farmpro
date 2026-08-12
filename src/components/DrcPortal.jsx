@@ -102,7 +102,8 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
   };
 
   // Calculations
-  const wetWeightG = selectedTx ? parseFloat(selectedTx.wet_weight_sample_g || 50) : 50;
+  const defaultWetWeightG = parseFloat(dailySettings?.wet_sample_weight_g || 10);
+  const wetWeightG = selectedTx ? parseFloat(selectedTx.wet_weight_sample_g || defaultWetWeightG) : defaultWetWeightG;
   const dryWeightG = parseFloat(dryWeightInput) || 0;
   const drcPercentage = wetWeightG > 0 ? (dryWeightG / wetWeightG) * 100 : 0;
   const isImpossibleDrc = drcPercentage > 60 || drcPercentage < 10;
@@ -289,7 +290,7 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>{parseFloat(tx.raw_weight_kg).toFixed(1)} กก.</span>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>เปียก: {tx.wet_weight_sample_g}g</div>
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>เปียก: {tx.wet_weight_sample_g || defaultWetWeightG}g</div>
                     </div>
                   </div>
                 );

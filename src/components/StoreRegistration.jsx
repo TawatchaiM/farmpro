@@ -32,7 +32,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
   // Daily Settings states
   const [basePrice, setBasePrice] = useState(dailySettings?.base_price || '');
   const [formulaType, setFormulaType] = useState(dailySettings?.formula_type || 'standard');
-  const [wetWeightG, setWetWeightG] = useState(dailySettings?.wet_sample_weight_g || 50);
+  const [wetWeightG, setWetWeightG] = useState(dailySettings?.wet_sample_weight_g || 10);
   const [pricingMode, setPricingMode] = useState(dailySettings?.pricing_mode || 'flat');
   const [priceTiers, setPriceTiers] = useState(() => {
     if (dailySettings?.price_tiers?.length > 0) return dailySettings.price_tiers;
@@ -64,7 +64,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
     if (dailySettings) {
       setBasePrice(dailySettings.base_price || '');
       setFormulaType(dailySettings.formula_type || 'standard');
-      setWetWeightG(dailySettings.wet_sample_weight_g || 50);
+      setWetWeightG(dailySettings.wet_sample_weight_g || 10);
       setPricingMode(dailySettings.pricing_mode || 'flat');
       if (dailySettings.price_tiers?.length > 0) setPriceTiers(dailySettings.price_tiers);
     }
@@ -209,7 +209,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           <div className="form-group">
             <label>น้ำหนักตัวอย่างเปียกตรวจ DRC (กรัม) <span style={{ color: '#ef4444' }}>*</span></label>
             <div className="input-with-icon">
-              <input type="number" step="0.1" className="form-input" placeholder="50" value={wetWeightG} onChange={e => setWetWeightG(e.target.value)} required />
+              <input type="number" step="0.1" className="form-input" placeholder="10" value={wetWeightG} onChange={e => setWetWeightG(e.target.value)} required />
               <span className="input-unit">กรัม</span>
             </div>
           </div>

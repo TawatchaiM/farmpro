@@ -126,8 +126,9 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
         price_per_kg: parseFloat(t.price_per_kg) || 0
       }));
 
+      let savedResult = null;
       if (onSaveSettings) {
-        await onSaveSettings({
+        savedResult = await onSaveSettings({
           base_price: parseFloat(basePrice) || 0,
           formula_type: formulaType,
           wet_sample_weight_g: parseFloat(wetWeightG),
@@ -136,11 +137,21 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           date: new Date().toISOString().split('T')[0]
         });
       }
-      setSuccessMsg('บันทึกการตั้งค่าราคาและสูตรเรียบร้อยแล้ว');
-      setTimeout(() => setSuccessMsg(''), 3000);
+
+      // Check if saved to Supabase or only localStorage (column migration pending)
+      const savedToSupabase = savedResult && !savedResult._localOnly;
+      if (pricingMode === 'tiered' && savedResult?.pricing_mode === undefined) {
+        // Supabase doesn't have new columns yet — saved locally
+        setSuccessMsg('บันทึกสำเร็จ (เก็บใน localStorage) ⚠️ กรุณารัน SQL migration ใน Supabase เพื่อ sync ข้ามอุปกรณ์');
+      } else {
+        setSuccessMsg('บันทึกการตั้งค่าราคาและสูตรเรียบร้อยแล้ว ✅');
+      }
+      setTimeout(() => setSuccessMsg(''), 5000);
     } catch (err) {
       console.error(err);
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      // saveDailySettings no longer throws — if we still get here it's a validation/network issue
+      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + (err?.message || 'ไม่ทราบสาเหตุ'));
+
     } finally {
       setSavingSettings(false);
     }

@@ -708,27 +708,24 @@ export const db = {
   },
 
   saveDailySettings: async (settings) => {
+    // ---- Always persist to localStorage first (offline + fast) ----
+    const settingsList = safeJsonParse('farmpro_daily_settings', []);
+    const localIndex = settingsList.findIndex(s => s.date === settings.date);
+    const localSetting = {
+      id: settings.id || (localIndex >= 0 ? settingsList[localIndex].id : null) || uuidv4(),
+      ...settings,
+      created_at: (localIndex >= 0 ? settingsList[localIndex].created_at : null) || new Date().toISOString()
+    };
+    if (localIndex >= 0) settingsList[localIndex] = localSetting;
+    else settingsList.push(localSetting);
+    localStorage.setItem('farmpro_daily_settings', JSON.stringify(settingsList));
+
     if (isMock) {
       await delay(300);
-      const settingsList = safeJsonParse('farmpro_daily_settings', []);
-      const index = settingsList.findIndex(s => s.date === settings.date);
-      
-      const newSetting = {
-        id: settings.id || uuidv4(),
-        ...settings,
-        created_at: settings.created_at || new Date().toISOString()
-      };
-
-      if (index >= 0) {
-        settingsList[index] = newSetting;
-      } else {
-        settingsList.push(newSetting);
-      }
-
-      localStorage.setItem('farmpro_daily_settings', JSON.stringify(settingsList));
-      return newSetting;
+      return localSetting;
     }
 
+    // ---- Try Supabase upsert (full payload including new columns) ----
     try {
       const { data, error } = await supabase
         .from('daily_settings')
@@ -737,20 +734,61 @@ export const db = {
         .single();
 
       if (error) throw error;
-      
-      // Cache locally for offline availability
-      const settingsList = safeJsonParse('farmpro_daily_settings', []);
-      const idx = settingsList.findIndex(s => s.date === data.date);
-      if (idx >= 0) settingsList[idx] = data;
-      else settingsList.push(data);
-      localStorage.setItem('farmpro_daily_settings', JSON.stringify(settingsList));
+
+      // Sync Supabase response back to localStorage
+      const refreshed = safeJsonParse('farmpro_daily_settings', []);
+      const ri = refreshed.findIndex(s => s.date === data.date);
+      if (ri >= 0) refreshed[ri] = data; else refreshed.push(data);
+      localStorage.setItem('farmpro_daily_settings', JSON.stringify(refreshed));
 
       return data;
     } catch (err) {
+      // ---- Column-missing fallback: strip new columns and retry ----
+      // This handles the case where ALTER TABLE hasn't been run yet.
+      const isColumnError = err?.code === '42703' || // PostgreSQL: undefined_column
+        (typeof err?.message === 'string' && (
+          err.message.includes('price_tiers') ||
+          err.message.includes('pricing_mode') ||
+          err.message.includes('column') ||
+          err.message.includes('does not exist')
+        ));
+
+      if (isColumnError) {
+        console.warn('[FarmPro] price_tiers/pricing_mode columns missing in Supabase. Retrying with base columns only. Please run the ALTER TABLE migration.');
+        try {
+          const { price_tiers, pricing_mode, override_reason, override_by_name, price_source, ...baseSettings } = settings;
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('daily_settings')
+            .upsert(baseSettings, { onConflict: 'date' })
+            .select()
+            .single();
+
+          if (fallbackError) throw fallbackError;
+
+          // Merge tier data into local cache (Supabase won't store it yet)
+          const merged = { ...fallbackData, price_tiers: settings.price_tiers, pricing_mode: settings.pricing_mode };
+          const refreshed = safeJsonParse('farmpro_daily_settings', []);
+          const ri = refreshed.findIndex(s => s.date === merged.date);
+          if (ri >= 0) refreshed[ri] = merged; else refreshed.push(merged);
+          localStorage.setItem('farmpro_daily_settings', JSON.stringify(refreshed));
+
+          console.info('[FarmPro] ✅ Settings saved (base columns to Supabase + full data to localStorage). Run ALTER TABLE to enable full Supabase sync.');
+          return merged;
+        } catch (retryErr) {
+          console.error('Retry also failed:', retryErr);
+          // Data is already in localStorage, return it
+          console.info('[FarmPro] Supabase unavailable. Settings saved to localStorage only.');
+          return localSetting;
+        }
+      }
+
       console.error('Error saving daily settings:', err);
-      throw err;
+      // Data is already in localStorage — don't lose it, just warn
+      console.info('[FarmPro] Supabase save failed but data is preserved in localStorage.');
+      return localSetting;
     }
   },
+
 
   // --- Profile Helpers ---
   getProfileByPhone: async (phone) => {

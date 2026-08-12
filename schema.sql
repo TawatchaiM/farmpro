@@ -10,6 +10,11 @@ CREATE TABLE IF NOT EXISTS daily_settings (
   base_price NUMERIC(10, 2) NOT NULL,
   formula_type VARCHAR(50) DEFAULT 'standard', -- 'standard' (DRC% = (dry_g / wet_g) * 100)
   wet_sample_weight_g NUMERIC(10, 2) DEFAULT 50.00,
+  pricing_mode VARCHAR(50) DEFAULT 'tiered',
+  price_tiers JSONB,
+  override_reason TEXT,
+  override_by_name VARCHAR(255),
+  price_source VARCHAR(50),
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

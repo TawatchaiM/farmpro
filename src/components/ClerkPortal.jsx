@@ -33,6 +33,9 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
   const [manualPrice, setManualPrice] = useState('');
   const [overrideReason, setOverrideReason] = useState('ตกลงพิเศษ');
 
+  // ---- Payment Success Modal States ----
+  const [paymentSuccessTx, setPaymentSuccessTx] = useState(null);
+
   // Pricing mode from daily settings
   const isTieredMode = dailySettings?.pricing_mode === 'tiered' && dailySettings?.price_tiers?.length > 0;
 
@@ -243,15 +246,15 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
   };
 
   // ---- Handle Mark as Paid ----
-  const handleMarkPaid = async (txId) => {
-    if (!window.confirm('ยืนยันการจ่ายเงินสำหรับคิวนี้?')) return;
+  const handleMarkPaid = async (tx) => {
     try {
-      await onUpdateTransaction(txId, {
+      await onUpdateTransaction(tx.id, {
         status: 'paid',
         paid_by_user_id: currentUser?.id,
         paid_by_name: currentUser?.full_name || 'พนักงาน'
       });
-      alert('จ่ายเงินเรียบร้อยแล้ว คิวนี้จะย้ายไปอยู่รายการที่ทำเสร็จสิ้น');
+      // Show custom success modal with options
+      setPaymentSuccessTx(tx);
     } catch (err) {
       console.error(err);
       alert('ไม่สามารถอัปเดตสถานะได้');
@@ -773,7 +776,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                     <button className="btn-sm btn-line" onClick={() => handleCopyLineBill(tx)} title="ส่ง LINE E-Bill">
                       💬 ส่ง LINE
                     </button>
-                    <button className="btn-sm btn-pay" onClick={() => handleMarkPaid(tx.id)}>
+                    <button className="btn-sm btn-pay" onClick={() => handleMarkPaid(tx)}>
                       💰 ชำระเงินสำเร็จ
                     </button>
                   </div>
@@ -833,6 +836,43 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
           </div>
         )}
       </div>
+
+      {/* Payment Success Modal */}
+      {paymentSuccessTx && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+        }}>
+          <div style={{ background: '#fff', borderRadius: '12px', padding: '2rem', width: '90%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
+            <h2 style={{ color: '#166534', margin: '0 0 0.5rem 0' }}>จ่ายเงินเรียบร้อยแล้ว</h2>
+            <p style={{ color: '#64748b', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
+              คิว <strong>{paymentSuccessTx.queue_number}</strong> ({paymentSuccessTx.seller_name}) จะย้ายไปอยู่รายการที่ทำเสร็จสิ้น
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <button 
+                onClick={() => handlePrint(paymentSuccessTx)}
+                style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', color: '#334155', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}
+              >
+                <span>🖨️</span> พิมพ์บิล
+              </button>
+              <button 
+                onClick={() => handleCopyLineBill(paymentSuccessTx)}
+                style={{ background: '#00B900', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', color: '#fff', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}
+              >
+                <span>💬</span> ส่ง LINE E-Bill
+              </button>
+              <button 
+                onClick={() => setPaymentSuccessTx(null)}
+                style={{ background: 'transparent', border: '1px solid #e2e8f0', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', color: '#64748b', cursor: 'pointer', marginTop: '0.5rem' }}
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

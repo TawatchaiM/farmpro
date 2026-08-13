@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { printThermalBill } from '../utils/printBill';
+import { handleCopyLineBill } from '../utils/lineShare';
 
 function DashboardPortal({ currentUser }) {
   const [history, setHistory] = useState([]);
@@ -250,7 +251,7 @@ function DashboardPortal({ currentUser }) {
                     <th onClick={() => handleSort('total_amount')} style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'right', fontWeight: '600', cursor: 'pointer' }}>
                       ยอดรวมสุทธิ {sortConfig.key === 'total_amount' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
                     </th>
-                    <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'center', fontWeight: '600' }}>พิมพ์บิล</th>
+                    <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'center', fontWeight: '600' }}>จัดการ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -266,20 +267,39 @@ function DashboardPortal({ currentUser }) {
                         ฿{parseFloat(tx.total_amount || tx.total_amount_thb || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                        <button 
-                          onClick={() => printThermalBill(tx, currentUser)}
-                          style={{
-                            background: '#f1f5f9',
-                            border: '1px solid #cbd5e1',
-                            borderRadius: '4px',
-                            padding: '0.25rem 0.5rem',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem'
-                          }}
-                          title="พิมพ์บิล"
-                        >
-                          🖨️
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                          <button 
+                            onClick={() => printThermalBill(tx, currentUser)}
+                            style={{
+                              background: '#f8fafc',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                              padding: '0.35rem 0.5rem',
+                              cursor: 'pointer',
+                              fontSize: '0.9rem',
+                              transition: 'all 0.2s ease',
+                            }}
+                            title="พิมพ์บิล"
+                          >
+                            🖨️
+                          </button>
+                          <button 
+                            onClick={() => handleCopyLineBill(tx, currentUser)}
+                            style={{
+                              background: '#f0fdf4',
+                              border: '1px solid #86efac',
+                              borderRadius: '6px',
+                              padding: '0.35rem 0.5rem',
+                              cursor: 'pointer',
+                              fontSize: '0.9rem',
+                              color: '#16a34a',
+                              transition: 'all 0.2s ease',
+                            }}
+                            title="ส่ง LINE"
+                          >
+                            💬
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )) : (

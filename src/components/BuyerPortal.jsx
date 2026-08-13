@@ -261,7 +261,7 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
           />
         )}
         {activeSubTab === 'dashboard' && (
-          <DashboardPortal />
+          <DashboardPortal currentUser={currentUser} />
         )}
         {activeSubTab === 'registration' && (
           <StoreRegistration 

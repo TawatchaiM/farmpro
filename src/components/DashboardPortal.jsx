@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { printThermalBill } from '../utils/printBill';
 
-function DashboardPortal() {
+function DashboardPortal({ currentUser }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
@@ -174,6 +175,7 @@ function DashboardPortal() {
                     <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'right', fontWeight: '600' }}>DRC (%)</th>
                     <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'right', fontWeight: '600' }}>ราคา (บาท)</th>
                     <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'right', fontWeight: '600' }}>ยอดรวมสุทธิ</th>
+                    <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'center', fontWeight: '600' }}>พิมพ์บิล</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -188,10 +190,26 @@ function DashboardPortal() {
                       <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 'bold', color: '#1e293b' }}>
                         ฿{parseFloat(tx.total_amount || tx.total_amount_thb || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
+                      <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                        <button 
+                          onClick={() => printThermalBill(tx, currentUser)}
+                          style={{
+                            background: '#f1f5f9',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '4px',
+                            padding: '0.25rem 0.5rem',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem'
+                          }}
+                          title="พิมพ์บิล"
+                        >
+                          🖨️
+                        </button>
+                      </td>
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+                      <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
                         ไม่พบประวัติการทำรายการ
                       </td>
                     </tr>

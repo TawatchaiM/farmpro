@@ -21,6 +21,9 @@ function DashboardPortal({ currentUser }) {
 
   const [chartData, setChartData] = useState([]);
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+
   useEffect(() => {
     fetchHistory();
   }, [dateRange]);
@@ -89,6 +92,54 @@ function DashboardPortal({ currentUser }) {
     const { name, value } = e.target;
     setDateRange(prev => ({ ...prev, [name]: value }));
   };
+
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortedAndFilteredHistory = () => {
+    let filtered = history;
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(tx => 
+        (tx.seller_name && tx.seller_name.toLowerCase().includes(query)) ||
+        (tx.queue_number && tx.queue_number.toLowerCase().includes(query))
+      );
+    }
+
+    filtered.sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+
+      // Handle numeric sorting
+      if (['raw_weight_kg', 'drc_percentage', 'price_per_kg', 'total_amount'].includes(sortConfig.key)) {
+        if (sortConfig.key === 'total_amount') {
+          aValue = parseFloat(a.total_amount || a.total_amount_thb || 0);
+          bValue = parseFloat(b.total_amount || b.total_amount_thb || 0);
+        } else {
+          aValue = parseFloat(aValue || 0);
+          bValue = parseFloat(bValue || 0);
+        }
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+
+    return filtered;
+  };
+
+  const displayHistory = getSortedAndFilteredHistory();
 
   return (
     <div className="dashboard-portal">
@@ -163,23 +214,47 @@ function DashboardPortal({ currentUser }) {
 
           {/* Data Table */}
           <div className="card" style={{ padding: '1.5rem', background: '#fff', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#1e293b' }}>📋 ประวัติบิลรับซื้อ</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <h3 style={{ margin: 0, color: '#1e293b' }}>📋 ประวัติบิลรับซื้อ</h3>
+              <input 
+                type="text" 
+                placeholder="🔍 ค้นหาชื่อ หรือ คิว..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #cbd5e1', borderRadius: '8px', minWidth: '250px' }}
+              />
+            </div>
+            
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', minWidth: '700px' }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                    <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'left', fontWeight: '600' }}>วันที่</th>
-                    <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'left', fontWeight: '600' }}>คิว</th>
-                    <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'left', fontWeight: '600' }}>ลูกค้า</th>
-                    <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'right', fontWeight: '600' }}>ยางสด (กก.)</th>
-                    <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'right', fontWeight: '600' }}>DRC (%)</th>
-                    <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'right', fontWeight: '600' }}>ราคา (บาท)</th>
-                    <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'right', fontWeight: '600' }}>ยอดรวมสุทธิ</th>
+                    <th onClick={() => handleSort('date')} style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'left', fontWeight: '600', cursor: 'pointer' }}>
+                      วันที่ {sortConfig.key === 'date' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
+                    </th>
+                    <th onClick={() => handleSort('queue_number')} style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'left', fontWeight: '600', cursor: 'pointer' }}>
+                      คิว {sortConfig.key === 'queue_number' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
+                    </th>
+                    <th onClick={() => handleSort('seller_name')} style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'left', fontWeight: '600', cursor: 'pointer' }}>
+                      ลูกค้า {sortConfig.key === 'seller_name' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
+                    </th>
+                    <th onClick={() => handleSort('raw_weight_kg')} style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'right', fontWeight: '600', cursor: 'pointer' }}>
+                      ยางสด (กก.) {sortConfig.key === 'raw_weight_kg' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
+                    </th>
+                    <th onClick={() => handleSort('drc_percentage')} style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'right', fontWeight: '600', cursor: 'pointer' }}>
+                      DRC (%) {sortConfig.key === 'drc_percentage' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
+                    </th>
+                    <th onClick={() => handleSort('price_per_kg')} style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'right', fontWeight: '600', cursor: 'pointer' }}>
+                      ราคา (บาท) {sortConfig.key === 'price_per_kg' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
+                    </th>
+                    <th onClick={() => handleSort('total_amount')} style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'right', fontWeight: '600', cursor: 'pointer' }}>
+                      ยอดรวมสุทธิ {sortConfig.key === 'total_amount' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
+                    </th>
                     <th style={{ padding: '0.75rem 1rem', color: '#475569', textAlign: 'center', fontWeight: '600' }}>พิมพ์บิล</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {history.length > 0 ? history.map((tx) => (
+                  {displayHistory.length > 0 ? displayHistory.map((tx) => (
                     <tr key={tx.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '0.75rem 1rem', color: '#64748b' }}>{tx.date}</td>
                       <td style={{ padding: '0.75rem 1rem' }}>{tx.queue_number || '-'}</td>

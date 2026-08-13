@@ -3,6 +3,7 @@ import StoreRegistration from './StoreRegistration';
 import ManualBillForm from './ManualBillForm';
 import ClerkPortal from './ClerkPortal';
 import DrcPortal from './DrcPortal';
+import DashboardPortal from './DashboardPortal';
 import OfflineStatusBar from './OfflineStatusBar';
 import { db, isMock } from '../supabase';
 import { playNotificationSound } from '../utils/audioAlert';
@@ -220,6 +221,12 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
             🧾 ออกบิล (ดึงข้อมูล / กรอกเอง)
           </div>
           <div 
+            className={`nav-tab ${activeSubTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => setActiveSubTab('dashboard')}
+          >
+            📊 แดชบอร์ด & ประวัติ
+          </div>
+          <div 
             className={`nav-tab ${activeSubTab === 'registration' ? 'active' : ''}`}
             onClick={() => setActiveSubTab('registration')}
           >
@@ -252,6 +259,9 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
             currentUser={currentUser}
             onUpdateTransaction={handleUpdateTransaction}
           />
+        )}
+        {activeSubTab === 'dashboard' && (
+          <DashboardPortal />
         )}
         {activeSubTab === 'registration' && (
           <StoreRegistration 

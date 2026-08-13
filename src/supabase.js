@@ -1208,6 +1208,39 @@ export const db = {
     }
   },
 
+  getTransactionsHistory: async (startDateStr, endDateStr) => {
+    if (isMock) {
+      // Return from local cache, simulating mock DB
+      const txs = safeJsonParse('farmpro_transactions', []);
+      return txs.filter(t => {
+        if (!t.date) return false;
+        const inStart = !startDateStr || t.date >= startDateStr;
+        const inEnd = !endDateStr || t.date <= endDateStr;
+        return inStart && inEnd && (t.status === 'completed' || t.status === 'paid');
+      });
+    }
+
+    try {
+      let query = supabase
+        .from('rubber_transactions')
+        .select('*');
+        
+      if (startDateStr) query = query.gte('date', startDateStr);
+      if (endDateStr) query = query.lte('date', endDateStr);
+      
+      const { data, error } = await query
+        .in('status', ['completed', 'paid'])
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    } catch (err) {
+      console.error('Error fetching historical transactions:', err);
+      return [];
+    }
+  },
+
   createTransaction: async (tx, isOffline = false) => {
     const dateStr = tx.date || new Date().toISOString().split('T')[0];
 

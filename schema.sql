@@ -149,3 +149,12 @@ CREATE POLICY "Allow all on user_farms"
 -- (Required when table is created via raw SQL, not Supabase dashboard)
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_farms TO anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_farms TO authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.daily_settings TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.daily_settings TO authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.rubber_transactions TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.rubber_transactions TO authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.profiles TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.profiles TO authenticated;

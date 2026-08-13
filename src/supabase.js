@@ -172,9 +172,9 @@ const seedMockData = () => {
   const existingSettings = safeJsonParse(settingsKey, []);
   if (existingSettings.length === 0) {
     const defaultSettings = [
-      { id: 'ds-1', date: new Date().toISOString().split('T')[0], base_price: 78.5, formula_type: 'standard', wet_sample_weight_g: 50.00 },
-      { id: 'ds-2', date: '2026-07-08', base_price: 73.0, formula_type: 'standard', wet_sample_weight_g: 50.00 },
-      { id: 'ds-3', date: '2026-07-07', base_price: 72.0, formula_type: 'standard', wet_sample_weight_g: 50.00 }
+      { id: 'f01d3020-4c6c-43d9-a00e-5832e99b8c83', date: new Date().toISOString().split('T')[0], base_price: 78.5, formula_type: 'standard', wet_sample_weight_g: 50.00 },
+      { id: 'fb703d74-0f4d-4e9c-94b4-7e160f5ba53e', date: '2026-07-08', base_price: 73.0, formula_type: 'standard', wet_sample_weight_g: 50.00 },
+      { id: '9ca65bbd-cf94-4a95-ac87-8c3de7209006', date: '2026-07-07', base_price: 72.0, formula_type: 'standard', wet_sample_weight_g: 50.00 }
     ];
     localStorage.setItem(settingsKey, JSON.stringify(defaultSettings));
   }
@@ -185,7 +185,7 @@ const seedMockData = () => {
     const defaultTxs = [
       // --- Active Test Transactions (For Clerk & DRC Room testing on current date) ---
       {
-        id: 'tx-active-1',
+        id: '343c6929-24c3-43c4-8709-a83974bcbe66',
         queue_number: 'Q001',
         seller_name: 'สมชาย รักสวน',
         buyer_name: 'ร้านเจ๊น้อย รับซื้อยาง',
@@ -204,7 +204,7 @@ const seedMockData = () => {
         created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString()
       },
       {
-        id: 'tx-active-2',
+        id: 'af39386c-3cd5-403a-a8b5-507d2154e06f',
         queue_number: 'Q002',
         seller_name: 'ประเสริฐ พารา',
         buyer_name: 'ร้านเจ๊น้อย รับซื้อยาง',
@@ -219,7 +219,7 @@ const seedMockData = () => {
 
       // --- Exact 22 Transactions from Spreadsheet ---
       {
-        id: 'tx-sheet-22',
+        id: '8d4e5845-3299-4a2f-b471-078b88ee589c',
         queue_number: 'Q022',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -237,7 +237,7 @@ const seedMockData = () => {
         created_at: '2026-07-08T10:00:22.000Z'
       },
       {
-        id: 'tx-sheet-21',
+        id: 'f25b4be1-9193-4fb0-8adf-27efab2b1671',
         queue_number: 'Q021',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -255,7 +255,7 @@ const seedMockData = () => {
         created_at: '2026-07-07T10:00:21.000Z'
       },
       {
-        id: 'tx-sheet-20',
+        id: '6969fe34-e686-465f-9bd2-d4614d75232a',
         queue_number: 'Q020',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -273,7 +273,7 @@ const seedMockData = () => {
         created_at: '2026-07-05T10:00:20.000Z'
       },
       {
-        id: 'tx-sheet-19',
+        id: '48b0c4cc-7311-4cb9-af3d-09f834f685c1',
         queue_number: 'Q019',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -291,7 +291,7 @@ const seedMockData = () => {
         created_at: '2026-07-04T10:00:19.000Z'
       },
       {
-        id: 'tx-sheet-18',
+        id: '7dba40ef-1447-46a1-8275-9e5c8b22fa8e',
         queue_number: 'Q018',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -309,7 +309,7 @@ const seedMockData = () => {
         created_at: '2026-07-03T10:00:18.000Z'
       },
       {
-        id: 'tx-sheet-17',
+        id: 'a0856462-0f1c-4feb-8458-3e56dd5fab55',
         queue_number: 'Q017',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -327,7 +327,7 @@ const seedMockData = () => {
         created_at: '2026-07-01T10:00:17.000Z'
       },
       {
-        id: 'tx-sheet-16',
+        id: '7ba12ce5-b77a-4bec-841a-a36bdc2ae320',
         queue_number: 'Q016',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -345,7 +345,7 @@ const seedMockData = () => {
         created_at: '2026-06-30T10:00:16.000Z'
       },
       {
-        id: 'tx-sheet-15',
+        id: 'f9894f88-e8d4-4cb6-913b-831db0c4ef41',
         queue_number: 'Q015',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -363,7 +363,7 @@ const seedMockData = () => {
         created_at: '2026-06-28T10:00:15.000Z'
       },
       {
-        id: 'tx-sheet-14',
+        id: '01d236f7-ec9a-44b0-91d1-e6be1625e3ef',
         queue_number: 'Q014',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -381,7 +381,7 @@ const seedMockData = () => {
         created_at: '2026-06-24T10:00:14.000Z'
       },
       {
-        id: 'tx-sheet-13',
+        id: '55c4c87d-0422-4288-aa6d-da601cd6e947',
         queue_number: 'Q013',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -399,7 +399,7 @@ const seedMockData = () => {
         created_at: '2026-06-22T10:00:13.000Z'
       },
       {
-        id: 'tx-sheet-12',
+        id: 'f5e6cde1-dc6e-4274-a189-da8c8229c621',
         queue_number: 'Q012',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -417,7 +417,7 @@ const seedMockData = () => {
         created_at: '2026-06-27T10:00:12.000Z'
       },
       {
-        id: 'tx-sheet-11',
+        id: '6ad74319-1f94-4c84-8b75-f337e42b0dbc',
         queue_number: 'Q011',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -435,7 +435,7 @@ const seedMockData = () => {
         created_at: '2026-06-26T10:00:11.000Z'
       },
       {
-        id: 'tx-sheet-10',
+        id: '7cdcbecf-c5e2-427e-bcab-ecf0e9565955',
         queue_number: 'Q010',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -453,7 +453,7 @@ const seedMockData = () => {
         created_at: '2026-06-21T10:00:10.000Z'
       },
       {
-        id: 'tx-sheet-9',
+        id: '1eed57a5-75f3-45cb-b112-4e156f763dca',
         queue_number: 'Q009',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -471,7 +471,7 @@ const seedMockData = () => {
         created_at: '2026-06-18T10:00:09.000Z'
       },
       {
-        id: 'tx-sheet-8',
+        id: '74b9dcc3-4b5d-4e80-990e-0c453d728752',
         queue_number: 'Q008',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -489,7 +489,7 @@ const seedMockData = () => {
         created_at: '2026-06-16T10:00:08.000Z'
       },
       {
-        id: 'tx-sheet-7',
+        id: 'f7b1b7b4-331a-48c5-a38b-1d1240be623f',
         queue_number: 'Q007',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -507,7 +507,7 @@ const seedMockData = () => {
         created_at: '2026-06-15T10:00:07.000Z'
       },
       {
-        id: 'tx-sheet-6',
+        id: '74e8b4ef-0366-415c-a8ec-0ea799e68aea',
         queue_number: 'Q006',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'สุชุก',
@@ -525,7 +525,7 @@ const seedMockData = () => {
         created_at: '2026-06-13T09:30:00.000Z'
       },
       {
-        id: 'tx-sheet-5',
+        id: 'b9376df8-7784-491e-8b01-a37d3224d4fd',
         queue_number: 'Q005',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -543,7 +543,7 @@ const seedMockData = () => {
         created_at: '2026-06-05T10:00:05.000Z'
       },
       {
-        id: 'tx-sheet-4',
+        id: '572818ac-b156-4b17-9c56-cd0161bf25b7',
         queue_number: 'Q004',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -561,7 +561,7 @@ const seedMockData = () => {
         created_at: '2026-06-01T10:00:04.000Z'
       },
       {
-        id: 'tx-sheet-3',
+        id: '6bfdc716-7597-4587-8bb4-3ec4bb451629',
         queue_number: 'Q003',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -579,7 +579,7 @@ const seedMockData = () => {
         created_at: '2026-06-09T10:00:03.000Z'
       },
       {
-        id: 'tx-sheet-2',
+        id: '9ab76702-eb9d-4dc7-9891-6a9f9119b3c7',
         queue_number: 'Q002',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -597,7 +597,7 @@ const seedMockData = () => {
         created_at: '2026-06-08T10:00:02.000Z'
       },
       {
-        id: 'tx-sheet-1',
+        id: 'bdf131b4-0a38-4475-90ac-506e12ce73b0',
         queue_number: 'Q001',
         seller_name: 'ชาวสวน (สแกนบิล)',
         buyer_name: 'น้องซิน น้ำยางสด',
@@ -1171,7 +1171,27 @@ export const db = {
 
       if (error) throw error;
       
-      const safeData = Array.isArray(data) ? data : [];
+      let safeData = Array.isArray(data) ? data : [];
+
+      // Merge pending offline creates to prevent them from disappearing
+      const pendingSync = safeJsonParse('farmpro_pending_sync', []);
+      const pendingCreates = pendingSync.filter(p => p.action === 'create' && p.data && p.data.date === dateStr).map(p => p.data);
+      
+      const serverIds = new Set(safeData.map(t => t.id));
+      for (const pTx of pendingCreates) {
+        if (!serverIds.has(pTx.id)) {
+          safeData.push(pTx);
+        }
+      }
+
+      // Re-apply any pending offline updates
+      const pendingUpdates = pendingSync.filter(p => p.action === 'update' && p.data);
+      for (const update of pendingUpdates) {
+         const idx = safeData.findIndex(t => t.id === update.id);
+         if (idx >= 0) {
+             safeData[idx] = { ...safeData[idx], ...update.data };
+         }
+      }
 
       // Update local cache
       const cachedTxs = safeJsonParse('farmpro_transactions', []);
@@ -1251,8 +1271,9 @@ export const db = {
     } catch (err) {
       console.warn('Network request failed, transaction saved offline. Error details:', err);
       // Queue it for sync automatically since network failed
+      const errorMsg = err.message || err.details || (typeof err === 'string' ? err : JSON.stringify(err));
       const pendingSync = safeJsonParse('farmpro_pending_sync', []);
-      pendingSync.push({ action: 'create', data: newTx });
+      pendingSync.push({ action: 'create', data: newTx, error_msg: errorMsg });
       localStorage.setItem('farmpro_pending_sync', JSON.stringify(pendingSync));
       return newTx;
     }
@@ -1312,10 +1333,10 @@ export const db = {
       }
       return data;
     } catch (err) {
-      console.warn('Network request failed, update cached offline. Error details:', err);
-      // Queue update for sync
+      console.warn('Network request failed, transaction update saved offline. Error:', err);
+      const errorMsg = err.message || err.details || (typeof err === 'string' ? err : JSON.stringify(err));
       const pendingSync = safeJsonParse('farmpro_pending_sync', []);
-      pendingSync.push({ action: 'update', id, data: updates });
+      pendingSync.push({ action: 'update', id, data: updates, error_msg: errorMsg });
       localStorage.setItem('farmpro_pending_sync', JSON.stringify(pendingSync));
       return updatedTx || { id, ...updates };
     }
@@ -1925,7 +1946,7 @@ export const db = {
     if (localProfiles.length === 0) {
       localProfiles = [
         {
-          id: 'mock-prof-1',
+          id: 'a4db4072-d799-4d1d-9860-27aaef936614',
           role: 'buyer',
           full_name: 'สมชาย รับซื้อยาง',
           store_name: 'สมชายการยาง พาราไทย',
@@ -1940,7 +1961,7 @@ export const db = {
           created_at: new Date(Date.now() - 3600000 * 2).toISOString()
         },
         {
-          id: 'mock-prof-2',
+          id: 'adedd602-9a68-4998-b11d-b1a76fac3685',
           role: 'buyer',
           full_name: 'เจริญทรัพย์ พาราวู้ด',
           store_name: 'เจริญทรัพย์การยาง',
@@ -2055,28 +2076,29 @@ export const db = {
 
     console.log(`Syncing ${pendingSync.length} offline transactions...`);
     let successCount = 0;
-    const failedSync = [];
+    const remainingSync = [];
 
     for (const item of pendingSync) {
       try {
         if (item.action === 'create') {
-          // Check if it already exists to prevent duplicate insertion
+          const dbPayload = sanitizeTransaction(item.data);
           const { data: existing } = await supabase
             .from('rubber_transactions')
             .select('id')
-            .eq('id', item.data.id)
+            .eq('id', dbPayload.id)
             .maybeSingle();
 
           if (!existing) {
             const { error } = await supabase
               .from('rubber_transactions')
-              .insert(item.data);
+              .insert(dbPayload);
             if (error) throw error;
           }
         } else if (item.action === 'update') {
+          const dbPayload = sanitizeTransaction(item.data);
           const { error } = await supabase
             .from('rubber_transactions')
-            .update(item.data)
+            .update(dbPayload)
             .eq('id', item.id);
           if (error) throw error;
         } else if (item.action === 'delete') {
@@ -2099,13 +2121,10 @@ export const db = {
               dbPayload[key] = item.data[key];
             }
           }
-          // Strip user_id to avoid FK violation for locally-generated UUIDs
           dbPayload.user_id = null;
           dbPayload.updated_at = new Date().toISOString();
 
           const phone = item.data.phone_number;
-
-          // Try upsert by id first (works if the UUID is already in the DB)
           const { data: upserted, error: upsertErr } = await supabase
             .from('profiles')
             .upsert(dbPayload, { onConflict: 'id' })
@@ -2113,7 +2132,6 @@ export const db = {
 
           if (upsertErr) throw upsertErr;
 
-          // Fallback: update by phone_number if id didn't match
           if ((!upserted || upserted.length === 0) && phone) {
             const { data: byPhone } = await supabase
               .from('profiles')
@@ -2128,7 +2146,6 @@ export const db = {
                 .eq('phone_number', phone);
               if (phoneErr) throw phoneErr;
             } else {
-              // Insert as new record
               const { error: insErr } = await supabase
                 .from('profiles')
                 .insert(dbPayload);
@@ -2138,12 +2155,13 @@ export const db = {
         }
         successCount++;
       } catch (err) {
-        console.error('Failed to sync item:', item, err);
-        failedSync.push(item);
+        console.error(`Sync failed for item ${item.id || 'unknown'}:`, err);
+        const errorMsg = err.message || err.details || (typeof err === 'string' ? err : JSON.stringify(err));
+        remainingSync.push({ ...item, error_msg: errorMsg });
       }
     }
 
-    localStorage.setItem('farmpro_pending_sync', JSON.stringify(failedSync));
-    return { success: failedSync.length === 0, count: successCount, remaining: failedSync.length };
+    localStorage.setItem('farmpro_pending_sync', JSON.stringify(remainingSync));
+    return { success: remainingSync.length === 0, count: successCount, remaining: remainingSync.length };
   }
 };

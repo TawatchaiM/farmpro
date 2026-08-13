@@ -72,7 +72,7 @@ function ManualBillForm({ transactions, currentUser, onUpdateTransaction }) {
     if (formData.transaction_id && onUpdateTransaction) {
       try {
         await onUpdateTransaction(formData.transaction_id, {
-          status: 'completed',
+          status: 'ready_to_pay', // Keep it in ready_to_pay queue until explicitly paid
           total_amount_thb: parseFloat(calculations.total_amount_thb),
           owner_share_thb: parseFloat(calculations.owner_share_thb),
           price_per_kg: parseFloat(formData.price_per_kg),

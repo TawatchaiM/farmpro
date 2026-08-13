@@ -40,6 +40,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
   const safeTxList = Array.isArray(transactions) ? transactions : [];
   const readyToPayList = safeTxList.filter(t => t.status === 'ready_to_pay' || t.status === 'READY_TO_PAY');
   const waitingDrcList = safeTxList.filter(t => t.status === 'waiting_drc' || t.status === 'PENDING_DRC' || t.status === 'in_drc_testing' || t.status === 'IN_DRC_TESTING');
+  const paidList = safeTxList.filter(t => t.status === 'paid' || t.status === 'completed');
 
   // Cleanup stale seller cache on mount (30-day TTL)
   useEffect(() => {
@@ -774,6 +775,56 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                     </button>
                     <button className="btn-sm btn-pay" onClick={() => handleMarkPaid(tx.id)}>
                       💰 ชำระเงินสำเร็จ
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Paid Transactions Queue (รายการที่ชำระเงินแล้ววันนี้) */}
+      <div className="card" style={{ marginTop: '2rem' }}>
+        <h3 className="section-title-icon">✅ รายการที่ชำระเงินแล้ววันนี้ (Paid)</h3>
+        {paidList.length === 0 ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.95rem' }}>
+            📭 ยังไม่มีรายการที่ชำระเงินในวันนี้
+          </div>
+        ) : (
+          <div className="queue-card-grid">
+            {paidList.map(tx => {
+              const ownerShare = parseFloat(tx.owner_share_amount || tx.owner_share_thb || 0);
+              const tapperShare = parseFloat(tx.tapper_share_amount || tx.tapper_share_thb || 0);
+              return (
+                <div key={tx.id} className="queue-card" style={{ borderTop: '4px solid #15803d', opacity: 0.9 }}>
+                  <div className="queue-header">
+                    <span className="queue-number">{tx.queue_number}</span>
+                    <span className="queue-status-tag" style={{ background: '#dcfce7', color: '#166534' }}>ชำระเงินแล้ว</span>
+                  </div>
+                  <div className="queue-body">
+                    <p><span>ลูกค้า:</span> <span className="val">{tx.seller_name}</span></p>
+                    <p><span>น้ำยางสด (Weight In):</span> <span className="val">{parseFloat(tx.raw_weight_kg).toFixed(2)} กก.</span></p>
+                    <p><span>% DRC:</span> <span className="val" style={{ color: '#16a34a', fontWeight: 'bold' }}>{parseFloat(tx.drc_percentage || 0).toFixed(2)}%</span></p>
+                    <div style={{ height: '1px', background: '#e2e8f0', margin: '0.5rem 0' }}></div>
+                    <p style={{ fontSize: '1.05rem', fontWeight: 'bold' }}>
+                      <span>ยอดสุทธิ:</span>{' '}
+                      <span className="val" style={{ color: '#15803d' }}>
+                        ฿{parseFloat(tx.total_amount || tx.total_amount_thb || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </p>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                      <span>สวน {tx.owner_share_percentage}%:</span>{' '}
+                      <span>฿{ownerShare.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}</span>
+                    </p>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                      <span>กรีด {100 - tx.owner_share_percentage}%:</span>{' '}
+                      <span>฿{tapperShare.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}</span>
+                    </p>
+                  </div>
+                  <div className="queue-actions">
+                    <button className="btn-sm btn-print" onClick={() => handlePrint(tx)} title="พิมพ์บิลขนาด 7x10 cm" style={{ width: '100%' }}>
+                      🖨️ พิมพ์บิลซ้ำ
                     </button>
                   </div>
                 </div>

@@ -825,9 +825,12 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                       <span>฿{tapperShare.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}</span>
                     </p>
                   </div>
-                  <div className="queue-actions">
-                    <button className="btn-sm btn-print" onClick={() => handlePrint(tx)} title="พิมพ์บิลขนาด 7x10 cm" style={{ width: '100%' }}>
-                      🖨️ พิมพ์บิลซ้ำ
+                  <div className="queue-actions" style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn-sm btn-print" onClick={() => handlePrint(tx)} title="พิมพ์บิลขนาด 7x10 cm" style={{ flex: 1 }}>
+                      🖨️ พิมพ์ซ้ำ
+                    </button>
+                    <button className="btn-sm btn-line" onClick={() => handleCopyLineBill(tx)} title="ส่ง LINE E-Bill" style={{ flex: 1 }}>
+                      💬 ส่ง LINE
                     </button>
                   </div>
                 </div>

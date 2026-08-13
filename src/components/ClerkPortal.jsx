@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '../supabase';
+import { handleCopyLineBill } from '../utils/lineShare';
 
 function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransaction, onUpdateTransaction }) {
   // ---- Form States ----
@@ -262,35 +263,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
   };
 
   // ---- Copy E-Bill text for LINE ----
-  const handleCopyLineBill = (tx) => {
-    const storeProfile = JSON.parse(localStorage.getItem('farmpro_store_profile') || '{}');
-    const storeName = currentUser?.store_name || storeProfile.storeName || currentUser?.full_name || 'ร้านรับซื้อยาง FarmPro';
-    const ownerAmount = parseFloat(tx.owner_share_amount || 0);
-    const tapperAmount = parseFloat(tx.tapper_share_amount || 0);
-    const billText = `🟢 LINE E-BILL: ${storeName}
-===========================
-คิวรับซื้อ: ${tx.queue_number}
-วันที่: ${tx.date}
-ผู้ขาย: ${tx.seller_name}
----------------------------
-น้ำหนักน้ำยางสด: ${parseFloat(tx.raw_weight_kg).toFixed(2)} กก.
-ค่า DRC %: ${parseFloat(tx.drc_percentage || 0).toFixed(2)} %
-เนื้อยางแห้ง: ${parseFloat(tx.dry_weight_kg || 0).toFixed(2)} กก.
-ราคารับซื้อ: ฿${parseFloat(tx.price_per_kg || 0).toFixed(2)} /กก.
-===========================
-💰 ยอดเงินรวมสุทธิ: ฿${parseFloat(tx.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท
----------------------------
-👨‍🌾 เจ้าของสวน (${tx.owner_share_percentage}%): ฿${ownerAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-👨‍🌾 คนกรีด (${100 - tx.owner_share_percentage}%): ฿${tapperAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-===========================
-ขอบคุณที่ใช้บริการครับ/ค่ะ! 🙏`;
-    navigator.clipboard.writeText(billText).then(() => {
-      alert('คัดลอกข้อความสรุปบิลเรียบร้อยแล้ว!\nนำไปวางส่งต่อในแชท LINE ได้ทันที');
-    }).catch(err => {
-      console.error(err);
-      alert('ไม่สามารถคัดลอกได้อัตโนมัติ');
-    });
-  };
+  // Extracted to src/utils/lineShare.js
 
   // ---- Handle thermal print ----
   const handlePrint = (tx) => {
@@ -773,7 +746,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                     <button className="btn-sm btn-print" onClick={() => handlePrint(tx)} title="พิมพ์บิลขนาด 7x10 cm">
                       🖨️ พิมพ์บิล
                     </button>
-                    <button className="btn-sm btn-line" onClick={() => handleCopyLineBill(tx)} title="ส่ง LINE E-Bill">
+                    <button className="btn-sm btn-line" onClick={() => handleCopyLineBill(tx, currentUser)} title="ส่ง LINE E-Bill">
                       💬 ส่ง LINE
                     </button>
                     <button className="btn-sm btn-pay" onClick={() => handleMarkPaid(tx)}>
@@ -829,7 +802,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                     <button className="btn-sm btn-print" onClick={() => handlePrint(tx)} title="พิมพ์บิลขนาด 7x10 cm" style={{ flex: 1 }}>
                       🖨️ พิมพ์ซ้ำ
                     </button>
-                    <button className="btn-sm btn-line" onClick={() => handleCopyLineBill(tx)} title="ส่ง LINE E-Bill" style={{ flex: 1 }}>
+                    <button className="btn-sm btn-line" onClick={() => handleCopyLineBill(tx, currentUser)} title="ส่ง LINE E-Bill" style={{ flex: 1 }}>
                       💬 ส่ง LINE
                     </button>
                   </div>
@@ -861,7 +834,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                 <span>🖨️</span> พิมพ์บิล
               </button>
               <button 
-                onClick={() => handleCopyLineBill(paymentSuccessTx)}
+                onClick={() => handleCopyLineBill(paymentSuccessTx, currentUser)}
                 style={{ background: '#00B900', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', color: '#fff', cursor: 'pointer', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}
               >
                 <span>💬</span> ส่ง LINE E-Bill

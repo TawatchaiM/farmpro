@@ -47,28 +47,7 @@ function ManualBillForm({ transactions, currentUser, onUpdateTransaction }) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleShareLine = async () => {
-    const text = `🧾 บิลรับซื้อน้ำยางสด\n` +
-      `📅 วันที่: ${formData.date}\n` +
-      (formData.buyer_name ? `🏪 ร้าน: ${formData.buyer_name}\n` : '') +
-      (formData.seller_name ? `👨‍🌾 ลูกค้า: ${formData.seller_name}\n\n` : '\n') +
-      `⚖️ น้ำหนักน้ำยางสด: ${parseFloat(formData.raw_weight_kg || 0).toFixed(2)} กก.\n` +
-      `💧 เปอร์เซ็นต์น้ำยาง: ${parseFloat(formData.drc_percentage || 0).toFixed(2)}%\n` +
-      `🧱 เนื้อยางแห้ง: ${calculations.dry_weight_kg} กก.\n` +
-      `💰 ราคา: ${parseFloat(formData.price_per_kg || 0).toFixed(2)} บาท/กก.\n` +
-      `💵 ยอดเงินรวม: ${calculations.total_amount_thb} บาท\n` +
-      `------------------------\n` +
-      `👨‍🌾 ส่วนแบ่งเจ้าของสวน (${formData.owner_share_percentage}%): ${calculations.owner_share_thb} บาท\n` +
-      `🔪 ส่วนแบ่งคนกรีด (${100 - parseFloat(formData.owner_share_percentage || 0)}%): ${calculations.tapper_share_thb} บาท\n` +
-      `\n🙏 ขอบคุณที่ใช้บริการครับ/ค่ะ`;
-      
-    navigator.clipboard.writeText(text).then(() => {
-      alert('คัดลอกข้อความสรุปบิลเรียบร้อยแล้ว!\nคุณสามารถนำไปวาง (Paste) ในแชท LINE ได้ทันที');
-    }).catch(err => {
-      console.error('Failed to copy text: ', err);
-      alert('ไม่สามารถคัดลอกได้อัตโนมัติ กรุณาลองใหม่อีกครั้ง');
-    });
-    
+  const handleSaveData = async () => {
     if (formData.transaction_id && onUpdateTransaction) {
       try {
         await onUpdateTransaction(formData.transaction_id, {
@@ -91,9 +70,14 @@ function ManualBillForm({ transactions, currentUser, onUpdateTransaction }) {
           drc_percentage: '',
           price_per_kg: '',
         }));
+        
+        alert('บันทึกข้อมูลเรียบร้อยแล้ว!\nข้อมูลถูกส่งไปที่ "คิวรอชำระเงินและออกบิล" ในหน้าระบบเสมียนแล้วครับ');
       } catch (err) {
         console.error('Failed to update transaction:', err);
+        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง');
       }
+    } else {
+      alert('กรุณาเลือกลูกค้าจากคิวรอชำระเงิน / ออกบิล ก่อนครับ');
     }
   };
 
@@ -300,22 +284,12 @@ function ManualBillForm({ transactions, currentUser, onUpdateTransaction }) {
           </div>
         </div>
 
-        <button 
-          type="button" 
-          className="btn btn-primary" 
-          onClick={handleShareLine} 
-          style={{ 
-            background: '#00B900', 
-            color: 'white', 
-            border: 'none', 
-            fontSize: '1.2rem',
-            padding: '1.2rem',
-            boxShadow: '0 4px 14px 0 rgba(0, 185, 0, 0.39)',
-            display: 'flex',
-            gap: '0.5rem'
-          }}
+        <button
+          className="btn btn-primary"
+          style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', background: '#059669', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
+          onClick={handleSaveData}
         >
-          <span>💬</span> สร้างบิลและแชร์เข้า LINE
+          💾 บันทึก/ส่งข้อมูล
         </button>
       </form>
     </div>

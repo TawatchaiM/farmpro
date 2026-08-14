@@ -160,6 +160,36 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
   // Summary of current tiered pricing for display
   const activeTiersSummary = pricingMode === 'tiered' && priceTiers.filter(t => t.price_per_kg);
 
+  const handleLoadYesterdaySettings = async () => {
+    setSavingSettings(true);
+    try {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      const yesterdayStr = d.toISOString().split('T')[0];
+      
+      const yesterdaySettings = await db.getDailySettings(yesterdayStr);
+      
+      if (yesterdaySettings) {
+        setBasePrice(yesterdaySettings.base_price || '');
+        setFormulaType(yesterdaySettings.formula_type || 'standard');
+        setWetWeightG(yesterdaySettings.wet_sample_weight_g || 10);
+        setPricingMode(yesterdaySettings.pricing_mode || 'flat');
+        if (yesterdaySettings.price_tiers?.length > 0) {
+          setPriceTiers(yesterdaySettings.price_tiers);
+        }
+        setSuccessMsg(`คัดลอกตั้งค่าของเมื่อวาน (${yesterdayStr}) มาแล้ว (กรุณาตรวจสอบและกดบันทึก)`);
+        setTimeout(() => setSuccessMsg(''), 5000);
+      } else {
+        alert(`ไม่พบประวัติการตั้งค่าของเมื่อวาน (${yesterdayStr})`);
+      }
+    } catch (err) {
+      console.error('Failed to load yesterday settings', err);
+      alert('เกิดข้อผิดพลาดในการดึงข้อมูลของวันก่อนหน้า');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   return (
     <div className="card">
       <div className="header">
@@ -198,9 +228,20 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
       </form>
 
       {/* ===== DAILY SETTINGS ===== */}
-      <div className="header" style={{ marginTop: '3rem' }}>
-        <h2>⚙️ ตั้งค่าราคาและสูตร (Daily Settings)</h2>
-        <p>ตั้งราคารับซื้อประจำวันและปริมาณน้ำหนักสุ่มตรวจมาตรฐาน</p>
+      <div className="header" style={{ marginTop: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h2>⚙️ ตั้งค่าราคาและสูตร (Daily Settings)</h2>
+          <p>ตั้งราคารับซื้อประจำวันและปริมาณน้ำหนักสุ่มตรวจมาตรฐาน</p>
+        </div>
+        <button 
+          type="button" 
+          onClick={handleLoadYesterdaySettings}
+          disabled={savingSettings}
+          className="btn" 
+          style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+        >
+          🔄 ดึงราคาของเมื่อวาน
+        </button>
       </div>
 
       <form onSubmit={handleSaveDailySettings}>

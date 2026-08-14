@@ -11,6 +11,7 @@ import EditProfileModal from './components/EditProfileModal';
 import PricingTable from './components/PricingTable';
 import OfflineStatusBar from './components/OfflineStatusBar';
 import AdminLogin from './components/AdminLogin';
+import LabStation from './components/LabStation';
 import { db } from './supabase';
 
 function App() {
@@ -138,6 +139,11 @@ function App() {
   const isRouteAdmin = window.location.pathname.startsWith('/admin');
   if (isRouteAdmin) {
     return <AdminLogin />;
+  }
+  // --- Lab Station Route Interception ---
+  const isRouteLabStation = window.location.pathname.startsWith('/lab-station');
+  if (isRouteLabStation) {
+    return <LabStation />;
   }
   // --------------------------------
 

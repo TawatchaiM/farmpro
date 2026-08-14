@@ -1,8 +1,9 @@
 {
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/lab-station", "destination": "/index.html" },
+    { "source": "/lab-station/(.*)", "destination": "/index.html" },
+    { "source": "/admin", "destination": "/index.html" },
+    { "source": "/admin/(.*)", "destination": "/index.html" },
+    { "source": "/((?!api|_next|assets|.*\\..*).*)", "destination": "/index.html" }
   ]
 }

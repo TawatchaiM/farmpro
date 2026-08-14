@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from '../supabase';
 
-function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransaction }) {
+function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransaction, labInspector }) {
   const [selectedTx, setSelectedTx] = useState(null);
   const [dryWeightInput, setDryWeightInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [mobileTab, setMobileTab] = useState('queue'); // 'queue' | 'testing'
 
-  const inspectorName = currentUser?.full_name || currentUser?.store_name || 'คนตรวจ DRC (Lab)';
+  // labInspector = { name, phone } เมื่อเข้าผ่าน QR Code (restricted mode)
+  const isRestrictedMode = !!labInspector;
+  const inspectorName = labInspector?.name || currentUser?.full_name || currentUser?.store_name || 'คนตรวจ DRC (Lab)';
 
   // Filter queues (Supports normalized status strings PENDING_DRC, IN_DRC_TESTING, READY_TO_PAY)
   const safeTxList = Array.isArray(transactions) ? transactions : [];
@@ -177,8 +179,9 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
         tapper_share_amount: tapperShareAmount,
         status: 'ready_to_pay',
         testing_by: null,
-        tested_by_user_id: currentUser?.id,
-        tested_by_name: currentUser?.full_name || inspectorName
+        tested_by_user_id: currentUser?.id || null,
+        tested_by_name: labInspector?.name || currentUser?.full_name || inspectorName,
+        tested_by_phone: labInspector?.phone || currentUser?.phone_number || null
       });
 
       // Auto select next waiting queue item
@@ -378,8 +381,8 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
                   ⌫ ลบทีละตัว
                 </button>
 
-                {/* Price Preview (live calculation based on current DRC%) */}
-                {dryWeightG > 0 && !isImpossibleDrc && (() => {
+                {/* Price Preview (live calculation based on current DRC%) — ซ่อนในโหมด Lab Restricted */}
+                {dryWeightG > 0 && !isImpossibleDrc && !isRestrictedMode && (() => {
                   const isTiered = dailySettings?.pricing_mode === 'tiered' && dailySettings?.price_tiers?.length > 0;
                   let previewPrice = 0;
                   let previewLabel = '';
@@ -421,6 +424,19 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
                     </div>
                   );
                 })()}
+
+                {/* DRC % Preview ในโหมด Restricted (ไม่แสดงราคา) */}
+                {dryWeightG > 0 && !isImpossibleDrc && isRestrictedMode && (
+                  <div style={{
+                    gridColumn: 'span 3',
+                    padding: '0.65rem 0.75rem', borderRadius: '8px',
+                    background: '#f0fdf4', border: '1px solid #86efac',
+                    fontSize: '0.8rem', color: '#166534'
+                  }}>
+                    <div style={{ fontWeight: '700' }}>📊 ผล %DRC ที่คำนวณได้: {drcPercentage.toFixed(2)}%</div>
+                    <div style={{ marginTop: '0.2rem', color: '#4ade80' }}>✅ พร้อมส่งผลให้เสมียน</div>
+                  </div>
+                )}
 
                 <button 
                   type="button" 

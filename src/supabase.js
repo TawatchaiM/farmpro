@@ -105,7 +105,9 @@ const sanitizeTransaction = (tx) => {
     'date', 'raw_weight_kg', 'wet_weight_sample_g', 'dry_weight_sample_g', 
     'drc_percentage', 'dry_weight_kg', 'price_per_kg', 'total_amount', 
     'owner_share_percentage', 'owner_share_amount', 'tapper_share_amount', 
-    'status', 'created_at'
+    'status', 'created_at',
+    'tested_by_name', 'tested_by_phone', 'tested_by_user_id',
+    'testing_by', 'price_source', 'manual_price_override', 'override_reason'
   ];
   const safeTx = {};
   for (const key of allowedKeys) {

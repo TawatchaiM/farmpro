@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../supabase';
+import QRCode from 'qrcode';
+import { getOrCreateSeed, generateDailyToken, buildLabUrl, revokeSeed } from '../utils/labToken';
 
 // Default 5-tier DRC pricing template (user can customize)
 const DEFAULT_TIERS = [
@@ -39,6 +41,13 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
     return DEFAULT_TIERS;
   });
   const [savingSettings, setSavingSettings] = useState(false);
+
+  // ---- QR Code Lab State ----
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [labQrDataUrl, setLabQrDataUrl] = useState('');
+  const [labUrl, setLabUrl] = useState('');
+  const [qrCopied, setQrCopied] = useState(false);
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -159,6 +168,70 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
 
   // Summary of current tiered pricing for display
   const activeTiersSummary = pricingMode === 'tiered' && priceTiers.filter(t => t.price_per_kg);
+
+  // ---- QR Code Handlers ----
+  const shopId = currentUser?.id || currentUser?.user_id || 'unknown-shop';
+
+  const handleShowQr = async () => {
+    const seed = getOrCreateSeed();
+    const token = generateDailyToken(shopId, seed);
+    const url = buildLabUrl(shopId, token);
+    setLabUrl(url);
+    try {
+      const dataUrl = await QRCode.toDataURL(url, {
+        width: 300, margin: 2,
+        color: { dark: '#14532d', light: '#f0fdf4' }
+      });
+      setLabQrDataUrl(dataUrl);
+      setShowQrModal(true);
+    } catch (err) {
+      console.error('QR generate error:', err);
+      alert('เกิดข้อผิดพลาดในการสร้าง QR Code');
+    }
+  };
+
+  const handlePrintQr = () => {
+    const printWin = window.open('', '_blank');
+    const today = new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    printWin.document.write(`
+      <html><head><title>QR Code ห้องตรวจ DRC</title><style>
+        body { font-family: 'Noto Sans Thai', Arial, sans-serif; text-align: center; padding: 40px; background: #fff; }
+        h1 { font-size: 22px; color: #14532d; margin-bottom: 4px; }
+        h2 { font-size: 17px; color: #166534; margin-bottom: 20px; font-weight: normal; }
+        img { border: 3px solid #16a34a; border-radius: 16px; padding: 12px; background: #f0fdf4; }
+        .date { color: #64748b; font-size: 13px; margin-top: 16px; }
+        .warning { background: #fef9c3; border: 1px solid #fde047; color: #713f12; padding: 10px 16px; border-radius: 8px; font-size: 12px; margin-top: 20px; }
+        .url { font-size: 9px; color: #94a3b8; margin-top: 10px; word-break: break-all; }
+      </style></head><body>
+        <h1>🔬 ห้องตรวจ DRC (แล็บ)</h1>
+        <h2>สแกน QR Code เพื่อเข้าใช้งานระบบ</h2>
+        <img src="${labQrDataUrl}" width="280" />
+        <div class="date">📅 ใช้ได้วันที่: ${today}</div>
+        <div class="warning">⚠️ QR Code นี้หมดอายุภายใน 24 ชั่วโมง กรุณาสแกน QR ใหม่ในวันถัดไป</div>
+        <div class="url">${labUrl}</div>
+      </body></html>
+    `);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => { printWin.print(); printWin.close(); }, 500);
+  };
+
+  const handleRevokeToken = () => {
+    if (!window.confirm('⚠️ ยืนยันการรีเซ็ตการเข้าถึง?\n\nQR Code เก่าจะใช้ไม่ได้ทันที\nพนักงานทุกคนต้องสแกน QR Code ใหม่')) return;
+    revokeSeed();
+    setShowQrModal(false);
+    setLabQrDataUrl('');
+    setLabUrl('');
+    setSuccessMsg('รีเซ็ตสิทธิ์การเข้าถึงเรียบร้อยแล้ว QR Code เก่าถูกยกเลิกทันที ✅');
+    setTimeout(() => setSuccessMsg(''), 5000);
+  };
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(labUrl).then(() => {
+      setQrCopied(true);
+      setTimeout(() => setQrCopied(false), 2000);
+    });
+  };
 
   const handleLoadYesterdaySettings = async () => {
     setSavingSettings(true);
@@ -412,6 +485,170 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           ) : (
             <span>🟢 <strong>ตั้งค่าปัจจุบัน (วันนี้):</strong> ราคา ฿{dailySettings.base_price}/กก. | น้ำหนักสุ่มเปียก {dailySettings.wet_sample_weight_g}ก.</span>
           )}
+        </div>
+      )}
+
+      {/* ===== QR CODE LAB MANAGEMENT ===== */}
+      <div className="header" style={{ marginTop: '3rem' }}>
+        <h2>🔬 จัดการห้องตรวจ DRC (แล็บ)</h2>
+        <p>สร้าง QR Code สำหรับให้พนักงานแล็บสแกนเข้าทำงานโดยไม่ต้องสมัครสมาชิก</p>
+      </div>
+
+      <div style={{
+        background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+        border: '1px solid #86efac', borderRadius: '16px', padding: '1.5rem'
+      }}>
+        {/* Info badges */}
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+          {[
+            { icon: '⏰', text: 'Token หมดอายุอัตโนมัติ 24 ชม.' },
+            { icon: '🔒', text: 'Revoke ได้ทันที' },
+            { icon: '📱', text: 'สแกนผ่านมือถือ ไม่ต้องสมัคร' },
+          ].map((b, i) => (
+            <span key={i} style={{
+              background: '#fff', border: '1px solid #bbf7d0', color: '#166534',
+              padding: '0.3rem 0.7rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600'
+            }}>
+              {b.icon} {b.text}
+            </span>
+          ))}
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={handleShowQr}
+            className="btn btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1.25rem' }}
+          >
+            <span style={{ fontSize: '1.2rem' }}>📱</span>
+            <span>สร้าง / ดู QR Code ประจำวัน</span>
+          </button>
+
+          {labQrDataUrl && (
+            <button
+              type="button"
+              onClick={handlePrintQr}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1.25rem',
+                background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: '10px',
+                cursor: 'pointer', fontWeight: '700', fontSize: '0.9rem'
+              }}
+            >
+              <span style={{ fontSize: '1.1rem' }}>🖨️</span>
+              <span>พิมพ์ QR Code ติดหน้าห้องตรวจ</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleRevokeToken}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1.25rem',
+              background: 'rgba(239,68,68,0.1)', color: '#dc2626', border: '1.5px solid #fca5a5',
+              borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '0.9rem'
+            }}
+          >
+            <span style={{ fontSize: '1.1rem' }}>🔄</span>
+            <span>รีเซ็ตการเข้าถึง (Revoke)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* QR Code Modal */}
+      {showQrModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99999,
+          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(5px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '24px', padding: '2rem',
+            width: '100%', maxWidth: '480px', boxShadow: '0 30px 80px rgba(0,0,0,0.4)',
+            position: 'relative'
+          }}>
+            <button
+              onClick={() => setShowQrModal(false)}
+              style={{
+                position: 'absolute', top: '1rem', right: '1rem',
+                background: '#f1f5f9', border: 'none', borderRadius: '50%',
+                width: '32px', height: '32px', cursor: 'pointer', fontSize: '1rem', color: '#64748b'
+              }}
+            >✕</button>
+
+            <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+              <h2 style={{ color: '#14532d', fontSize: '1.2rem', margin: '0 0 0.4rem' }}>🔬 QR Code ห้องตรวจ DRC</h2>
+              <p style={{ color: '#64748b', fontSize: '0.82rem', margin: 0 }}>
+                📅 ใช้ได้วันนี้เท่านั้น — หมดอายุเที่ยงคืนโดยอัตโนมัติ
+              </p>
+            </div>
+
+            {/* QR Image */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
+              <img
+                src={labQrDataUrl}
+                alt="Lab Station QR Code"
+                style={{
+                  width: 260, height: 260, borderRadius: '16px',
+                  border: '3px solid #16a34a', padding: '10px', background: '#f0fdf4'
+                }}
+              />
+            </div>
+
+            {/* URL copy */}
+            <div style={{
+              background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px',
+              padding: '0.6rem 0.85rem', marginBottom: '1rem',
+              display: 'flex', alignItems: 'center', gap: '0.5rem'
+            }}>
+              <span style={{ flex: 1, fontSize: '0.7rem', color: '#64748b', wordBreak: 'break-all', lineHeight: '1.4' }}>
+                {labUrl}
+              </span>
+              <button
+                onClick={handleCopyUrl}
+                style={{
+                  flexShrink: 0, background: qrCopied ? '#16a34a' : '#e2e8f0',
+                  color: qrCopied ? '#fff' : '#374151', border: 'none',
+                  borderRadius: '7px', padding: '0.35rem 0.65rem', cursor: 'pointer',
+                  fontSize: '0.75rem', fontWeight: '700', transition: 'all 0.2s'
+                }}
+              >
+                {qrCopied ? '✅ คัดลอกแล้ว' : '📋 คัดลอก'}
+              </button>
+            </div>
+
+            {/* Warning */}
+            <div style={{
+              background: '#fef9c3', border: '1px solid #fde047', borderRadius: '8px',
+              padding: '0.6rem 0.85rem', fontSize: '0.78rem', color: '#713f12', marginBottom: '1.25rem'
+            }}>
+              ⚠️ <strong>ข้อควรระวัง:</strong> อย่าแชร์ QR Code นี้นอกร้าน ถ้าสงสัยการเข้าถึงโดยไม่ได้รับอนุญาต ให้กด "รีเซ็ตการเข้าถึง" ทันที
+            </div>
+
+            {/* Modal Action Buttons */}
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                onClick={handlePrintQr}
+                style={{
+                  flex: 1, padding: '0.75rem', background: '#1d4ed8', color: '#fff',
+                  border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '0.9rem'
+                }}
+              >
+                🖨️ พิมพ์ QR Code
+              </button>
+              <button
+                onClick={handleRevokeToken}
+                style={{
+                  flex: 1, padding: '0.75rem', background: 'rgba(239,68,68,0.1)',
+                  color: '#dc2626', border: '1.5px solid #fca5a5',
+                  borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '0.9rem'
+                }}
+              >
+                🔄 Revoke & สร้างใหม่
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -214,8 +214,8 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
             borderRadius: '10px',
             border: 'none',
             fontWeight: 'bold',
-            background: mobileTab === 'queue' ? 'var(--primary-color)' : '#e2e8f0',
-            color: mobileTab === 'queue' ? '#fff' : '#475569',
+            background: mobileTab === 'queue' ? '#166534' : '#e2e8f0',
+            color: mobileTab === 'queue' ? '#fff' : '#1e293b',
             cursor: 'pointer'
           }}
         >
@@ -230,8 +230,8 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
             borderRadius: '10px',
             border: 'none',
             fontWeight: 'bold',
-            background: mobileTab === 'testing' ? 'var(--primary-color)' : '#e2e8f0',
-            color: mobileTab === 'testing' ? '#fff' : '#475569',
+            background: mobileTab === 'testing' ? '#166534' : '#e2e8f0',
+            color: mobileTab === 'testing' ? '#fff' : '#1e293b',
             cursor: 'pointer'
           }}
         >

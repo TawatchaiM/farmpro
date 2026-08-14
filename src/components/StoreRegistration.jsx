@@ -496,6 +496,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           )}
         </div>
       )}
+      </CollapsibleSection>
 
       {/* ===== QR CODE LAB MANAGEMENT ===== */}
       <CollapsibleSection

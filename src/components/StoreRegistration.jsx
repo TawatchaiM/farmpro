@@ -60,7 +60,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
         currentUser?.postal_code
       ].filter(Boolean).join(' ');
       setStoreData({
-        storeName: storeProfile?.storeName || currentUser?.full_name || 'ร้านรับซื้อยาง FarmPro',
+        storeName: storeProfile?.storeName || currentUser?.store_name || currentUser?.full_name || 'ร้านรับซื้อยาง FarmPro',
         phone: storeProfile?.phone || currentUser?.phone_number || '',
         address: storeProfile?.address || addr || '',
         taxId: storeProfile?.taxId || currentUser?.tax_id || ''

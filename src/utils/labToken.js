@@ -1,17 +1,15 @@
 /**
  * Lab Station Token Utilities
- * ระบบ Token สำหรับห้องตรวจ DRC ที่ไม่ต้องสมัครสมาชิก
- *
- * กลไกความปลอดภัย:
- * - Token สร้างจาก shopId + dateStr + secretSeed (hash แบบ lightweight)
- * - Token หมดอายุเองเมื่อถึงวันถัดไป (เปรียบเทียบ dateStr)
- * - Revoke ทำได้ทันทีโดยสร้าง secretSeed ใหม่
- * - secretSeed เก็บใน localStorage ฝั่งเจ้าของร้านเท่านั้น
+ * กลไกความปลอดภัย (URL-embedded seed approach):
+ * - Seed ถูกฝังอยู่ใน URL ของ QR Code โดยตรง (&s=xxx)
+ * - ทุก device validate ได้จาก URL params เท่านั้น (ไม่ต้องพึ่ง localStorage หรือ DB)
+ * - Token หมดอายุเองเที่ยงคืน (dateStr ใน hash เปลี่ยน)
+ * - Revoke: สร้าง seed ใหม่ -> QR URL ใหม่ -> URL เก่า hash ไม่ตรง -> invalid
  */
 
 const SEED_STORAGE_KEY = 'farmpro_lab_secret_seed';
 
-/** สร้าง random secret seed ใหม่ (ใช้ตอน revoke) */
+/** สร้าง random secret seed (16 bytes hex) */
 export const generateSeed = () => {
   const arr = new Uint8Array(16);
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
@@ -32,42 +30,47 @@ export const getOrCreateSeed = () => {
   return seed;
 };
 
-/** Revoke: สร้าง seed ใหม่ → token เก่าทั้งหมดใช้ไม่ได้ */
+/** Revoke: สร้าง seed ใหม่ -> URL ใหม่ -> URL เก่า invalid ทันที */
 export const revokeSeed = () => {
   const newSeed = generateSeed();
   localStorage.setItem(SEED_STORAGE_KEY, newSeed);
   return newSeed;
 };
 
-/** Simple non-cryptographic hash (djb2 variant) - เพียงพอสำหรับ client-side token */
+/** Simple non-cryptographic hash (djb2 variant) */
 const simpleHash = (str) => {
   let hash = 5381;
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
-    hash |= 0; // force 32-bit int
+    hash |= 0;
   }
   return Math.abs(hash).toString(36).padStart(7, '0');
 };
 
 /** สร้าง daily token จาก shopId + วันที่วันนี้ + seed */
 export const generateDailyToken = (shopId, seed) => {
-  const dateStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  const payload = `${shopId}:${dateStr}:${seed}`;
-  return simpleHash(payload);
+  const dateStr = new Date().toISOString().split('T')[0];
+  return simpleHash(`${shopId}:${dateStr}:${seed}`);
 };
 
-/** Validate token: ตรวจสอบว่า token ตรงกับวันนี้และ seed ปัจจุบัน */
-export const validateToken = (shopId, token) => {
-  const seed = localStorage.getItem(SEED_STORAGE_KEY);
-  if (!seed || !shopId || !token) return false;
-  const expected = generateDailyToken(shopId, seed);
+/**
+ * Validate token โดยใช้ seed จาก URL params (cross-device safe)
+ * ไม่อ่าน localStorage เลย -- ทำงานได้บน device ใดก็ได้
+ */
+export const validateTokenWithSeed = (shopId, token, seed) => {
+  if (!shopId || !token || !seed) return false;
+  const dateStr = new Date().toISOString().split('T')[0];
+  const expected = simpleHash(`${shopId}:${dateStr}:${seed}`);
   return token === expected;
 };
 
-/** สร้าง URL เต็มสำหรับ QR Code */
-export const buildLabUrl = (shopId, token) => {
+/**
+ * สร้าง URL เต็มสำหรับ QR Code -- ฝัง seed ใน &s= เพื่อให้ validate ได้ทุก device
+ * รูปแบบ: /lab-station?shop_id=xxx&token=yyy&s=seed
+ */
+export const buildLabUrl = (shopId, token, seed) => {
   const base = window.location.origin;
-  return `${base}/lab-station?shop_id=${encodeURIComponent(shopId)}&token=${encodeURIComponent(token)}`;
+  return `${base}/lab-station?shop_id=${encodeURIComponent(shopId)}&token=${encodeURIComponent(token)}&s=${encodeURIComponent(seed)}`;
 };
 
 /** คีย์สำหรับเก็บข้อมูลผู้ตรวจประจำวันใน localStorage */

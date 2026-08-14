@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../supabase';
 import QRCode from 'qrcode';
 import { getOrCreateSeed, generateDailyToken, buildLabUrl, revokeSeed } from '../utils/labToken';
+import CollapsibleSection from './CollapsibleSection';
 
 // Default 5-tier DRC pricing template (user can customize)
 const DEFAULT_TIERS = [
@@ -267,12 +268,14 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
   };
 
   return (
-    <div className="card">
-      <div className="header">
-        <h2>🏪 ตั้งค่าโปรไฟล์ร้านค้า / ลานรับซื้อยาง</h2>
-        <p>ข้อมูลนี้จะนำไปแสดงในบิลรับซื้อและสลิปใบเสร็จอัตโนมัติ</p>
-      </div>
-
+    <div>
+      <CollapsibleSection
+        id="store_profile"
+        title="ตั้งค่าโปรไฟล์ร้านค้า / ลานรับซื้อยาง"
+        subtitle="ข้อมูลนี้จะนำไปแสดงในบิลรับซื้อและสลิปใบเสร็จอัตโนมัติ"
+        icon="🏪"
+        defaultExpanded={false}
+      >
       {successMsg && (
         <div style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid #22c55e', color: '#15803d', padding: '0.75rem 1rem', borderRadius: '10px', marginBottom: '1.25rem', fontWeight: '600' }}>
           ✅ {successMsg}
@@ -302,24 +305,27 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           {saving ? 'กำลังบันทึกข้อมูล...' : '💾 บันทึกข้อมูลร้านค้า'}
         </button>
       </form>
+      </CollapsibleSection>
 
       {/* ===== DAILY SETTINGS ===== */}
-      <div className="header" style={{ marginTop: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h2>⚙️ ตั้งค่าราคาและสูตร (Daily Settings)</h2>
-          <p>ตั้งราคารับซื้อประจำวันและปริมาณน้ำหนักสุ่มตรวจมาตรฐาน</p>
-        </div>
-        <button 
-          type="button" 
-          onClick={handleLoadYesterdaySettings}
-          disabled={savingSettings}
-          className="btn" 
-          style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '0.5rem 1rem', fontSize: '0.875rem' }}
-        >
-          🔄 ดึงราคาของเมื่อวาน
-        </button>
-      </div>
-
+      <CollapsibleSection
+        id="daily_settings"
+        title="ตั้งค่าราคาและสูตร (Daily Settings)"
+        subtitle="ตั้งราคารับซื้อประจำวันและปริมาณน้ำหนักสุ่มตรวจมาตรฐาน"
+        icon="⚙️"
+        defaultExpanded={true}
+        headerRight={
+          <button 
+            type="button" 
+            onClick={handleLoadYesterdaySettings}
+            disabled={savingSettings}
+            className="btn" 
+            style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            <span style={{ fontSize: '1rem' }}>🔄</span> ดึงราคาของเมื่อวาน
+          </button>
+        }
+      >
       <form onSubmit={handleSaveDailySettings}>
         <div className="form-grid">
           {/* Wet weight + Formula */}
@@ -492,11 +498,13 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
       )}
 
       {/* ===== QR CODE LAB MANAGEMENT ===== */}
-      <div className="header" style={{ marginTop: '3rem' }}>
-        <h2>🔬 จัดการห้องตรวจ DRC (แล็บ)</h2>
-        <p>สร้าง QR Code สำหรับให้พนักงานแล็บสแกนเข้าทำงานโดยไม่ต้องสมัครสมาชิก</p>
-      </div>
-
+      <CollapsibleSection
+        id="qr_lab"
+        title="จัดการห้องตรวจ DRC (แล็บ)"
+        subtitle="สร้าง QR Code สำหรับให้พนักงานแล็บสแกนเข้าทำงานโดยไม่ต้องสมัครสมาชิก"
+        icon="🔬"
+        defaultExpanded={false}
+      >
       <div style={{
         background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
         border: '1px solid #86efac', borderRadius: '16px', padding: '1.5rem'
@@ -558,6 +566,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           </button>
         </div>
       </div>
+      </CollapsibleSection>
 
       {/* QR Code Modal */}
       {showQrModal && (

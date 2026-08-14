@@ -175,8 +175,8 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
   const handleShowQr = async () => {
     const seed = getOrCreateSeed();
     const token = generateDailyToken(shopId, seed);
-    // ✅ FIX: ฝัง seed ลงใน URL (&s=) เพื่อให้ทุก device validate ได้ ไม่ต้องพึ่ง DB
-    const url = buildLabUrl(shopId, token, seed);
+    const shopName = storeData.storeName || 'ลานรับซื้อยาง';
+    const url = buildLabUrl(shopId, token, seed, shopName);
     setLabUrl(url);
     try {
       const dataUrl = await QRCode.toDataURL(url, {
@@ -197,14 +197,16 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
     printWin.document.write(`
       <html><head><title>QR Code ห้องตรวจ DRC</title><style>
         body { font-family: 'Noto Sans Thai', Arial, sans-serif; text-align: center; padding: 40px; background: #fff; }
-        h1 { font-size: 22px; color: #14532d; margin-bottom: 4px; }
-        h2 { font-size: 17px; color: #166534; margin-bottom: 20px; font-weight: normal; }
+        h1 { font-size: 24px; color: #14532d; margin-bottom: 4px; }
+        .shop { font-size: 18px; color: #166534; font-weight: bold; margin-bottom: 4px; }
+        h2 { font-size: 15px; color: #64748b; margin-bottom: 20px; font-weight: normal; }
         img { border: 3px solid #16a34a; border-radius: 16px; padding: 12px; background: #f0fdf4; }
         .date { color: #64748b; font-size: 13px; margin-top: 16px; }
         .warning { background: #fef9c3; border: 1px solid #fde047; color: #713f12; padding: 10px 16px; border-radius: 8px; font-size: 12px; margin-top: 20px; }
         .url { font-size: 9px; color: #94a3b8; margin-top: 10px; word-break: break-all; }
       </style></head><body>
         <h1>🔬 ห้องตรวจ DRC (แล็บ)</h1>
+        <div class="shop">🏢 ${storeData.storeName || 'ลานรับซื้อยาง'}</div>
         <h2>สแกน QR Code เพื่อเข้าใช้งานระบบ</h2>
         <img src="${labQrDataUrl}" width="280" />
         <div class="date">📅 ใช้ได้วันที่: ${today}</div>
@@ -579,7 +581,10 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
             >✕</button>
 
             <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-              <h2 style={{ color: '#14532d', fontSize: '1.2rem', margin: '0 0 0.4rem' }}>🔬 QR Code ห้องตรวจ DRC</h2>
+              <h2 style={{ color: '#14532d', fontSize: '1.2rem', margin: '0 0 0.2rem' }}>🔬 QR Code ห้องตรวจ DRC</h2>
+              <div style={{ color: '#166534', fontWeight: '700', fontSize: '0.95rem', marginBottom: '0.3rem' }}>
+                🏢 {storeData.storeName || 'ลานรับซื้อยาง'}
+              </div>
               <p style={{ color: '#64748b', fontSize: '0.82rem', margin: 0 }}>
                 📅 ใช้ได้วันนี้เท่านั้น — หมดอายุเที่ยงคืนโดยอัตโนมัติ
               </p>

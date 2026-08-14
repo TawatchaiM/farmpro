@@ -66,11 +66,13 @@ export const validateTokenWithSeed = (shopId, token, seed) => {
 
 /**
  * สร้าง URL เต็มสำหรับ QR Code -- ฝัง seed ใน &s= เพื่อให้ validate ได้ทุก device
- * รูปแบบ: /lab-station?shop_id=xxx&token=yyy&s=seed
+ * รูปแบบ: /lab-station?shop_id=xxx&token=yyy&s=seed&n=ชื่อร้าน
  */
-export const buildLabUrl = (shopId, token, seed) => {
+export const buildLabUrl = (shopId, token, seed, shopName = '') => {
   const base = window.location.origin;
-  return `${base}/lab-station?shop_id=${encodeURIComponent(shopId)}&token=${encodeURIComponent(token)}&s=${encodeURIComponent(seed)}`;
+  let url = `${base}/lab-station?shop_id=${encodeURIComponent(shopId)}&token=${encodeURIComponent(token)}&s=${encodeURIComponent(seed)}`;
+  if (shopName) url += `&n=${encodeURIComponent(shopName)}`;
+  return url;
 };
 
 /** คีย์สำหรับเก็บข้อมูลผู้ตรวจประจำวันใน localStorage */

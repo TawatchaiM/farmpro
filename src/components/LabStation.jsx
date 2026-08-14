@@ -15,9 +15,10 @@ import DrcPortal from './DrcPortal';
  */
 function LabStation() {
   const params = new URLSearchParams(window.location.search);
-  const shopId = params.get('shop_id') || '';
-  const token  = params.get('token')   || '';
-  const seed   = params.get('s')       || ''; // seed ฝังมาใน URL ตอนสร้าง QR
+  const shopId   = params.get('shop_id') || '';
+  const token    = params.get('token')   || '';
+  const seed     = params.get('s')       || ''; // seed ฝังมาใน URL ตอนสร้าง QR
+  const shopName = params.get('n')       || 'ลานรับซื้อยาง'; // ชื่อร้านจาก URL
 
   const [tokenValid, setTokenValid] = useState(null); // null=loading, true, false
   const [inspector, setInspector] = useState(null); // { name, phone }
@@ -272,8 +273,8 @@ function LabStation() {
             <div style={{ fontWeight: '800', fontSize: '1rem', letterSpacing: '-0.01em' }}>
               ห้องตรวจ DRC (แล็บ)
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.7)', marginTop: '1px' }}>
-              FarmPro · ระบบจัดการลานรับซื้อยาง
+            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.8)', marginTop: '1px', fontWeight: '600' }}>
+              🏢 {shopName}
             </div>
           </div>
         </div>

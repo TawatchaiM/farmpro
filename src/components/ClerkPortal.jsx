@@ -794,8 +794,21 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
               const tapperShare = parseFloat(tx.tapper_share_amount || 0);
               return (
                 <div key={tx.id} className="queue-card ready">
-                  <div className="queue-header">
-                    <span className="queue-number">{tx.queue_number}</span>
+                  <div className="queue-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span className="queue-number">{tx.queue_number}</span>
+                      <button 
+                        onClick={() => handleOpenEdit(tx)} 
+                        style={{ 
+                          background: 'none', border: 'none', cursor: 'pointer', 
+                          fontSize: '1.2rem', padding: '0', color: '#f59e0b',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }} 
+                        title="แก้ไขข้อมูล"
+                      >
+                        ✏️
+                      </button>
+                    </div>
                     <span className="queue-status-tag ready">ผลแล็บออกแล้ว</span>
                   </div>
                   <div className="queue-body">
@@ -821,9 +834,6 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                     </p>
                   </div>
                   <div className="queue-actions">
-                    <button className="btn-sm" onClick={() => handleOpenEdit(tx)} style={{ background: '#f59e0b', color: '#fff', border: 'none', padding: '0.4rem 0.6rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }} title="แก้ไขข้อมูล">
-                      ✏️ แก้ไข
-                    </button>
                     <button className="btn-sm btn-print" onClick={() => handlePrint(tx)} title="พิมพ์บิลขนาด 7x10 cm">
                       🖨️ พิมพ์บิล
                     </button>

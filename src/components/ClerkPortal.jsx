@@ -37,6 +37,11 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
   // ---- Payment Success Modal States ----
   const [paymentSuccessTx, setPaymentSuccessTx] = useState(null);
 
+  // ---- Edit Modal States ----
+  const [editModalTx, setEditModalTx] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [savingEdit, setSavingEdit] = useState(false);
+
   // Pricing mode from daily settings
   const isTieredMode = dailySettings?.pricing_mode === 'tiered' && dailySettings?.price_tiers?.length > 0;
 
@@ -262,8 +267,81 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
     }
   };
 
+  // ---- Edit Modal Handlers ----
+  const handleOpenEdit = (tx) => {
+    setEditModalTx(tx);
+    setEditFormData({
+      raw_weight_kg: tx.raw_weight_kg || '',
+      drc_percentage: tx.drc_percentage || '',
+      price_per_kg: tx.price_per_kg || '',
+      owner_share_percentage: tx.owner_share_percentage || 50,
+      edit_reason: '' // New field for log
+    });
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editFormData.edit_reason.trim()) {
+      alert('กรุณาระบุเหตุผลในการแก้ไข');
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      const raw = parseFloat(editFormData.raw_weight_kg) || 0;
+      const drc = parseFloat(editFormData.drc_percentage) || 0;
+      const price = parseFloat(editFormData.price_per_kg) || 0;
+      const share = parseFloat(editFormData.owner_share_percentage) || 0;
+
+      const dry = parseFloat(((raw * drc) / 100).toFixed(2));
+      const total = parseFloat((dry * price).toFixed(2));
+      const ownerAmt = parseFloat(((total * share) / 100).toFixed(2));
+      const tapperAmt = parseFloat((total - ownerAmt).toFixed(2));
+
+      // Append log
+      const newLog = {
+        date: new Date().toISOString(),
+        user: currentUser?.full_name || 'เสมียน',
+        reason: editFormData.edit_reason,
+        changes: {
+          raw_weight_kg: { old: editModalTx.raw_weight_kg, new: raw },
+          drc_percentage: { old: editModalTx.drc_percentage, new: drc },
+          price_per_kg: { old: editModalTx.price_per_kg, new: price }
+        }
+      };
+      
+      const updatedLogs = [...(editModalTx.edit_logs || []), newLog];
+
+      await onUpdateTransaction(editModalTx.id, {
+        raw_weight_kg: raw,
+        drc_percentage: drc,
+        price_per_kg: price,
+        dry_weight_kg: dry,
+        total_amount: total,
+        total_amount_thb: total,
+        owner_share_percentage: share,
+        owner_share_amount: ownerAmt,
+        owner_share_thb: ownerAmt,
+        tapper_share_amount: tapperAmt,
+        tapper_share_thb: tapperAmt,
+        edit_logs: updatedLogs
+      });
+      
+      setEditModalTx(null);
+      alert('บันทึกการแก้ไขเรียบร้อยแล้ว');
+    } catch (err) {
+      console.error(err);
+      alert('เกิดข้อผิดพลาดในการบันทึกการแก้ไข');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   // ---- Copy E-Bill text for LINE ----
-  // Extracted to src/utils/lineShare.js
 
   // ---- Handle thermal print ----
   const handlePrint = (tx) => {
@@ -743,6 +821,9 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                     </p>
                   </div>
                   <div className="queue-actions">
+                    <button className="btn-sm" onClick={() => handleOpenEdit(tx)} style={{ background: '#f59e0b', color: '#fff', border: 'none', padding: '0.4rem 0.6rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }} title="แก้ไขข้อมูล">
+                      ✏️ แก้ไข
+                    </button>
                     <button className="btn-sm btn-print" onClick={() => handlePrint(tx)} title="พิมพ์บิลขนาด 7x10 cm">
                       🖨️ พิมพ์บิล
                     </button>
@@ -846,6 +927,51 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                 ปิดหน้าต่าง
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {editModalTx && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+        }}>
+          <div style={{ background: '#fff', borderRadius: '12px', padding: '1.5rem', width: '90%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#1e293b' }}>✏️ แก้ไขคิว {editModalTx.queue_number}</h3>
+            <form onSubmit={handleSaveEdit}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 'bold' }}>น้ำยางสด (กก.)</label>
+                  <input type="number" step="0.01" name="raw_weight_kg" value={editFormData.raw_weight_kg} onChange={handleEditChange} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 'bold' }}>% DRC</label>
+                  <input type="number" step="0.01" name="drc_percentage" value={editFormData.drc_percentage} onChange={handleEditChange} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 'bold' }}>ราคารับซื้อ (บาท/กก.)</label>
+                  <input type="number" step="0.01" name="price_per_kg" value={editFormData.price_per_kg} onChange={handleEditChange} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 'bold' }}>สัดส่วนเจ้าของสวน (%)</label>
+                  <input type="number" step="0.1" name="owner_share_percentage" value={editFormData.owner_share_percentage} onChange={handleEditChange} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 'bold' }}>เหตุผลในการแก้ไข <span style={{color: 'red'}}>*</span></label>
+                  <input type="text" name="edit_reason" value={editFormData.edit_reason} onChange={handleEditChange} required placeholder="เช่น พิมพ์ตัวเลขผิด, ลูกค้าขอแก้ไข" style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px' }} />
+                </div>
+                
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                  <button type="button" onClick={() => setEditModalTx(null)} style={{ flex: 1, background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.6rem', borderRadius: '6px', fontWeight: 'bold', color: '#475569', cursor: 'pointer' }}>
+                    ยกเลิก
+                  </button>
+                  <button type="submit" disabled={savingEdit} style={{ flex: 1, background: '#f59e0b', border: 'none', padding: '0.6rem', borderRadius: '6px', fontWeight: 'bold', color: '#fff', cursor: 'pointer' }}>
+                    {savingEdit ? 'กำลังบันทึก...' : '💾 บันทึก'}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}

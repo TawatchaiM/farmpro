@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../supabase';
 import {
-  validateToken,
   loadTodayInspector,
   saveTodayInspector
 } from '../utils/labToken';
@@ -31,45 +30,61 @@ function LabStation() {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // 1. Validate token on mount
+  // 1. Validate token + load settings in ONE async call (cross-device safe)
   useEffect(() => {
-    const isValid = validateToken(shopId, token);
-    setTokenValid(isValid);
-
-    if (isValid) {
-      // โหลดข้อมูลผู้ตรวจวันนี้
-      const saved = loadTodayInspector();
-      if (saved && saved.name) {
-        setInspector(saved);
-      } else {
-        setShowModal(true);
+    const initAndValidate = async () => {
+      if (!shopId || !token) {
+        setTokenValid(false);
+        setLoadingData(false);
+        return;
       }
-    }
-  }, [shopId, token]);
 
-  // 2. Load DRC data when token valid
+      try {
+        // ✅ FIX: fetch daily_settings แล้วตรวจสอบ token จาก DB
+        // ทำให้ทุกอุปกรณ์ validate ได้ ไม่ใช่แค่อุปกรณ์ที่ generate QR
+        const settings = await db.getDailySettings(todayStr);
+        const storedToken = settings?.lab_token;
+        const storedDate = settings?.lab_token_date;
+
+        const isValid = !!(storedToken && storedToken === token && storedDate === todayStr);
+
+        setTokenValid(isValid);
+        setDailySettings(settings);
+
+        if (isValid) {
+          // โหลด transactions ด้วย (settings โหลดแล้วข้างบน)
+          const txList = await db.getTransactions(todayStr);
+          setTransactions(Array.isArray(txList) ? txList : []);
+
+          // ตรวจสอบข้อมูลผู้ตรวจวันนี้
+          const saved = loadTodayInspector();
+          if (saved && saved.name) {
+            setInspector(saved);
+          } else {
+            setShowModal(true);
+          }
+        }
+      } catch (err) {
+        console.error('[LabStation] Validation error:', err);
+        setTokenValid(false);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    initAndValidate();
+  }, [shopId, token, todayStr]);
+
+  // 2. Load DRC data refresh (for realtime updates)
   const loadData = useCallback(async () => {
     if (!tokenValid) return;
-    setLoadingData(true);
     try {
-      const [settings, txList] = await Promise.all([
-        db.getDailySettings(todayStr),
-        db.getTransactions(todayStr)
-      ]);
-      setDailySettings(settings);
+      const txList = await db.getTransactions(todayStr);
       setTransactions(Array.isArray(txList) ? txList : []);
     } catch (err) {
-      console.error('[LabStation] Failed to load data:', err);
-    } finally {
-      setLoadingData(false);
+      console.error('[LabStation] Failed to refresh transactions:', err);
     }
   }, [tokenValid, todayStr]);
-
-  useEffect(() => {
-    if (tokenValid === true) {
-      loadData();
-    }
-  }, [tokenValid, loadData]);
 
   // 3. Realtime subscription
   useEffect(() => {

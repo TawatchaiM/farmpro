@@ -177,6 +177,26 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
     const token = generateDailyToken(shopId, seed);
     const url = buildLabUrl(shopId, token);
     setLabUrl(url);
+
+    // ✅ FIX: บันทึก lab_token ลง daily_settings (Supabase/localStorage)
+    // เพื่อให้มือถือสามารถ validate ได้โดยไม่ต้องมี seed ใน localStorage
+    const todayStr = new Date().toISOString().split('T')[0];
+    try {
+      await db.saveDailySettings({
+        ...(dailySettings || {}),
+        date: todayStr,
+        lab_token: token,
+        lab_token_date: todayStr,
+        base_price: dailySettings?.base_price || 0,
+        formula_type: dailySettings?.formula_type || 'standard',
+        wet_sample_weight_g: dailySettings?.wet_sample_weight_g || 10,
+        pricing_mode: dailySettings?.pricing_mode || 'flat',
+        price_tiers: dailySettings?.price_tiers || [],
+      });
+    } catch (err) {
+      console.warn('[QR] ไม่สามารถบันทึก lab_token ลง DB:', err);
+    }
+
     try {
       const dataUrl = await QRCode.toDataURL(url, {
         width: 300, margin: 2,
@@ -216,9 +236,26 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
     setTimeout(() => { printWin.print(); printWin.close(); }, 500);
   };
 
-  const handleRevokeToken = () => {
+  const handleRevokeToken = async () => {
     if (!window.confirm('⚠️ ยืนยันการรีเซ็ตการเข้าถึง?\n\nQR Code เก่าจะใช้ไม่ได้ทันที\nพนักงานทุกคนต้องสแกน QR Code ใหม่')) return;
     revokeSeed();
+    // ✅ FIX: ลบ lab_token ออกจาก daily_settings ด้วย เพื่อตัดสิทธิ์บนทุกอุปกรณ์
+    const todayStr = new Date().toISOString().split('T')[0];
+    try {
+      await db.saveDailySettings({
+        ...(dailySettings || {}),
+        date: todayStr,
+        lab_token: null,
+        lab_token_date: null,
+        base_price: dailySettings?.base_price || 0,
+        formula_type: dailySettings?.formula_type || 'standard',
+        wet_sample_weight_g: dailySettings?.wet_sample_weight_g || 10,
+        pricing_mode: dailySettings?.pricing_mode || 'flat',
+        price_tiers: dailySettings?.price_tiers || [],
+      });
+    } catch (err) {
+      console.warn('[QR Revoke] ไม่สามารถลบ lab_token จาก DB:', err);
+    }
     setShowQrModal(false);
     setLabQrDataUrl('');
     setLabUrl('');

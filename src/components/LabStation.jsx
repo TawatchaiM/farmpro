@@ -163,90 +163,6 @@ function LabStation() {
     );
   }
 
-  // --- Render: Inspector Registration Modal ---
-  const InspectorModal = () => (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 99999,
-      background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
-    }}>
-      <div style={{
-        background: '#fff', borderRadius: '20px', padding: '2rem',
-        width: '100%', maxWidth: '420px', boxShadow: '0 25px 60px rgba(0,0,0,0.4)'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🔬</div>
-          <h2 style={{ color: '#0f172a', fontSize: '1.25rem', margin: 0 }}>
-            ลงชื่อเข้าห้องตรวจ DRC
-          </h2>
-          <p style={{ color: '#64748b', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-            กรอกข้อมูลผู้ตรวจครั้งเดียว ระบบจะจดจำตลอดวัน
-          </p>
-        </div>
-        <form onSubmit={handleInspectorSubmit}>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontWeight: '600', color: '#374151', marginBottom: '0.4rem', fontSize: '0.875rem' }}>
-              ชื่อผู้ตรวจ DRC <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <input
-              type="text"
-              value={nameInput}
-              onChange={e => setNameInput(e.target.value)}
-              placeholder="เช่น นายสมชาย ตรวจยาง"
-              autoFocus
-              style={{
-                width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
-                border: '2px solid #e2e8f0', fontSize: '1rem', boxSizing: 'border-box',
-                outline: 'none', transition: 'border-color 0.2s',
-                fontFamily: "'Inter', 'Noto Sans Thai', sans-serif"
-              }}
-              onFocus={e => e.target.style.borderColor = '#16a34a'}
-              onBlur={e => e.target.style.borderColor = '#e2e8f0'}
-            />
-          </div>
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ display: 'block', fontWeight: '600', color: '#374151', marginBottom: '0.4rem', fontSize: '0.875rem' }}>
-              เบอร์โทรศัพท์ <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <input
-              type="tel"
-              value={phoneInput}
-              onChange={e => setPhoneInput(e.target.value)}
-              placeholder="เช่น 0812345678"
-              style={{
-                width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
-                border: '2px solid #e2e8f0', fontSize: '1rem', boxSizing: 'border-box',
-                outline: 'none', transition: 'border-color 0.2s',
-                fontFamily: "'Inter', 'Noto Sans Thai', sans-serif"
-              }}
-              onFocus={e => e.target.style.borderColor = '#16a34a'}
-              onBlur={e => e.target.style.borderColor = '#e2e8f0'}
-            />
-          </div>
-          {modalError && (
-            <div style={{
-              background: '#fef2f2', color: '#dc2626', padding: '0.6rem 0.85rem',
-              borderRadius: '8px', fontSize: '0.82rem', marginBottom: '1rem', border: '1px solid #fecaca'
-            }}>
-              ⚠️ {modalError}
-            </div>
-          )}
-          <button
-            type="submit"
-            style={{
-              width: '100%', padding: '0.85rem', borderRadius: '12px', border: 'none',
-              background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff',
-              fontSize: '1rem', fontWeight: '700', cursor: 'pointer',
-              fontFamily: "'Inter', 'Noto Sans Thai', sans-serif"
-            }}
-          >
-            🔬 เข้าสู่ห้องตรวจ DRC
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-
   // --- Render: Main Lab Station ---
   return (
     <div style={{
@@ -254,8 +170,88 @@ function LabStation() {
       background: '#f8fafc',
       fontFamily: "'Inter', 'Noto Sans Thai', sans-serif"
     }}>
-      {/* Inspector Modal */}
-      {showModal && <InspectorModal />}
+      {/* Inspector Modal -- inline JSX (ไม่ใช้ inner component เพื่อป้องกัน focus เด้ง) */}
+      {showModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99999,
+          background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '20px', padding: '2rem',
+            width: '100%', maxWidth: '420px', boxShadow: '0 25px 60px rgba(0,0,0,0.4)'
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🔬</div>
+              <h2 style={{ color: '#0f172a', fontSize: '1.25rem', margin: 0 }}>
+                ลงชื่อเข้าห้องตรวจ DRC
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                กรอกข้อมูลผู้ตรวจครั้งเดียว ระบบจะจดจำตลอดวัน
+              </p>
+            </div>
+            <form onSubmit={handleInspectorSubmit}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontWeight: '600', color: '#374151', marginBottom: '0.4rem', fontSize: '0.875rem' }}>
+                  ชื่อผู้ตรวจ DRC <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={nameInput}
+                  onChange={e => setNameInput(e.target.value)}
+                  placeholder="เช่น นายสมชาย ตรวจยาง"
+                  style={{
+                    width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
+                    border: '2px solid #e2e8f0', fontSize: '1rem', boxSizing: 'border-box',
+                    outline: 'none', transition: 'border-color 0.2s',
+                    fontFamily: "'Inter', 'Noto Sans Thai', sans-serif"
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#16a34a'}
+                  onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                />
+              </div>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontWeight: '600', color: '#374151', marginBottom: '0.4rem', fontSize: '0.875rem' }}>
+                  เบอร์โทรศัพท์ <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={phoneInput}
+                  onChange={e => setPhoneInput(e.target.value)}
+                  placeholder="เช่น 0812345678"
+                  style={{
+                    width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
+                    border: '2px solid #e2e8f0', fontSize: '1rem', boxSizing: 'border-box',
+                    outline: 'none', transition: 'border-color 0.2s',
+                    fontFamily: "'Inter', 'Noto Sans Thai', sans-serif"
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#16a34a'}
+                  onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                />
+              </div>
+              {modalError && (
+                <div style={{
+                  background: '#fef2f2', color: '#dc2626', padding: '0.6rem 0.85rem',
+                  borderRadius: '8px', fontSize: '0.82rem', marginBottom: '1rem', border: '1px solid #fecaca'
+                }}>
+                  ⚠️ {modalError}
+                </div>
+              )}
+              <button
+                type="submit"
+                style={{
+                  width: '100%', padding: '0.85rem', borderRadius: '12px', border: 'none',
+                  background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff',
+                  fontSize: '1rem', fontWeight: '700', cursor: 'pointer',
+                  fontFamily: "'Inter', 'Noto Sans Thai', sans-serif"
+                }}
+              >
+                🔬 เข้าสู่ห้องตรวจ DRC
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Header Bar */}
       <div style={{

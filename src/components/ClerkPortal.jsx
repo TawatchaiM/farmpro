@@ -404,16 +404,25 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
         <head>
           <title>พิมพ์บิลคิว ${tx.queue_number}</title>
           <style>
-            body { font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #000; margin: 0; padding: 10px; width: 70mm; }
+            @page { size: 58mm auto; margin: 0; }
+            body { 
+              font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+              font-size: 11px; 
+              color: #000; 
+              margin: 0; 
+              padding: 2mm; 
+              width: 58mm; 
+              box-sizing: border-box; 
+            }
             .center { text-align: center; }
             .header-title { font-weight: bold; font-size: 14px; margin-bottom: 2px; }
             .divider { border-top: 1px dashed black; margin: 6px 0; }
             .double-divider { border-top: 2px double black; margin: 6px 0; }
-            .row-data { display: flex; justify-content: space-between; margin-bottom: 3px; }
+            .row-data { display: flex; justify-content: space-between; margin-bottom: 3px; align-items: flex-end; }
             .total-row { font-size: 13px; font-weight: bold; }
-            .qr-placeholder { width: 80px; height: 80px; margin: 10px auto; border: 1px solid black; display: flex; align-items: center; justify-content: center; font-size: 8px; text-align: center; }
-            .barcode-placeholder { width: 160px; height: 25px; margin: 8px auto; background: repeating-linear-gradient(90deg, #000, #000 1.5px, #fff 1.5px, #fff 4px); }
-            @media print { body { margin: 0; padding: 5px; } }
+            .qr-placeholder { width: 40px; height: 40px; margin: 10px auto; border: 1px solid black; display: flex; align-items: center; justify-content: center; font-size: 7px; text-align: center; line-height: 1.1; }
+            .barcode-placeholder { width: 80%; height: 25px; margin: 8px auto; background: repeating-linear-gradient(90deg, #000, #000 1.5px, #fff 1.5px, #fff 4px); }
+            @media print { body { width: 58mm; padding: 2mm; } }
           </style>
         </head>
         <body>

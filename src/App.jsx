@@ -12,7 +12,8 @@ import PricingTable from './components/PricingTable';
 import OfflineStatusBar from './components/OfflineStatusBar';
 import AdminLogin from './components/AdminLogin';
 import LabStation from './components/LabStation';
-import { db } from './supabase';
+import UpdatePasswordForm from './components/UpdatePasswordForm';
+import { db, supabase } from './supabase';
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -69,6 +70,23 @@ function App() {
     };
 
     initAuth();
+
+    // Listen for Auth State Changes (e.g. Password Recovery)
+    let authSubscription;
+    if (supabase) {
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          setAuthView('updatePassword');
+        }
+      });
+      authSubscription = data.subscription;
+    }
+
+    return () => {
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
+    };
   }, []);
 
   const handleLoginSuccess = (session, profile) => {
@@ -183,6 +201,15 @@ function App() {
         onLoginSuccess={handleLoginSuccess}
         onSwitchToRegister={() => setAuthView('register')}
         onGoHome={() => setAuthView('login')}
+      />
+    );
+  }
+
+  // Render Update Password View if requested (e.g. via reset link)
+  if (authView === 'updatePassword') {
+    return (
+      <UpdatePasswordForm 
+        onUpdateSuccess={() => setAuthView('login')} 
       />
     );
   }

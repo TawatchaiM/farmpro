@@ -9,6 +9,12 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Forgot Password States
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [emailForReset, setEmailForReset] = useState('');
+  const [resetStatus, setResetStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
+  const [resetMsg, setResetMsg] = useState('');
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!identifier.trim() || !password) {
@@ -45,6 +51,33 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!emailForReset.trim()) {
+      setResetStatus('error');
+      setResetMsg('กรุณากรอกอีเมลที่ใช้สมัครบัญชี');
+      return;
+    }
+
+    setResetStatus('loading');
+    setResetMsg('');
+
+    try {
+      const res = await db.resetPassword(emailForReset.trim());
+      if (res.success) {
+        setResetStatus('success');
+        setResetMsg('ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว (กรุณาตรวจสอบกล่องจดหมาย หรือ Junk Mail)');
+      } else {
+        setResetStatus('error');
+        setResetMsg(res.error || 'เกิดข้อผิดพลาดในการส่งอีเมลรีเซ็ตรหัสผ่าน');
+      }
+    } catch (err) {
+      console.error('Reset password error:', err);
+      setResetStatus('error');
+      setResetMsg('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง');
     }
   };
 
@@ -107,11 +140,15 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
             <Leaf color="#4ade80" size={40} style={{ transform: 'rotate(-15deg)', flexShrink: 0 }} />
             <span style={{ fontWeight: 'bold' }}>FarmPro</span>
           </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '0.5rem 0 0.25rem 0' }}>🔐 เข้าสู่ระบบ</h2>
-          <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.9rem' }}>เข้าใช้งานระบบด้วยเบอร์โทรศัพท์และรหัสผ่าน</p>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '0.5rem 0 0.25rem 0' }}>
+            {isForgotPassword ? '🔑 ลืมรหัสผ่าน' : '🔐 เข้าสู่ระบบ'}
+          </h2>
+          <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.9rem' }}>
+            {isForgotPassword ? 'กรอกอีเมลของคุณเพื่อรับลิงก์รีเซ็ตรหัสผ่าน' : 'เข้าใช้งานระบบด้วยเบอร์โทรศัพท์และรหัสผ่าน'}
+          </p>
         </div>
 
-        {errorMsg && (
+        {errorMsg && !isForgotPassword && (
           <div style={{
             background: 'rgba(239, 68, 68, 0.15)',
             border: '1px solid #ef4444',
@@ -126,9 +163,78 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          {/* Phone Number Input */}
-          <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+        {isForgotPassword ? (
+          <form onSubmit={handleResetPassword}>
+            {resetMsg && (
+              <div style={{
+                background: resetStatus === 'success' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                border: resetStatus === 'success' ? '1px solid #22c55e' : '1px solid #ef4444',
+                color: resetStatus === 'success' ? '#4ade80' : '#fca5a5',
+                padding: '0.75rem 1rem',
+                borderRadius: '12px',
+                marginBottom: '1.5rem',
+                fontSize: '0.875rem',
+                textAlign: 'center'
+              }}>
+                {resetStatus === 'success' ? '✅' : '⚠️'} {resetMsg}
+              </div>
+            )}
+
+            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+              <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'block', fontSize: '0.875rem', fontWeight: '500' }}>
+                อีเมล (Email) <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="email"
+                  value={emailForReset}
+                  onChange={(e) => setEmailForReset(e.target.value)}
+                  placeholder="ตัวอย่าง: yourname@email.com"
+                  required
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.18)',
+                    color: '#fff',
+                    padding: '0.85rem 1rem',
+                    borderRadius: '12px',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    fontSize: '0.95rem'
+                  }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={resetStatus === 'loading'}
+              className="onboarding-btn-primary"
+              style={{ width: '100%', padding: '0.9rem', fontSize: '1.05rem', marginBottom: '1rem' }}
+            >
+              {resetStatus === 'loading' ? 'กำลังส่งข้อมูล...' : 'ส่งลิงก์รีเซ็ตรหัสผ่าน'}
+            </button>
+
+            <div style={{ textAlign: 'center' }}>
+              <button
+                type="button"
+                onClick={() => { setIsForgotPassword(false); setResetMsg(''); setResetStatus('idle'); }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#94a3b8',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
+                }}
+              >
+                กลับไปหน้าเข้าสู่ระบบ
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            {/* Phone Number Input */}
+            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
             <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'block', fontSize: '0.875rem', fontWeight: '500' }}>
               เบอร์โทรศัพท์ (10 หลัก) <span style={{ color: '#ef4444' }}>*</span>
             </label>
@@ -207,7 +313,25 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
           >
             {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'} <LogIn size={20} />
           </button>
+
+          <div style={{ marginTop: '1rem', textAlign: 'right' }}>
+            <button
+              type="button"
+              onClick={() => setIsForgotPassword(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#64748b',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                padding: 0
+              }}
+            >
+              ลืมรหัสผ่าน?
+            </button>
+          </div>
         </form>
+        )}
 
 
 

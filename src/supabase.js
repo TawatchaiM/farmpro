@@ -1694,6 +1694,34 @@ export const db = {
     return { success: true };
   },
 
+  resetPassword: async (email) => {
+    if (isMock || !supabase) {
+      return { success: true };
+    }
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/',
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  updateUserPassword: async (newPassword) => {
+    if (isMock || !supabase) {
+      return { success: true };
+    }
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  },
+
   getCurrentSession: async () => {
     if (!isMock && supabase && window.navigator.onLine) {
       try {

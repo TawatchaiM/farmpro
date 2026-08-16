@@ -42,7 +42,7 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
   const [phoneNumber, setPhoneNumber] = useState(savedDraft?.phoneNumber || '');
   const [phoneError, setPhoneError] = useState('');
   
-  // Account Security Credentials States (Phone + Password Auth)
+  const [email, setEmail] = useState(savedDraft?.email || '');
   const [password, setPassword] = useState(savedDraft?.password || '');
   const [confirmPassword, setConfirmPassword] = useState(savedDraft?.confirmPassword || '');
   const [showPassword, setShowPassword] = useState(false);
@@ -267,7 +267,7 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
   useEffect(() => {
     try {
       const draft = {
-        step, role, fullName, phoneNumber, password, confirmPassword,
+        step, role, fullName, phoneNumber, email, password, confirmPassword,
         storeName, selectedDays, openTime, closeTime, is24Hours, businessHours,
         rubberTypes, vendorCategory, vendorDescription, addressDetails,
         subdistrict, district, province, postalCode, latitude, longitude,
@@ -278,7 +278,7 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
       console.warn('Failed to save onboarding draft:', err);
     }
   }, [
-    step, role, fullName, phoneNumber, password, confirmPassword,
+    step, role, fullName, phoneNumber, email, password, confirmPassword,
     storeName, selectedDays, openTime, closeTime, is24Hours, businessHours,
     rubberTypes, vendorCategory, vendorDescription, addressDetails,
     subdistrict, district, province, postalCode, latitude, longitude,
@@ -394,6 +394,7 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
 
     try {
       const authRes = await db.signUp({
+        email: email.trim(),
         phone: cleanPhone,
         password: password,
         profileData
@@ -818,6 +819,28 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
                     ⚠️ {phoneError}
                   </div>
                 )}
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'block', fontSize: '0.85rem' }}>
+                  อีเมล (ถ้ามี) <span style={{ color: '#94a3b8', fontWeight: 'normal' }}>- ใช้สำหรับตั้งรหัสผ่านใหม่ (ไม่บังคับ)</span>
+                </label>
+                <input 
+                  type="email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="ตัวอย่าง: yourname@email.com"
+                  style={{
+                    background: '#1e293b',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    color: '#fff',
+                    padding: '0.75rem 0.85rem',
+                    borderRadius: '10px',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    fontSize: '0.9rem'
+                  }}
+                />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

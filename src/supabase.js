@@ -1082,6 +1082,7 @@ export const db = {
         .insert([{
           plot_name: plotData.plot_name,
           owner_id: plotData.owner_id,
+          owner_phone: plotData.owner_phone,
           tapper_id: plotData.tapper_id,
           tapper_phone: plotData.tapper_phone,
           default_share_ratio: plotData.default_share_ratio
@@ -1114,6 +1115,7 @@ export const db = {
         .update({
           plot_name: plotData.plot_name,
           owner_id: plotData.owner_id,
+          owner_phone: plotData.owner_phone,
           tapper_id: plotData.tapper_id,
           tapper_phone: plotData.tapper_phone,
           default_share_ratio: plotData.default_share_ratio,

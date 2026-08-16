@@ -1683,6 +1683,10 @@ export const db = {
           if (profile) {
             const sanitizedProfile = sanitizeProfile(profile);
             const sanitizedSession = sanitizeSession(data.session);
+            // IMPORTANT: Set current_role BEFORE getMockProfileKey() so profile is saved to correct key
+            const profileRole = sanitizedProfile.role || 'buyer';
+            const currentRole = (profileRole === 'seller') ? 'SELLER' : 'BUYER';
+            localStorage.setItem('farmpro_current_role', currentRole);
             localStorage.setItem(getMockProfileKey(), JSON.stringify(sanitizedProfile));
             localStorage.setItem('farmpro_profile_id', sanitizedProfile.id);
             localStorage.setItem('farmpro_registered', 'true');
@@ -1886,6 +1890,10 @@ export const db = {
             if (remoteProfile && !error) {
               const sanitizedProfile = sanitizeProfile(remoteProfile);
               const sanitizedSession = sanitizeSession(session);
+              // Sync role key so getMockProfileKey() always resolves correctly
+              const remoteRole = sanitizedProfile.role || 'buyer';
+              const remoteRoleKey = (remoteRole === 'seller') ? 'SELLER' : 'BUYER';
+              localStorage.setItem('farmpro_current_role', remoteRoleKey);
               localStorage.setItem(getMockProfileKey(), JSON.stringify(sanitizedProfile));
               localStorage.setItem('farmpro_session', JSON.stringify(sanitizedSession));
               if (typeof onBackgroundUpdate === 'function') {

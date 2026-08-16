@@ -1,4 +1,63 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component } from 'react';
+
+// ============================================================
+// Global Error Boundary — prevents blank screen from JS errors
+// ============================================================
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    console.error('[ErrorBoundary] Caught error:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'radial-gradient(circle at 10% 20%, #1a4d2e 0%, #0c2415 90%)',
+          color: '#fff',
+          fontFamily: "'Inter', sans-serif",
+          padding: '2rem',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+          <h2 style={{ marginBottom: '0.5rem', fontSize: '1.5rem' }}>เกิดข้อผิดพลาดในระบบ</h2>
+          <p style={{ color: '#94a3b8', marginBottom: '1.5rem', maxWidth: '400px' }}>
+            กรุณาลองโหลดหน้าใหม่อีกครั้ง หากยังมีปัญหา กรุณาติดต่อผู้ดูแลระบบ
+          </p>
+          <button
+            onClick={() => { localStorage.clear(); window.location.reload(); }}
+            style={{
+              background: '#22c55e',
+              color: '#fff',
+              border: 'none',
+              padding: '0.75rem 2rem',
+              borderRadius: '10px',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: '600',
+              marginRight: '1rem'
+            }}
+          >🔄 โหลดหน้าใหม่</button>
+          <details style={{ marginTop: '1rem', color: '#64748b', fontSize: '0.75rem', maxWidth: '500px', wordBreak: 'break-all' }}>
+            <summary style={{ cursor: 'pointer' }}>ดูรายละเอียด error</summary>
+            <pre style={{ marginTop: '0.5rem', textAlign: 'left' }}>{String(this.state.error)}</pre>
+          </details>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { Leaf, Home, LogOut, User, Edit, Shield, LogIn } from 'lucide-react';
 import BuyerPortal from './components/BuyerPortal';
 import SellerPortal from './components/SellerPortal';
@@ -667,12 +726,18 @@ function App() {
             </div>
           )}
           
-          {activePortal === 'buyer' && <BuyerPortal currentUser={currentUser} onUpdateProfile={(updated) => setCurrentUser(updated)} />}
-          {activePortal === 'seller' && <SellerPortal currentUser={currentUser} />}
-          {activePortal === 'marketplace' && <MarketplacePortal />}
-          {activePortal === 'ai_chat' && <AIChat />}
-          {activePortal === 'admin' && <AdminPortal />}
-          {activePortal === 'pricing' && <PricingTable />}
+          <ErrorBoundary key={activePortal}>
+            {activePortal === 'buyer' && <BuyerPortal currentUser={currentUser} onUpdateProfile={(updated) => setCurrentUser(updated)} />}
+            {activePortal === 'seller' && <SellerPortal currentUser={currentUser} />}
+            {activePortal === 'marketplace' && <MarketplacePortal />}
+            {activePortal === 'ai_chat' && <AIChat />}
+            {activePortal === 'admin' && <AdminPortal />}
+            {activePortal === 'pricing' && <PricingTable />}
+            {/* Fallback: if no portal matched, show buyer portal as default */}
+            {!['buyer','seller','marketplace','ai_chat','admin','pricing'].includes(activePortal) && (
+              <BuyerPortal currentUser={currentUser} onUpdateProfile={(updated) => setCurrentUser(updated)} />
+            )}
+          </ErrorBoundary>
         </div>
       </div>
 

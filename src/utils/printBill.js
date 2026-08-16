@@ -5,7 +5,7 @@ export const printThermalBill = (tx, currentUser) => {
   const storeAddress = [currentUser?.address_details, currentUser?.subdistrict, currentUser?.district, currentUser?.province].filter(Boolean).join(' ') || storeProfile.address || 'ที่อยู่ร้าน';
   const taxId = currentUser?.tax_id || storeProfile.taxId ? `เลขผู้เสียภาษี: ${currentUser?.tax_id || storeProfile.taxId}` : '';
   
-  const printWindow = window.open('', '_blank', 'width=350,height=550');
+  const printWindow = window.open('', '_blank');
   
   const htmlContent = `
     <html>

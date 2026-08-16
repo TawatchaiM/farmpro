@@ -398,7 +398,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
     const storePhone = currentUser?.phone_number || storeProfile.phone || '08X-XXX-XXXX';
     const storeAddress = [currentUser?.address_details, currentUser?.subdistrict, currentUser?.district, currentUser?.province].filter(Boolean).join(' ') || storeProfile.address || 'ที่อยู่ร้าน';
     const taxId = currentUser?.tax_id || storeProfile.taxId ? `เลขผู้เสียภาษี: ${currentUser?.tax_id || storeProfile.taxId}` : '';
-    const printWindow = window.open('', '_blank', 'width=350,height=550');
+    const printWindow = window.open('', '_blank');
     const htmlContent = `
       <html>
         <head>

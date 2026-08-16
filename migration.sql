@@ -48,6 +48,14 @@ ADD COLUMN IF NOT EXISTS tapper_id UUID REFERENCES public.profiles(id) ON DELETE
 ALTER TABLE public.rubber_plots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.plot_expenses ENABLE ROW LEVEL SECURITY;
 
+-- 4b. Grant table-level permissions to anon and authenticated roles
+-- (Required: RLS alone does not grant INSERT/UPDATE/DELETE access to anon key)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.rubber_plots TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.rubber_plots TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.plot_expenses TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.plot_expenses TO authenticated;
+
+
 -- 5. Policies for rubber_plots
 DROP POLICY IF EXISTS "Enable read access for all users" ON public.rubber_plots;
 CREATE POLICY "Enable read access for all users" ON public.rubber_plots FOR SELECT USING (true);

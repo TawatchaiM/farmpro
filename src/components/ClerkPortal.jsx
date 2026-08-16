@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '../supabase';
 import { handleCopyLineBill } from '../utils/lineShare';
 
-function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransaction, onUpdateTransaction }) {
+function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransaction, onUpdateTransaction, onSaveSettings }) {
   // ---- Form States ----
   const [sellerName, setSellerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -172,10 +172,58 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
   // ---- Handle Weight In Submit ----
   const handleWeightInSubmit = async (e) => {
     e.preventDefault();
-    if (!dailySettings) {
-      alert('กรุณาบันทึกการตั้งค่าราคาประจำวันก่อนทำการรับซื้อ');
-      return;
+    
+    let currentSettings = dailySettings;
+    if (!currentSettings) {
+      const wantPrevious = window.confirm(
+        '⚠️ ยังไม่ได้ตั้งค่าราคาประจำวัน\n\n' +
+        'คุณต้องการใช้ราคาวันก่อนหน้าหรือไม่?\n\n' +
+        '- กด OK เพื่อดึงราคาวันก่อนหน้ามาบันทึกและดำเนินการต่อ\n' +
+        '- กด Cancel เพื่อไปตั้งค่าราคาด้วยตนเอง'
+      );
+      if (wantPrevious) {
+        setCreatingTx(true);
+        try {
+          let prevSettings = null;
+          for (let i = 1; i <= 7; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const pastDateStr = d.toISOString().split('T')[0];
+            prevSettings = await db.getDailySettings(pastDateStr);
+            if (prevSettings) break;
+          }
+
+          if (prevSettings) {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const newSettings = {
+              ...prevSettings,
+              id: undefined,
+              date: todayStr,
+              created_at: new Date().toISOString()
+            };
+            if (onSaveSettings) {
+              await onSaveSettings(newSettings);
+            } else {
+              await db.saveDailySettings(newSettings);
+            }
+            currentSettings = newSettings;
+            // continue below to save weight in...
+          } else {
+            alert('ไม่พบข้อมูลราคาย้อนหลังภายใน 7 วัน กรุณาไปตั้งค่าราคาด้วยตนเอง');
+            setCreatingTx(false);
+            return;
+          }
+        } catch (err) {
+          console.error(err);
+          alert('เกิดข้อผิดพลาดในการดึงราคา');
+          setCreatingTx(false);
+          return;
+        }
+      } else {
+        return;
+      }
     }
+
     if (!sellerName.trim()) {
       alert('กรุณากรอกชื่อผู้ขาย');
       return;
@@ -217,9 +265,9 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
         farm_id: selectedFarmId === 'new' ? null : selectedFarmId,
         owner_name: ownerName || sellerName,
         raw_weight_kg: parseFloat(rawWeightKg),
-        wet_weight_sample_g: parseFloat(dailySettings?.wet_sample_weight_g || 10),
+        wet_weight_sample_g: parseFloat(currentSettings?.wet_sample_weight_g || 10),
         // ถ้า manual override → ส่งราคาเลย, ถ้าไม่ → ส่ง 0 (DRC portal จะ resolve tier)
-        price_per_kg: manualPriceOverride ? parseFloat(manualPrice) : (isTieredMode ? 0 : parseFloat(dailySettings.base_price || 0)),
+        price_per_kg: manualPriceOverride ? parseFloat(manualPrice) : ((currentSettings?.pricing_mode === 'tiered' && currentSettings?.price_tiers?.length > 0) ? 0 : parseFloat(currentSettings.base_price || 0)),
         manual_price_override: manualPriceOverride,
         override_reason: manualPriceOverride ? overrideReason : null,
         override_by_name: manualPriceOverride ? (currentUser?.full_name || 'เสมียน') : null,

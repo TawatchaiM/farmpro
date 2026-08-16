@@ -243,6 +243,7 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
             transactions={transactions}
             onCreateTransaction={handleCreateTransaction}
             onUpdateTransaction={handleUpdateTransaction}
+            onSaveSettings={handleSaveSettings}
           />
         )}
         {activeSubTab === 'drc' && (

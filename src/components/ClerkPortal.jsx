@@ -676,8 +676,8 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                       style={{
                         padding: '0.45rem 0.85rem', borderRadius: '8px', fontSize: '0.82rem',
                         fontWeight: '600', cursor: 'pointer',
-                        border: selectedFarmId === 'new' ? '2px solid #64748b' : '1px dashed #cbd5e1',
-                        background: selectedFarmId === 'new' ? '#f1f5f9' : '#fff',
+                        border: selectedPlotId === 'new' ? '2px solid #64748b' : '1px dashed #cbd5e1',
+                        background: selectedPlotId === 'new' ? '#f1f5f9' : '#fff',
                         color: '#374151',
                       }}
                     >
@@ -702,7 +702,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
               </div>
 
               {/* Owner Name (new farm only) */}
-              {selectedFarmId === 'new' && (
+              {selectedPlotId === 'new' && (
                 <div className="form-group">
                   <label>ชื่อเจ้าของสวน (สำหรับออกบิล)</label>
                   <input
@@ -721,8 +721,8 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                   className="form-input"
                   value={ownerSharePercentage}
                   onChange={e => setOwnerSharePercentage(parseInt(e.target.value))}
-                  disabled={selectedFarmId !== 'new' && selectedFarmId !== ''}
-                  style={selectedFarmId !== 'new' && selectedFarmId !== '' ? { background: '#f1f5f9' } : {}}
+                  disabled={selectedPlotId !== 'new' && selectedPlotId !== ''}
+                  style={selectedPlotId !== 'new' && selectedPlotId !== '' ? { background: '#f1f5f9' } : {}}
                 >
                   <option value="50">50% (แบ่งคนละครึ่ง)</option>
                   <option value="55">55% (เจ้าของ 55 / คนกรีด 45)</option>

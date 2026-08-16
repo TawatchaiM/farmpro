@@ -3,6 +3,7 @@ import ImageUpload from './ImageUpload';
 import ReviewForm from './ReviewForm';
 import Dashboard from './Dashboard';
 import FarmManagement from './FarmManagement';
+import ExpenseManagement from './ExpenseManagement';
 import { db } from '../supabase';
 
 const scriptURL = import.meta.env.VITE_GOOGLE_SCRIPT_URL;
@@ -113,7 +114,7 @@ function SellerPortal({ currentUser }) {
       setRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Error saving data:', error);
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง');
+      alert('เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง');
       setAppState('review');
       return;
     }
@@ -137,7 +138,7 @@ function SellerPortal({ currentUser }) {
   };
 
   const handleDelete = useCallback(async (id) => {
-    setLoadingMessage('กำลังลบข้อมูลออกจากระบบ...');
+    setLoadingMessage('กำลังลบข้อมูลการขาย...');
     setActiveTab('upload');
     setAppState('loading');
     
@@ -154,7 +155,7 @@ function SellerPortal({ currentUser }) {
       
     } catch (error) {
       console.error('Error deleting transaction:', error);
-      alert('เกิดข้อผิดพลาดในการลบข้อมูล');
+      alert('เกิดข้อผิดพลาดในการลบ');
       setAppState('upload');
       setActiveTab('dashboard');
     }
@@ -162,7 +163,7 @@ function SellerPortal({ currentUser }) {
 
   return (
     <div>
-      <div className="nav-tabs" style={{ marginBottom: '1.25rem' }}>
+      <div className="nav-tabs" style={{ marginBottom: '1.25rem', flexWrap: 'wrap' }}>
         <div 
           className={`nav-tab ${activeTab === 'upload' ? 'active' : ''}`}
           onClick={() => {
@@ -178,13 +179,19 @@ function SellerPortal({ currentUser }) {
             setActiveTab('upload');
           }}
         >
-          {editMode ? '✏️ แก้ไขข้อมูลบิล' : '📝 บันทึกบิลขายยาง'}
+          {editMode ? '📝 แก้ไขข้อมูลบิล' : '📥 บันทึกบิลยาง/เพิ่มรายรับ'}
         </div>
         <div 
           className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
           onClick={() => setActiveTab('dashboard')}
         >
-          📊 แดชบอร์ดสรุปยอด
+          📊 แดชบอร์ดสรุปรายรับ
+        </div>
+        <div 
+          className={`nav-tab ${activeTab === 'expense_management' ? 'active' : ''}`}
+          onClick={() => setActiveTab('expense_management')}
+        >
+          💸 บันทึกรายจ่าย
         </div>
         <div 
           className={`nav-tab ${activeTab === 'farm_management' ? 'active' : ''}`}
@@ -196,9 +203,12 @@ function SellerPortal({ currentUser }) {
 
       {activeTab === 'farm_management' ? (
         <FarmManagement currentUser={currentUser} />
+      ) : activeTab === 'expense_management' ? (
+        <ExpenseManagement currentUser={currentUser} />
       ) : activeTab === 'dashboard' ? (
         <Dashboard 
           key={refreshTrigger}
+          currentUser={currentUser}
           scriptURL={scriptURL} 
           onEdit={handleEdit}
           onDelete={handleDelete}

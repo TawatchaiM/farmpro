@@ -24,10 +24,10 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
   const [filterDistrict, setFilterDistrict] = useState('');
   const [showLocationFilter, setShowLocationFilter] = useState(false);
 
-  // ---- Farm States ----
-  const [sellerFarms, setSellerFarms] = useState([]);
-  const [selectedFarmId, setSelectedFarmId] = useState('new');
-  const [fetchingFarms, setFetchingFarms] = useState(false);
+  // ---- Plot States ----
+  const [sellerPlots, setSellerPlots] = useState([]);
+  const [selectedPlotId, setSelectedPlotId] = useState('');
+  const [fetchingPlots, setFetchingPlots] = useState(false);
 
   // ---- Manual Price Override States ----
   const [manualPriceOverride, setManualPriceOverride] = useState(false);
@@ -95,39 +95,33 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
     return () => clearTimeout(timer);
   }, [searchQuery, filterProvince, filterDistrict, selectedSeller]);
 
-  // ---- Fetch Farms when seller is selected ----
-  const fetchFarmsForSeller = useCallback(async (sellerId, phone) => {
-    setFetchingFarms(true);
-    setSellerFarms([]);
-    setSelectedFarmId('new');
+  // ---- Fetch Plots when seller is selected ----
+  const fetchPlotsForSeller = useCallback(async (sellerId, phone) => {
+    setFetchingPlots(true);
+    setSellerPlots([]);
+    setSelectedPlotId('');
     try {
-      let farms = [];
+      let plots = [];
       if (sellerId && !sellerId.startsWith('ab-')) {
-        farms = await db.getUserFarms(sellerId);
+        plots = await db.getRubberPlots(sellerId);
       }
-      if (farms.length === 0 && phone) {
+      if (plots.length === 0 && phone) {
         const profile = await db.getProfileByPhone(phone);
-        if (profile) farms = await db.getUserFarms(profile.id);
+        if (profile) plots = await db.getRubberPlots(profile.id);
       }
-      setSellerFarms(farms);
-      if (farms.length === 1) {
-        setSelectedFarmId(farms[0].id);
-        setOwnerName(farms[0].owner_name);
-        setOwnerSharePercentage(farms[0].owner_share_percent);
-      } else if (farms.length > 1) {
-        const def = farms.find(f => f.is_default);
-        if (def) {
-          setSelectedFarmId(def.id);
-          setOwnerName(def.owner_name);
-          setOwnerSharePercentage(def.owner_share_percent);
-        } else {
-          setSelectedFarmId('');
-        }
+      setSellerPlots(plots);
+      
+      if (plots.length === 1) {
+        setSelectedPlotId(plots[0].plot_id);
+        setOwnerName(plots[0].owner?.full_name || 'เจ้าของสวน');
+        setOwnerSharePercentage(plots[0].default_share_ratio);
+      } else if (plots.length > 1) {
+        setSelectedPlotId(''); // Require explicit UI selection
       }
     } catch (err) {
       console.error(err);
     } finally {
-      setFetchingFarms(false);
+      setFetchingPlots(false);
     }
   }, []);
 
@@ -139,8 +133,8 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
     setSearchQuery(seller.full_name);
     setShowDropdown(false);
     setSearchResults([]);
-    await fetchFarmsForSeller(seller.id, seller.phone_number);
-  }, [fetchFarmsForSeller]);
+    await fetchPlotsForSeller(seller.id, seller.phone_number);
+  }, [fetchPlotsForSeller]);
 
   // ---- Clear selection ----
   const handleClearSelection = () => {
@@ -148,20 +142,19 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
     setSellerName('');
     setPhoneNumber('');
     setSearchQuery('');
-    setSellerFarms([]);
-    setSelectedFarmId('new');
+    setSelectedPlotId('');
     setOwnerName('');
     setOwnerSharePercentage(50);
   };
 
-  const handleFarmSelect = (e) => {
+  const handlePlotSelect = (e) => {
     const val = e.target.value;
-    setSelectedFarmId(val);
+    setSelectedPlotId(val);
     if (val !== 'new' && val !== '') {
-      const farm = sellerFarms.find(f => f.id === val);
-      if (farm) {
-        setOwnerName(farm.owner_name);
-        setOwnerSharePercentage(farm.owner_share_percent);
+      const plot = sellerPlots.find(p => p.plot_id === val);
+      if (plot) {
+        setOwnerName(plot.owner?.full_name || sellerName);
+        setOwnerSharePercentage(plot.default_share_ratio);
       }
     } else {
       setOwnerName('');
@@ -228,7 +221,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
       alert('กรุณากรอกชื่อผู้ขาย');
       return;
     }
-    if (selectedFarmId === '' && sellerFarms.length > 0) {
+    if (selectedPlotId === '' && sellerPlots.length > 0) {
       alert('กรุณาเลือกข้อมูลสวนที่รับน้ำยางมา');
       return;
     }
@@ -262,7 +255,8 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
         seller_name: sellerName,
         buyer_name: currentUser?.store_name || currentUser?.full_name || 'ร้านรับซื้อยาง FarmPro',
         phone_number: phoneNumber,
-        farm_id: selectedFarmId === 'new' ? null : selectedFarmId,
+        plot_id: selectedPlotId === 'new' ? null : selectedPlotId,
+        tapper_id: (selectedPlotId && selectedPlotId !== 'new') ? sellerPlots.find(p => p.plot_id === selectedPlotId)?.tapper_id : null,
         owner_name: ownerName || sellerName,
         raw_weight_kg: parseFloat(rawWeightKg),
         wet_weight_sample_g: parseFloat(currentSettings?.wet_sample_weight_g || 10),
@@ -642,14 +636,14 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                 />
               </div>
 
-              {/* ===== FARM SELECTOR (button style) ===== */}
-              {fetchingFarms && (
+              {/* ===== PLOT SELECTOR (button style) ===== */}
+              {fetchingPlots && (
                 <div style={{ gridColumn: '1/-1', textAlign: 'center', color: '#64748b', fontSize: '0.85rem', padding: '0.5rem' }}>
                   🌱 กำลังดึงข้อมูลสวน...
                 </div>
               )}
 
-              {sellerFarms.length > 0 && (
+              {sellerPlots.length > 0 && (
                 <div className="form-group" style={{
                   gridColumn: '1 / -1', padding: '0.85rem 1rem',
                   background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
@@ -657,28 +651,28 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                 }}>
                   <label style={{ color: '#14532d', fontWeight: '700' }}>
                     🌳 เลือกสวน / เจ้าของสวน
-                    <span style={{ fontSize: '0.72rem', color: '#16a34a', marginLeft: '0.4rem' }}>({sellerFarms.length} สวน)</span>
+                    <span style={{ fontSize: '0.72rem', color: '#16a34a', marginLeft: '0.4rem' }}>({sellerPlots.length} สวน)</span>
                   </label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
-                    {sellerFarms.map(f => (
+                    {sellerPlots.map(f => (
                       <button
-                        key={f.id} type="button"
-                        onClick={() => handleFarmSelect({ target: { value: f.id } })}
+                        key={f.plot_id} type="button"
+                        onClick={() => handlePlotSelect({ target: { value: f.plot_id } })}
                         style={{
                           padding: '0.45rem 0.85rem', borderRadius: '8px', fontSize: '0.82rem',
                           fontWeight: '600', cursor: 'pointer', transition: 'all 0.15s',
-                          border: selectedFarmId === f.id ? '2px solid #16a34a' : '1px solid #a7f3d0',
-                          background: selectedFarmId === f.id ? '#16a34a' : '#fff',
-                          color: selectedFarmId === f.id ? '#fff' : '#166534',
+                          border: selectedPlotId === f.plot_id ? '2px solid #16a34a' : '1px solid #a7f3d0',
+                          background: selectedPlotId === f.plot_id ? '#16a34a' : '#fff',
+                          color: selectedPlotId === f.plot_id ? '#fff' : '#166534',
                         }}
                       >
-                        {f.farm_name}{f.is_default ? ' ⭐' : ''}
-                        <span style={{ opacity: 0.75, fontWeight: '400', fontSize: '0.75rem', marginLeft: '0.3rem' }}>({f.owner_share_percent}%)</span>
+                        {f.plot_name}
+                        <span style={{ opacity: 0.75, fontWeight: '400', fontSize: '0.75rem', marginLeft: '0.3rem' }}>({f.default_share_ratio}%)</span>
                       </button>
                     ))}
                     <button
                       type="button"
-                      onClick={() => handleFarmSelect({ target: { value: 'new' } })}
+                      onClick={() => handlePlotSelect({ target: { value: 'new' } })}
                       style={{
                         padding: '0.45rem 0.85rem', borderRadius: '8px', fontSize: '0.82rem',
                         fontWeight: '600', cursor: 'pointer',

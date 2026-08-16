@@ -2,15 +2,30 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { db } from '../supabase';
 
-function Dashboard({ onEdit, onDelete }) {
+function Dashboard({ currentUser, onEdit, onDelete }) {
   const [data, setData] = useState([]);
+  const [plots, setPlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
   const [filterMonth, setFilterMonth] = useState('all');
   const [filterBuyer, setFilterBuyer] = useState('all');
+  const [viewRole, setViewRole] = useState('owner'); // 'owner' or 'tapper'
 
-  const processAndSetData = useCallback((rawList) => {
+  // Fetch plots to know which ones the user owns vs taps
+  const fetchUserPlots = useCallback(async () => {
+    if (!currentUser) return [];
+    try {
+      const userPlots = await db.getRubberPlots(currentUser.user_id || currentUser.id);
+      setPlots(userPlots);
+      return userPlots;
+    } catch (err) {
+      console.error('Failed to load user plots:', err);
+      return [];
+    }
+  }, [currentUser]);
+
+  const processAndSetData = useCallback((rawList, userPlots) => {
     const paidTxs = (rawList || []).filter(t => t.status === 'paid');
     const normalizedData = paidTxs.map(row => {
       let d = row.date ? String(row.date) : '';
@@ -23,11 +38,13 @@ function Dashboard({ onEdit, onDelete }) {
       return { 
         ...row, 
         date: d,
-        // Map DB column names to what dashboard expects
         buyer_name: row.buyer_name || 'ร้านรับซื้อยาง FarmPro',
-        owner_share_55_thb: row.owner_share_amount !== null && row.owner_share_amount !== undefined
+        owner_share_thb: row.owner_share_amount !== null && row.owner_share_amount !== undefined
           ? row.owner_share_amount 
-          : (parseFloat(row.total_amount || 0) * 0.55),
+          : (parseFloat(row.total_amount || 0) * (parseFloat(row.owner_share_percentage || 50) / 100)),
+        tapper_share_thb: row.tapper_share_amount !== null && row.tapper_share_amount !== undefined
+          ? row.tapper_share_amount
+          : (parseFloat(row.total_amount || 0) * ((100 - parseFloat(row.owner_share_percentage || 50)) / 100)),
         total_amount_thb: row.total_amount || 0
       };
     });
@@ -35,25 +52,35 @@ function Dashboard({ onEdit, onDelete }) {
   }, []);
 
   const fetchData = useCallback(async () => {
+    setLoading(true);
+    const userPlots = await fetchUserPlots();
+    
+    // Auto-set default role if user is only a tapper
+    if (currentUser) {
+      const isOwner = userPlots.some(p => p.owner_id === (currentUser.user_id || currentUser.id));
+      const isTapper = userPlots.some(p => p.tapper_id === (currentUser.user_id || currentUser.id));
+      if (isTapper && !isOwner) {
+        setViewRole('tapper');
+      }
+    }
+
     try {
-      // 1. Instant Render from local cache via Stale-While-Revalidate
       const cachedResult = await db.getAllTransactionsSWR((freshData) => {
-        // 2. Background Sync update on fresh data
-        processAndSetData(freshData);
+        processAndSetData(freshData, userPlots);
       });
-      processAndSetData(cachedResult);
+      processAndSetData(cachedResult, userPlots);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
       try {
         const fallback = await db.getAllTransactions();
-        processAndSetData(fallback);
+        processAndSetData(fallback, userPlots);
       } catch (e) {
         setError('ไม่สามารถเชื่อมต่อดึงข้อมูลได้ โปรดตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง');
       }
     } finally {
       setLoading(false);
     }
-  }, [processAndSetData]);
+  }, [processAndSetData, fetchUserPlots, currentUser]);
 
   useEffect(() => {
     fetchData();
@@ -84,6 +111,25 @@ function Dashboard({ onEdit, onDelete }) {
     const currentYear = new Date().getFullYear().toString();
 
     return data.filter(row => {
+      // Role filtering (if currentUser is available)
+      if (currentUser) {
+        const userId = currentUser.user_id || currentUser.id;
+        const plot = plots.find(p => p.plot_id === row.plot_id);
+        
+        if (viewRole === 'owner') {
+          // Show if the transaction plot belongs to user as owner, or if missing plot_id, assume they are the owner for legacy data
+          if (plot) {
+            if (plot.owner_id !== userId) return false;
+          } else {
+            // Legacy data fallback (assume owner if no plot_id is set)
+            // Or could check if owner_name matches, but let's just let it pass
+          }
+        } else if (viewRole === 'tapper') {
+          // Show if the transaction plot has user as tapper
+          if (!plot || plot.tapper_id !== userId) return false;
+        }
+      }
+
       if (filterBuyer !== 'all' && row.buyer_name !== filterBuyer) return false;
       
       if (filterMonth !== 'all') {
@@ -102,25 +148,7 @@ function Dashboard({ onEdit, onDelete }) {
       }
       return true;
     });
-  }, [data, filterMonth, filterBuyer]);
-
-  if (loading) {
-    return (
-      <div className="card loading-overlay">
-        <div className="spinner"></div>
-        <div className="loading-text">กำลังโหลดข้อมูลจาก Google Sheet...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
-        <h3 style={{ color: '#d32f2f' }}>พบข้อผิดพลาด</h3>
-        <p>{error}</p>
-      </div>
-    );
-  }
+  }, [data, filterMonth, filterBuyer, viewRole, currentUser, plots]);
 
   const formatDateDisplay = (dateStr) => {
     if (!dateStr) return '';
@@ -131,7 +159,7 @@ function Dashboard({ onEdit, onDelete }) {
     return dateStr;
   };
 
-  const totalOwnerShare = filteredData.reduce((sum, row) => sum + (parseFloat(row.owner_share_55_thb) || 0), 0);
+  const totalShare = filteredData.reduce((sum, row) => sum + (viewRole === 'owner' ? (parseFloat(row.owner_share_thb) || 0) : (parseFloat(row.tapper_share_thb) || 0)), 0);
   const totalDryWeight = filteredData.reduce((sum, row) => sum + (parseFloat(row.dry_weight_kg) || 0), 0);
   const totalRawWeight = filteredData.reduce((sum, row) => sum + (parseFloat(row.raw_weight_kg) || 0), 0);
   const totalSalesDays = new Set(filteredData.filter(row => row.date).map(row => row.date.substring(0, 10))).size;
@@ -141,7 +169,7 @@ function Dashboard({ onEdit, onDelete }) {
 
   const chartData = filteredData.map((row) => ({
     name: row.date ? formatDateDisplay(String(row.date)) : `รายการ ${row.id}`,
-    'ส่วนแบ่ง (บาท)': parseFloat(row.owner_share_55_thb) || 0,
+    'รายรับ (บาท)': viewRole === 'owner' ? (parseFloat(row.owner_share_thb) || 0) : (parseFloat(row.tapper_share_thb) || 0),
     'ยางแห้ง (กก.)': parseFloat(row.dry_weight_kg) || 0
   }));
 
@@ -149,29 +177,55 @@ function Dashboard({ onEdit, onDelete }) {
 
   return (
     <div>
+      {/* Role Toggle */}
+      {currentUser && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+          <button
+            onClick={() => setViewRole('owner')}
+            style={{
+              flex: 1, padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer',
+              background: viewRole === 'owner' ? '#166534' : '#f1f5f9',
+              color: viewRole === 'owner' ? '#fff' : '#475569'
+            }}
+          >
+            👨‍🌾 มุมมองเจ้าของสวน
+          </button>
+          <button
+            onClick={() => setViewRole('tapper')}
+            style={{
+              flex: 1, padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer',
+              background: viewRole === 'tapper' ? '#b45309' : '#f1f5f9',
+              color: viewRole === 'tapper' ? '#fff' : '#475569'
+            }}
+          >
+            🔪 มุมมองคนรับจ้างกรีด
+          </button>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
         <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>ตัวกรองข้อมูล (Filters)</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>เดือน-ปี</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>ช่วงเวลา</label>
             <select 
               className="form-input" 
               style={{ width: '100%', cursor: 'pointer' }}
               value={filterMonth} 
               onChange={e => setFilterMonth(e.target.value)}
             >
-              <option value="all">ทั้งหมด (All Time)</option>
-              <option value="7days">7 วันล่าสุด (รายสัปดาห์)</option>
-              <option value="30days">30 วันล่าสุด (รายเดือน)</option>
-              <option value="thisYear">ปีนี้ (รายปี)</option>
-              <optgroup label="เลือกตามเดือน">
+              <option value="all">ทุกช่วงเวลา (All Time)</option>
+              <option value="7days">7 วันย้อนหลัง (สัปดาห์นี้)</option>
+              <option value="30days">30 วันย้อนหลัง (เดือนนี้)</option>
+              <option value="thisYear">ปีนี้ (ทั้งปี)</option>
+              <optgroup label="เลือกตามเดือนปี">
                 {uniqueMonths.map(m => <option key={m} value={m}>{m}</option>)}
               </optgroup>
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>ร้านรับซื้อ</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>ผู้รับซื้อ</label>
             <select 
               className="form-input" 
               style={{ width: '100%', cursor: 'pointer' }}
@@ -185,47 +239,47 @@ function Dashboard({ onEdit, onDelete }) {
         </div>
       </div>
 
-      <div className="share-highlight" style={{ marginBottom: '1.5rem', marginTop: 0 }}>
+      <div className="share-highlight" style={{ marginBottom: '1.5rem', marginTop: 0, background: viewRole === 'owner' ? 'var(--primary-dark)' : '#92400e' }}>
         <div>
-          <h3>รายรับรวม (ส่วนแบ่ง 55%)</h3>
-          <p style={{ fontSize: '0.875rem', opacity: 0.9 }}>รายได้ทั้งหมดในช่วงเวลาที่เลือก</p>
+          <h3>{viewRole === 'owner' ? 'รายรับส่วนเจ้าของสวน' : 'รายรับส่วนคนรับจ้างกรีด'}</h3>
+          <p style={{ fontSize: '0.875rem', opacity: 0.9 }}>ยอดรวมตามตัวกรองที่คุณเลือก</p>
         </div>
         <div className="amount">
-          ฿{totalOwnerShare.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+          ฿{totalShare.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
         </div>
       </div>
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
         <div className="stat-card">
-          <div className="stat-title">น้ำหนักยางแห้งรวม</div>
+          <div className="stat-title">ปริมาณยางแห้งรวม</div>
           <div className="stat-value">{totalDryWeight.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} กก.</div>
         </div>
         <div className="stat-card">
-          <div className="stat-title">น้ำหนักยางสดรวม</div>
+          <div className="stat-title">น้ำยางสดรวม</div>
           <div className="stat-value">{totalRawWeight.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} กก.</div>
         </div>
         <div className="stat-card">
-          <div className="stat-title">เปอร์เซ็นต์เฉลี่ย</div>
+          <div className="stat-title">ค่าเฉลี่ยเปอร์เซ็นต์น้ำยาง</div>
           <div className="stat-value">{avgDrc > 0 ? avgDrc.toFixed(2) : '-'} %</div>
         </div>
         <div className="stat-card">
-          <div className="stat-title">จำนวนวันขายยาง</div>
+          <div className="stat-title">จำนวนวันที่ขาย</div>
           <div className="stat-value">{totalSalesDays} วัน</div>
         </div>
       </div>
 
       <div className="chart-container">
-        <div className="chart-title">แนวโน้มรายรับและน้ำหนักยางแห้ง</div>
+        <div className="chart-title">กราฟแสดงรายรับและปริมาณยางแห้ง</div>
         <div style={{ width: '100%', height: 350 }}>
           <ResponsiveContainer>
             <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 25, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
               <XAxis dataKey="name" tick={{fontSize: 10}} angle={-45} textAnchor="end" />
-              <YAxis yAxisId="left" tick={{fontSize: 10}} stroke="var(--primary)" />
+              <YAxis yAxisId="left" tick={{fontSize: 10}} stroke={viewRole === 'owner' ? 'var(--primary)' : '#b45309'} />
               <YAxis yAxisId="right" orientation="right" tick={{fontSize: 10}} stroke="#ff9800" />
               <Tooltip formatter={(value, name) => [`${value.toLocaleString()}`, name]} />
               <Legend verticalAlign="top" height={36} />
-              <Line yAxisId="left" type="monotone" dataKey="ส่วนแบ่ง (บาท)" stroke="var(--primary)" strokeWidth={3} activeDot={{ r: 6 }} />
+              <Line yAxisId="left" type="monotone" dataKey="รายรับ (บาท)" stroke={viewRole === 'owner' ? 'var(--primary)' : '#b45309'} strokeWidth={3} activeDot={{ r: 6 }} />
               <Line yAxisId="right" type="monotone" dataKey="ยางแห้ง (กก.)" stroke="#ff9800" strokeWidth={3} />
             </LineChart>
           </ResponsiveContainer>
@@ -233,24 +287,24 @@ function Dashboard({ onEdit, onDelete }) {
       </div>
 
       <div className="chart-container">
-        <div className="chart-title">ประวัติการขายทั้งหมด</div>
+        <div className="chart-title">ประวัติการขายยาง (เรียงตามล่าสุด)</div>
         <div className="record-list">
           {allRecords.length > 0 ? allRecords.map((record, i) => (
-            <div key={i} className="record-item" style={{ flexWrap: 'wrap' }}>
+            <div key={i} className="record-item" style={{ flexWrap: 'wrap', borderLeft: `4px solid ${viewRole === 'owner' ? '#166534' : '#b45309'}` }}>
               <div style={{ flex: '1 1 200px', marginBottom: '0.5rem' }}>
-                <div style={{ fontWeight: 600 }}>{record.date ? formatDateDisplay(record.date) : ''} (ID: {record.id})</div>
+                <div style={{ fontWeight: 600 }}>{record.date ? formatDateDisplay(record.date) : ''} (คิว: {record.queue_number || '-'})</div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{record.buyer_name}</div>
                 {record.note && <div style={{ fontSize: '0.75rem', color: '#ff9800', marginTop: '4px' }}>หมายเหตุ: {record.note}</div>}
               </div>
               <div style={{ flex: '1 1 150px', textAlign: 'right', marginBottom: '0.5rem' }}>
-                <div style={{ fontWeight: 700, color: 'var(--primary-dark)' }}>
-                  ฿{parseFloat(record.owner_share_55_thb || 0).toLocaleString()}
+                <div style={{ fontWeight: 700, color: viewRole === 'owner' ? 'var(--primary-dark)' : '#92400e' }}>
+                  ฿{parseFloat(viewRole === 'owner' ? record.owner_share_thb : record.tapper_share_thb || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   ยางแห้ง: {record.dry_weight_kg} กก.
                 </div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  ราคาซื้อ: ฿{parseFloat(record.price_per_kg || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}/กก.
+                  ราคาตลาด: ฿{parseFloat(record.price_per_kg || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}/กก.
                 </div>
               </div>
               <div style={{ width: '100%', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
@@ -258,11 +312,11 @@ function Dashboard({ onEdit, onDelete }) {
                   onClick={() => onEdit(record)} 
                   style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', borderRadius: '6px', background: '#e3f2fd', color: '#1976d2', border: 'none', cursor: 'pointer', fontWeight: 600 }}
                 >
-                  ✏️ แก้ไข
+                  📝 แก้ไข
                 </button>
                 <button 
                   onClick={() => {
-                    if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้? (การลบจะไม่สามารถกู้คืนได้)')) {
+                    if (window.confirm('คุณต้องการลบรายการนี้ใช่หรือไม่? (การลบจะไม่สามารถกู้คืนได้)')) {
                       onDelete(record.id);
                     }
                   }} 
@@ -273,7 +327,7 @@ function Dashboard({ onEdit, onDelete }) {
               </div>
             </div>
           )) : (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>ไม่พบข้อมูลที่ตรงกับตัวกรอง</div>
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>ไม่พบข้อมูลการขายสำหรับมุมมองนี้</div>
           )}
         </div>
       </div>

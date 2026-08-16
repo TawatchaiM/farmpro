@@ -107,7 +107,8 @@ const sanitizeTransaction = (tx) => {
     'owner_share_percentage', 'owner_share_amount', 'tapper_share_amount', 
     'status', 'created_at',
     'tested_by_name', 'tested_by_phone', 'tested_by_user_id',
-    'testing_by', 'price_source', 'manual_price_override', 'override_reason', 'edit_logs'
+    'testing_by', 'price_source', 'manual_price_override', 'override_reason', 'edit_logs',
+    'plot_id', 'tapper_id'
   ];
   const safeTx = {};
   for (const key of allowedKeys) {
@@ -1040,121 +1041,194 @@ export const db = {
     };
   },
 
-  // --- User Farms Management ---
+  // --- Rubber Plots Management ---
 
-  getUserFarms: async (userId) => {
+  getRubberPlots: async (userId) => {
     if (isMock) {
       await delay(200);
-      const farms = safeJsonParse('farmpro_user_farms', []);
-      return farms.filter(f => f.user_id === userId);
+      const plots = safeJsonParse('farmpro_rubber_plots', []);
+      return plots.filter(p => p.owner_id === userId || p.tapper_id === userId);
     }
     try {
       const { data, error } = await supabase
-        .from('user_farms')
-        .select('*')
-        .eq('user_id', userId)
+        .from('rubber_plots')
+        .select('*, owner:profiles!rubber_plots_owner_id_fkey(full_name), tapper:profiles!rubber_plots_tapper_id_fkey(full_name)')
+        .or(`owner_id.eq.${userId},tapper_id.eq.${userId}`)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
     } catch (err) {
-      console.error('Error fetching user farms:', err);
+      console.error('Error fetching rubber plots:', err);
       return [];
     }
   },
-  addUserFarm: async (farmData) => {
-    if (isMock) {
-      await delay(300);
-      const farms = safeJsonParse('farmpro_user_farms', []);
-      const newFarm = { ...farmData, id: 'mock-farm-' + Date.now(), created_at: new Date().toISOString() };
-      farms.push(newFarm);
-      localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
-      return newFarm;
-    }
 
+  addRubberPlot: async (plotData) => {
+    if (isMock) {
+      await delay(200);
+      const plots = safeJsonParse('farmpro_rubber_plots', []);
+      const newPlot = {
+        plot_id: uuidv4(),
+        ...plotData,
+        created_at: new Date().toISOString()
+      };
+      plots.push(newPlot);
+      localStorage.setItem('farmpro_rubber_plots', JSON.stringify(plots));
+      return newPlot;
+    }
     try {
       const { data, error } = await supabase
-        .from('user_farms')
-        .insert([farmData])
-        .select()
-        .single();
-      if (error) {
-        console.error('[addUserFarm] Supabase insert error:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          payload: farmData
-        });
-        throw error;
-      }
-      // Sync to local cache for offline access
-      const farms = safeJsonParse('farmpro_user_farms', []);
-      farms.push(data);
-      localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
-      return data;
-    } catch (err) {
-      // Re-throw so FarmManagement can display the real Supabase error
-      throw err;
-    }
-  },
-  updateUserFarm: async (farmId, farmData) => {
-    // Exclude user_id from update payload (immutable owner field)
-    const { user_id, id, created_at, ...updatePayload } = farmData;
-
-    // Always update localStorage
-    const farms = safeJsonParse('farmpro_user_farms', []);
-    const index = farms.findIndex(f => f.id === farmId);
-    if (index >= 0) {
-      farms[index] = { ...farms[index], ...updatePayload };
-      localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
-    }
-
-    if (isMock) {
-      await delay(300);
-      if (index >= 0) return farms[index];
-      throw new Error('Farm not found');
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('user_farms')
-        .update(updatePayload)
-        .eq('id', farmId)
+        .from('rubber_plots')
+        .insert([{
+          plot_name: plotData.plot_name,
+          owner_id: plotData.owner_id,
+          tapper_id: plotData.tapper_id,
+          tapper_phone: plotData.tapper_phone,
+          default_share_ratio: plotData.default_share_ratio
+        }])
         .select()
         .single();
       if (error) throw error;
-      // Sync updated record to local cache
-      if (index >= 0) farms[index] = data;
-      localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
       return data;
     } catch (err) {
-      console.error('Error updating user farm in Supabase, using local data:', err);
-      // Fallback: return locally updated record
-      if (index >= 0) return farms[index];
+      console.error('Error adding rubber plot:', err);
       throw err;
     }
   },
-  deleteUserFarm: async (farmId) => {
+
+  updateRubberPlot: async (id, plotData) => {
     if (isMock) {
-      await delay(300);
-      let farms = safeJsonParse('farmpro_user_farms', []);
-      farms = farms.filter(f => f.id !== farmId);
-      localStorage.setItem('farmpro_user_farms', JSON.stringify(farms));
+      await delay(200);
+      const plots = safeJsonParse('farmpro_rubber_plots', []);
+      const index = plots.findIndex(p => p.plot_id === id);
+      if (index !== -1) {
+        plots[index] = { ...plots[index], ...plotData, updated_at: new Date().toISOString() };
+        localStorage.setItem('farmpro_rubber_plots', JSON.stringify(plots));
+        return plots[index];
+      }
+      return null;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('rubber_plots')
+        .update({
+          plot_name: plotData.plot_name,
+          owner_id: plotData.owner_id,
+          tapper_id: plotData.tapper_id,
+          tapper_phone: plotData.tapper_phone,
+          default_share_ratio: plotData.default_share_ratio,
+          updated_at: new Date().toISOString()
+        })
+        .eq('plot_id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error('Error updating rubber plot:', err);
+      throw err;
+    }
+  },
+
+  deleteRubberPlot: async (id) => {
+    if (isMock) {
+      await delay(200);
+      let plots = safeJsonParse('farmpro_rubber_plots', []);
+      plots = plots.filter(p => p.plot_id !== id);
+      localStorage.setItem('farmpro_rubber_plots', JSON.stringify(plots));
       return { success: true };
     }
     try {
       const { error } = await supabase
-        .from('user_farms')
+        .from('rubber_plots')
         .delete()
-        .eq('id', farmId);
+        .eq('plot_id', id);
       if (error) throw error;
       return { success: true };
     } catch (err) {
-      console.error('Error deleting user farm:', err);
+      console.error('Error deleting rubber plot:', err);
       throw err;
     }
   },
-  // --- Transactions ---
+
+  // --- Plot Expenses Management ---
+
+  getPlotExpenses: async (plotId) => {
+    if (isMock) {
+      await delay(200);
+      const expenses = safeJsonParse('farmpro_plot_expenses', []);
+      return expenses.filter(e => e.plot_id === plotId);
+    }
+    try {
+      const { data, error } = await supabase
+        .from('plot_expenses')
+        .select('*, recorder:profiles!plot_expenses_recorded_by_fkey(full_name)')
+        .eq('plot_id', plotId)
+        .order('expense_date', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching plot expenses:', err);
+      return [];
+    }
+  },
+
+  addPlotExpense: async (expenseData) => {
+    if (isMock) {
+      await delay(200);
+      const expenses = safeJsonParse('farmpro_plot_expenses', []);
+      const newExpense = {
+        expense_id: uuidv4(),
+        ...expenseData,
+        created_at: new Date().toISOString()
+      };
+      expenses.push(newExpense);
+      localStorage.setItem('farmpro_plot_expenses', JSON.stringify(expenses));
+      return newExpense;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('plot_expenses')
+        .insert([{
+          plot_id: expenseData.plot_id,
+          recorded_by: expenseData.recorded_by,
+          expense_date: expenseData.expense_date,
+          category: expenseData.category,
+          amount: expenseData.amount,
+          description: expenseData.description
+        }])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error('Error adding plot expense:', err);
+      throw err;
+    }
+  },
+  
+  deletePlotExpense: async (id) => {
+    if (isMock) {
+      await delay(200);
+      let expenses = safeJsonParse('farmpro_plot_expenses', []);
+      expenses = expenses.filter(e => e.expense_id !== id);
+      localStorage.setItem('farmpro_plot_expenses', JSON.stringify(expenses));
+      return { success: true };
+    }
+    try {
+      const { error } = await supabase
+        .from('plot_expenses')
+        .delete()
+        .eq('expense_id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.error('Error deleting plot expense:', err);
+      throw err;
+    }
+  },
+
+// --- Transactions ---
   getTransactions: async (dateStr) => {
     if (isMock) {
       await delay(300);

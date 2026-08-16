@@ -782,7 +782,7 @@ function AdminPortal() {
                     user: { id: targetProfile.id, email: targetProfile.email, phone: demoPhone }, 
                     created_at: new Date().toISOString() 
                   };
-                  localStorage.setItem('farmpro_profile', JSON.stringify(targetProfile));
+                  localStorage.setItem(role === 'seller' ? 'farmpro_mock_seller' : 'farmpro_mock_buyer', JSON.stringify(targetProfile));
                   localStorage.setItem('farmpro_profile_id', targetProfile.id);
                   localStorage.setItem('farmpro_registered', 'true');
                   localStorage.setItem('farmpro_session', JSON.stringify(session));
@@ -834,7 +834,7 @@ function AdminPortal() {
                     user: { id: targetProfile.id, email: targetProfile.email, phone: demoPhone }, 
                     created_at: new Date().toISOString() 
                   };
-                  localStorage.setItem('farmpro_profile', JSON.stringify(targetProfile));
+                  localStorage.setItem(role === 'seller' ? 'farmpro_mock_seller' : 'farmpro_mock_buyer', JSON.stringify(targetProfile));
                   localStorage.setItem('farmpro_profile_id', targetProfile.id);
                   localStorage.setItem('farmpro_registered', 'true');
                   localStorage.setItem('farmpro_session', JSON.stringify(session));

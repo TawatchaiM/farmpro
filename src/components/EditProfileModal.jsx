@@ -29,6 +29,13 @@ function EditProfileModal({ profile, activePortal, onClose, onSaveSuccess }) {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Password Change States
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordStatus, setPasswordStatus] = useState(''); // 'success', 'error', 'loading'
+  const [passwordMsg, setPasswordMsg] = useState('');
+
   // Thailand Geographic Data Cascading Helpers
   const sortedProvinces = useMemo(() => {
     return [...THAI_PROVINCES].sort((a, b) => a.name_in_thai.localeCompare(b.name_in_thai, 'th'));
@@ -162,6 +169,40 @@ function EditProfileModal({ profile, activePortal, onClose, onSaveSuccess }) {
       setErrorMsg('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordStatus('error');
+      setPasswordMsg('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordStatus('error');
+      setPasswordMsg('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน');
+      return;
+    }
+    setPasswordStatus('loading');
+    try {
+      const res = await db.updateUserPassword(newPassword);
+      if (res.success) {
+        setPasswordStatus('success');
+        setPasswordMsg('เปลี่ยนรหัสผ่านสำเร็จ');
+        setNewPassword('');
+        setConfirmNewPassword('');
+        setTimeout(() => {
+          setShowPasswordChange(false);
+          setPasswordStatus('');
+          setPasswordMsg('');
+        }, 2000);
+      } else {
+        setPasswordStatus('error');
+        setPasswordMsg(res.error || 'ไม่สามารถเปลี่ยนรหัสผ่านได้');
+      }
+    } catch(err) {
+      setPasswordStatus('error');
+      setPasswordMsg('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน');
     }
   };
 
@@ -310,7 +351,26 @@ function EditProfileModal({ profile, activePortal, onClose, onSaveSuccess }) {
           </div>
 
           <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-            <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'block', fontSize: '0.875rem' }}>อีเมล</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <label style={{ color: '#cbd5e1', display: 'block', fontSize: '0.875rem' }}>อีเมล</label>
+              {!showPasswordChange && (
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordChange(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#4ade80',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: 0
+                  }}
+                >
+                  เปลี่ยนรหัสผ่าน
+                </button>
+              )}
+            </div>
             <input
               type="email"
               value={email}
@@ -327,6 +387,109 @@ function EditProfileModal({ profile, activePortal, onClose, onSaveSuccess }) {
               }}
             />
           </div>
+
+          {showPasswordChange && (
+            <div style={{
+              background: 'rgba(0, 0, 0, 0.2)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '14px',
+              padding: '1.25rem',
+              marginBottom: '1.25rem'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.875rem', color: '#4ade80', fontWeight: '600' }}>
+                  🔑 เปลี่ยนรหัสผ่าน
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordChange(false);
+                    setPasswordMsg('');
+                    setPasswordStatus('');
+                    setNewPassword('');
+                    setConfirmNewPassword('');
+                  }}
+                  style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {passwordMsg && (
+                <div style={{
+                  background: passwordStatus === 'success' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                  border: passwordStatus === 'success' ? '1px solid #22c55e' : '1px solid #ef4444',
+                  color: passwordStatus === 'success' ? '#4ade80' : '#fca5a5',
+                  padding: '0.6rem 0.8rem',
+                  borderRadius: '8px',
+                  marginBottom: '1rem',
+                  fontSize: '0.8rem'
+                }}>
+                  {passwordStatus === 'success' ? '✅' : '⚠️'} {passwordMsg}
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="form-group">
+                  <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'block', fontSize: '0.8rem' }}>รหัสผ่านใหม่</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="อย่างน้อย 6 ตัวอักษร"
+                    style={{
+                      background: '#0f172a',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: '#fff',
+                      padding: '0.7rem',
+                      borderRadius: '8px',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'block', fontSize: '0.8rem' }}>ยืนยันรหัสผ่านใหม่</label>
+                  <input
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder="กรอกอีกครั้ง"
+                    style={{
+                      background: '#0f172a',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: '#fff',
+                      padding: '0.7rem',
+                      borderRadius: '8px',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <button
+                  type="button"
+                  onClick={handlePasswordChange}
+                  disabled={passwordStatus === 'loading'}
+                  style={{
+                    background: '#10b981',
+                    border: 'none',
+                    color: '#fff',
+                    padding: '0.6rem 1rem',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: '500'
+                  }}
+                >
+                  {passwordStatus === 'loading' ? 'กำลังบันทึก...' : 'บันทึกรหัสผ่านใหม่'}
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="form-group" style={{ marginBottom: '1.25rem' }}>
             <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.875rem' }}>

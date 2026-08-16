@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Leaf, Lock, CheckCircle } from 'lucide-react';
+import { Leaf, Lock, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { db } from '../supabase';
 
 function UpdatePasswordForm({ onUpdateSuccess }) {
@@ -8,6 +8,8 @@ function UpdatePasswordForm({ onUpdateSuccess }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -114,7 +116,7 @@ function UpdatePasswordForm({ onUpdateSuccess }) {
               </label>
               <div style={{ position: 'relative' }}>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="อย่างน้อย 6 ตัวอักษร"
@@ -123,7 +125,7 @@ function UpdatePasswordForm({ onUpdateSuccess }) {
                     background: 'rgba(255, 255, 255, 0.05)',
                     border: '1px solid rgba(255, 255, 255, 0.18)',
                     color: '#fff',
-                    padding: '0.85rem 1rem 0.85rem 2.6rem',
+                    padding: '0.85rem 2.6rem 0.85rem 2.6rem',
                     borderRadius: '12px',
                     width: '100%',
                     boxSizing: 'border-box',
@@ -131,6 +133,26 @@ function UpdatePasswordForm({ onUpdateSuccess }) {
                   }}
                 />
                 <Lock size={18} color="#94a3b8" style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '0.85rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 
@@ -140,7 +162,7 @@ function UpdatePasswordForm({ onUpdateSuccess }) {
               </label>
               <div style={{ position: 'relative' }}>
                 <input
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="กรอกรหัสผ่านใหม่อีกครั้ง"
@@ -149,7 +171,7 @@ function UpdatePasswordForm({ onUpdateSuccess }) {
                     background: 'rgba(255, 255, 255, 0.05)',
                     border: '1px solid rgba(255, 255, 255, 0.18)',
                     color: '#fff',
-                    padding: '0.85rem 1rem 0.85rem 2.6rem',
+                    padding: '0.85rem 2.6rem 0.85rem 2.6rem',
                     borderRadius: '12px',
                     width: '100%',
                     boxSizing: 'border-box',
@@ -157,6 +179,26 @@ function UpdatePasswordForm({ onUpdateSuccess }) {
                   }}
                 />
                 <CheckCircle size={18} color="#94a3b8" style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }} />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '0.85rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 

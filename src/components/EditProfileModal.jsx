@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Save, User, Phone, Store, MapPin, Clock, FileText, CheckCircle, Search } from 'lucide-react';
+import { X, Save, User, Phone, Store, MapPin, Clock, FileText, CheckCircle, Search, Eye, EyeOff } from 'lucide-react';
 import { provinces as THAI_PROVINCES, districts as THAI_DISTRICTS, subDistricts as THAI_SUBDISTRICTS } from '@bilions/thailand-address';
 import { db } from '../supabase';
 
@@ -35,6 +35,8 @@ function EditProfileModal({ profile, activePortal, onClose, onSaveSuccess }) {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [passwordStatus, setPasswordStatus] = useState(''); // 'success', 'error', 'loading'
   const [passwordMsg, setPasswordMsg] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
 
   // Thailand Geographic Data Cascading Helpers
   const sortedProvinces = useMemo(() => {
@@ -432,41 +434,85 @@ function EditProfileModal({ profile, activePortal, onClose, onSaveSuccess }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div className="form-group">
                   <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'block', fontSize: '0.8rem' }}>รหัสผ่านใหม่</label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="อย่างน้อย 6 ตัวอักษร"
-                    style={{
-                      background: '#0f172a',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      color: '#fff',
-                      padding: '0.7rem',
-                      borderRadius: '8px',
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      fontSize: '0.85rem'
-                    }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="อย่างน้อย 6 ตัวอักษร"
+                      style={{
+                        background: '#0f172a',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        color: '#fff',
+                        padding: '0.7rem 2.5rem 0.7rem 0.7rem',
+                        borderRadius: '8px',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        fontSize: '0.85rem'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '0.7rem',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: '#94a3b8',
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
                 <div className="form-group">
                   <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'block', fontSize: '0.8rem' }}>ยืนยันรหัสผ่านใหม่</label>
-                  <input
-                    type="password"
-                    value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    placeholder="กรอกอีกครั้ง"
-                    style={{
-                      background: '#0f172a',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      color: '#fff',
-                      padding: '0.7rem',
-                      borderRadius: '8px',
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      fontSize: '0.85rem'
-                    }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showConfirmNewPassword ? "text" : "password"}
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="กรอกอีกครั้ง"
+                      style={{
+                        background: '#0f172a',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        color: '#fff',
+                        padding: '0.7rem 2.5rem 0.7rem 0.7rem',
+                        borderRadius: '8px',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        fontSize: '0.85rem'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '0.7rem',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: '#94a3b8',
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {showConfirmNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>

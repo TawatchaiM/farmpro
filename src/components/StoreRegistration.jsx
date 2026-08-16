@@ -52,7 +52,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
 
   useEffect(() => {
     if (currentUser) {
-      const storeProfile = JSON.parse(localStorage.getItem('farmpro_store_profile') || '{}');
+      const storeProfile = JSON.parse(localStorage.getItem('farmpro_store_profile') || '{}') || {};
       const addr = [
         currentUser?.address_details,
         currentUser?.subdistrict ? `ต.${currentUser.subdistrict}` : '',

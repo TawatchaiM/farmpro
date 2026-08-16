@@ -387,7 +387,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
 
   // ---- Handle thermal print ----
   const handlePrint = (tx) => {
-    const storeProfile = JSON.parse(localStorage.getItem('farmpro_store_profile') || '{}');
+    const storeProfile = JSON.parse(localStorage.getItem('farmpro_store_profile') || '{}') || {};
     const storeName = currentUser?.store_name || storeProfile.storeName || currentUser?.full_name || 'ร้านรับซื้อยาง FarmPro';
     const storePhone = currentUser?.phone_number || storeProfile.phone || '08X-XXX-XXXX';
     const storeAddress = [currentUser?.address_details, currentUser?.subdistrict, currentUser?.district, currentUser?.province].filter(Boolean).join(' ') || storeProfile.address || 'ที่อยู่ร้าน';

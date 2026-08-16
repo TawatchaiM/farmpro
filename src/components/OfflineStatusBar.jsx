@@ -48,7 +48,7 @@ function OfflineStatusBar({ pendingCount = 0, onSync }) {
   useEffect(() => {
     if (pendingCount > 0) {
       try {
-        const queue = JSON.parse(localStorage.getItem('farmpro_pending_sync') || '[]');
+        const queue = JSON.parse(localStorage.getItem('farmpro_pending_sync') || '[]') || [];
         const errItem = queue.find(q => q.error_msg);
         setFirstError(errItem ? errItem.error_msg : null);
       } catch(e){}

@@ -787,6 +787,7 @@ function AdminPortal() {
                   localStorage.setItem('farmpro_registered', 'true');
                   localStorage.setItem('farmpro_session', JSON.stringify(session));
                   localStorage.setItem('farmpro_current_role', 'BUYER');
+                  localStorage.setItem('farmpro_is_demo', 'true');
                   window.location.href = '/';
                 } catch (err) {
                   console.error(err);
@@ -838,6 +839,7 @@ function AdminPortal() {
                   localStorage.setItem('farmpro_registered', 'true');
                   localStorage.setItem('farmpro_session', JSON.stringify(session));
                   localStorage.setItem('farmpro_current_role', 'SELLER');
+                  localStorage.setItem('farmpro_is_demo', 'true');
                   window.location.href = '/';
                 } catch (err) {
                   console.error(err);

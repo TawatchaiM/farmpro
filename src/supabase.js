@@ -1871,7 +1871,8 @@ export const db = {
     const cachedSession = sanitizeSession(rawCachedSession);
 
     // 2. Background Sync with Supabase
-    if (!isMock && supabase && window.navigator.onLine) {
+    const isDemo = localStorage.getItem('farmpro_is_demo') === 'true';
+    if (!isDemo && !isMock && supabase && window.navigator.onLine) {
       (async () => {
         try {
           const { data: { session } } = await supabase.auth.getSession();
@@ -1907,7 +1908,8 @@ export const db = {
     const cachedTxs = safeJsonParse('farmpro_transactions', []);
 
     // 2. Background Sync from Supabase
-    if (!isMock && supabase && window.navigator.onLine) {
+    const isDemo = localStorage.getItem('farmpro_is_demo') === 'true';
+    if (!isDemo && !isMock && supabase && window.navigator.onLine) {
       (async () => {
         try {
           const { data, error } = await supabase

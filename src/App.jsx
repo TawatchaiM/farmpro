@@ -139,6 +139,7 @@ function App() {
     setAuthView('login');
     setIsLoggedInAdmin(false);
     setShowEditProfile(false);
+    localStorage.removeItem('farmpro_is_demo');
   };
 
   const toggleAdmin = () => {

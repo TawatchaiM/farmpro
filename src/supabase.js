@@ -1710,16 +1710,51 @@ export const db = {
   },
 
   updateUserPassword: async (newPassword) => {
-    if (isMock || !supabase) {
-      return { success: true };
+    let hasSupabaseSession = false;
+    if (!isMock && supabase) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        hasSupabaseSession = !!session;
+      } catch (err) {
+        hasSupabaseSession = false;
+      }
     }
-    try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
+
+    let sbSuccess = true;
+    let sbError = null;
+
+    if (hasSupabaseSession) {
+      try {
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+      } catch (err) {
+        sbSuccess = false;
+        sbError = err.message;
+      }
     }
+
+    if (!sbSuccess && hasSupabaseSession) {
+      return { success: false, error: sbError };
+    }
+
+    let updatedLocal = false;
+    const localProfileId = localStorage.getItem('farmpro_profile_id');
+    if (localProfileId) {
+      const accounts = safeJsonParse('farmpro_accounts', []);
+      const accIndex = accounts.findIndex(a => a.user_id === localProfileId);
+      if (accIndex !== -1) {
+        accounts[accIndex].password = newPassword;
+        accounts[accIndex].password_hash = hashPassword(newPassword);
+        localStorage.setItem('farmpro_accounts', JSON.stringify(accounts));
+        updatedLocal = true;
+      }
+    }
+
+    if (!hasSupabaseSession && !updatedLocal) {
+      return { success: false, error: 'ไม่พบเซสชันการเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่' };
+    }
+
+    return { success: true };
   },
 
   getCurrentSession: async () => {

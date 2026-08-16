@@ -316,6 +316,25 @@ function AdminPortal() {
         >
           💎 แพ็กเกจ & รายได้
         </button>
+        <button 
+          onClick={() => setActiveTab('demo_login')}
+          style={{
+            flex: 1,
+            minWidth: '150px',
+            padding: '0.75rem 1rem',
+            borderRadius: '10px',
+            fontSize: '0.925rem',
+            fontWeight: 'bold',
+            border: activeTab === 'demo_login' ? 'none' : '1px solid #e2e8f0',
+            background: activeTab === 'demo_login' ? 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)' : '#f8fafc',
+            color: activeTab === 'demo_login' ? '#ffffff' : '#64748b',
+            boxShadow: activeTab === 'demo_login' ? '0 4px 12px rgba(15, 118, 110, 0.25)' : 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          ⚡ ทดสอบระบบ (Demo)
+        </button>
       </div>
 
       {/* TAB 1: USERS & APPROVALS */}
@@ -735,6 +754,118 @@ function AdminPortal() {
           </div>
         </div>
       )}
+
+      {/* TAB 4: DEMO LOGIN */}
+      {activeTab === 'demo_login' && (
+        <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '2rem', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+          <h3 style={{ color: '#1e293b', marginBottom: '1rem' }}>⚡ เครื่องมือสำหรับผู้ดูแลระบบ</h3>
+          <p style={{ color: '#64748b', marginBottom: '2rem', fontSize: '0.9rem' }}>ปุ่มด้านล่างนี้ใช้สำหรับล็อกอินเข้าสู่ระบบในฐานะผู้ใช้งานเพื่อทดสอบระบบ โดยไม่ต้องใช้รหัสผ่าน</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '400px', margin: '0 auto' }}>
+            <button
+              type="button"
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  const demoPhone = '0812345678';
+                  const role = 'buyer';
+                  const targetProfile = {
+                    id: `demo-${role}-id`,
+                    user_id: `demo-${role}-id`,
+                    role: role,
+                    full_name: 'ร้านเจ๊น้อย รับซื้อยาง (Demo)',
+                    store_name: 'ร้านเจ๊น้อย รับซื้อยาง',
+                    phone_number: demoPhone,
+                    email: `phone_${demoPhone}@farmpro.local`,
+                    status: 'approved'
+                  };
+                  const session = { 
+                    user: { id: targetProfile.id, email: targetProfile.email, phone: demoPhone }, 
+                    created_at: new Date().toISOString() 
+                  };
+                  localStorage.setItem('farmpro_profile', JSON.stringify(targetProfile));
+                  localStorage.setItem('farmpro_profile_id', targetProfile.id);
+                  localStorage.setItem('farmpro_registered', 'true');
+                  localStorage.setItem('farmpro_session', JSON.stringify(session));
+                  localStorage.setItem('farmpro_current_role', 'BUYER');
+                  window.location.href = '/';
+                } catch (err) {
+                  console.error(err);
+                  alert('เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              style={{
+                background: '#ecfdf5',
+                border: '1px solid #34d399',
+                color: '#059669',
+                padding: '0.8rem 1rem',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                fontSize: '0.95rem',
+                fontWeight: 'bold',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => { e.target.style.background = '#d1fae5'; }}
+              onMouseLeave={(e) => { e.target.style.background = '#ecfdf5'; }}
+            >
+              🏪 ล็อกอินโหมด: ร้านรับซื้อยาง (0812345678)
+            </button>
+            
+            <button
+              type="button"
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  const demoPhone = '0898765432';
+                  const role = 'seller';
+                  const targetProfile = {
+                    id: `demo-${role}-id`,
+                    user_id: `demo-${role}-id`,
+                    role: role,
+                    full_name: 'สมชาย รักสวน (Demo)',
+                    store_name: null,
+                    phone_number: demoPhone,
+                    email: `phone_${demoPhone}@farmpro.local`,
+                    status: 'approved'
+                  };
+                  const session = { 
+                    user: { id: targetProfile.id, email: targetProfile.email, phone: demoPhone }, 
+                    created_at: new Date().toISOString() 
+                  };
+                  localStorage.setItem('farmpro_profile', JSON.stringify(targetProfile));
+                  localStorage.setItem('farmpro_profile_id', targetProfile.id);
+                  localStorage.setItem('farmpro_registered', 'true');
+                  localStorage.setItem('farmpro_session', JSON.stringify(session));
+                  localStorage.setItem('farmpro_current_role', 'SELLER');
+                  window.location.href = '/';
+                } catch (err) {
+                  console.error(err);
+                  alert('เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              style={{
+                background: '#eff6ff',
+                border: '1px solid #60a5fa',
+                color: '#2563eb',
+                padding: '0.8rem 1rem',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                fontSize: '0.95rem',
+                fontWeight: 'bold',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => { e.target.style.background = '#dbeafe'; }}
+              onMouseLeave={(e) => { e.target.style.background = '#eff6ff'; }}
+            >
+              🧑‍🌾 ล็อกอินโหมด: ชาวสวนยาง (0898765432)
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

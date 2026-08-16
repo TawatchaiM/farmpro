@@ -1568,17 +1568,17 @@ export const db = {
     if (!isMock && supabase) {
       try {
         let authEmail = virtualEmail;
-        if (!authEmail) {
-          const { data: prof } = await supabase
-            .from('profiles')
-            .select('email')
-            .or(`username.eq.${cleanId},phone_number.eq.${cleanId}`)
-            .maybeSingle();
-          if (prof?.email) {
-            authEmail = prof.email;
-          } else {
-            authEmail = cleanId;
-          }
+        // Always try to find the real email from profiles if they provided a phone number or username
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('email')
+          .or(`phone_number.eq.${cleanId},username.eq.${cleanId},email.eq.${cleanId}`)
+          .maybeSingle();
+          
+        if (prof && prof.email) {
+          authEmail = prof.email;
+        } else if (!authEmail) {
+          authEmail = cleanId;
         }
 
         const { data, error } = await supabase.auth.signInWithPassword({

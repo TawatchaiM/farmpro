@@ -338,45 +338,7 @@ export const AdminLogin = ({ onLoginSuccess }) => {
         {/* Dynamic Form */}
         {renderForm()}
         
-        {/* Quick Demo Logins Section */}
-        <div style={{ marginTop: '1.75rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' }}>
-          <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.75rem' }}>⚡ ปุ่มทดสอบเข้าสู่ระบบด่วน (Quick Demo Login):</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => handleQuickDemoLogin('buyer')}
-              style={{
-                background: 'rgba(16, 185, 129, 0.12)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                color: '#4ade80',
-                padding: '0.6rem 1rem',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: '600'
-              }}
-            >
-              🏪 ล็อกอินโหมด: ร้านรับซื้อยาง (Buyer Demo: 0812345678)
-            </button>
-            
-            <button
-              type="button"
-              onClick={() => handleQuickDemoLogin('seller')}
-              style={{
-                background: 'rgba(59, 130, 246, 0.12)',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                color: '#60a5fa',
-                padding: '0.6rem 1rem',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: '600'
-              }}
-            >
-              🧑‍🌾 ล็อกอินโหมด: ชาวสวนยาง (Seller Demo: 0898765432)
-            </button>
-          </div>
-        </div>
+
 
       </div>
     </div>

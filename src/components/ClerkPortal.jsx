@@ -461,8 +461,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
 
   // ===== RENDER =====
   return (
-    <div className="buyer-grid">
-      <div className="buyer-grid-left">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div className="card">
           <h3 className="section-title-icon">⚖️ บันทึกน้ำหนักขาเข้า (Weight In)</h3>
           <form onSubmit={handleWeightInSubmit}>
@@ -829,9 +828,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="buyer-grid-right">
+      <div className="queue-grid">
         {/* Ready to Pay Queue */}
         <div className="card" style={{ marginBottom: 0 }}>
         <h3 className="section-title-icon">💵 คิวรอชำระเงินและออกบิล (Ready to Pay Queue)</h3>

@@ -249,21 +249,15 @@ body {
 }
 
 /* Form Styles */
-.buyer-grid {
+.queue-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
   align-items: start;
 }
 
-.buyer-grid-right {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
 @media (max-width: 1024px) {
-  .buyer-grid {
+  .queue-grid {
     grid-template-columns: 1fr;
   }
 }

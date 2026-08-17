@@ -305,7 +305,7 @@ export const AdminLogin = ({ onLoginSuccess }) => {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ maxWidth: '28rem', width: '100%', backgroundColor: '#1e293b', borderRadius: '1rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #334155', padding: '2rem' }}>
+      <div style={{ maxWidth: '28rem', width: '100%', backgroundColor: '#1e293b', borderRadius: '1rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #334155', padding: '1.5rem' }}>
         
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>

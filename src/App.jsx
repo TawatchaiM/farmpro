@@ -651,9 +651,8 @@ function App() {
       {/* Main Content */}
       <div className="main-content">
         <div className="content-wrapper" style={activePortal === 'pricing' ? { maxWidth: '1100px' } : {}}>
-          <OfflineStatusBar />
           {activePortal !== 'admin' && activePortal !== 'ai_chat' && activePortal !== 'pricing' && (
-            <div className="header" style={{ marginBottom: '1.5rem', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="header" style={{ marginBottom: '1rem', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>
                   {activePortal === 'buyer' && 'ระบบจัดการสำหรับร้านรับซื้อ'}
@@ -666,108 +665,6 @@ function App() {
                   {activePortal === 'marketplace' && 'ค้นหาร้านค้าอุปกรณ์และบริการรับจ้าง'}
                 </p>
               </div>
-
-              {/* User Profile Header Chip */}
-              {currentUser ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{
-                    background: 'rgba(255, 255, 255, 0.9)',
-                    border: '1px solid var(--glass-border)',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '20px',
-                    boxShadow: 'var(--shadow-sm)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    color: '#1e293b'
-                  }}>
-                    <User size={16} color="#16a34a" />
-                    <span>{currentUser.full_name}</span>
-                    {displayStorePhone && (
-                      <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 'normal' }}>
-                        (📞 {displayStorePhone})
-                      </span>
-                    )}
-                    <span style={{
-                      background: '#dcfce7',
-                      color: '#15803d',
-                      fontSize: '0.75rem',
-                      padding: '2px 8px',
-                      borderRadius: '12px'
-                    }}>
-                      {activePortal === 'buyer' ? '🏪 หมวดผู้ซื้อ' : (activePortal === 'seller' ? '🧑‍🌾 หมวดผู้ขาย' : (activePortal === 'marketplace' ? '🛒 หมวดบริการ' : (roleLabels[currentUser.role] || currentUser.role)))}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => setShowEditProfile(true)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      padding: '0.55rem 0.9rem',
-                      borderRadius: '10px',
-                      border: '1px solid rgba(34, 197, 94, 0.3)',
-                      background: 'rgba(34, 197, 94, 0.1)',
-                      cursor: 'pointer',
-                      fontSize: '0.85rem',
-                      fontWeight: '600',
-                      color: '#16a34a',
-                      transition: 'all 0.2s'
-                    }}
-                    title="แก้ไขโปรไฟล์"
-                  >
-                    <Edit size={15} />
-                    <span>แก้ไขโปรไฟล์</span>
-                  </button>
-
-                  <button
-                    onClick={handleLogout}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      padding: '0.55rem 0.9rem',
-                      borderRadius: '10px',
-                      border: '1px solid rgba(239, 68, 68, 0.3)',
-                      background: 'rgba(239, 68, 68, 0.1)',
-                      cursor: 'pointer',
-                      fontSize: '0.85rem',
-                      fontWeight: '600',
-                      color: '#ef4444',
-                      transition: 'all 0.2s'
-                    }}
-                    title="ออกจากระบบ"
-                  >
-                    <LogOut size={16} />
-                    <span>ออกจากระบบ</span>
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setAuthView('login')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.6rem 1.1rem',
-                    borderRadius: '10px',
-                    border: '1px solid rgba(34, 197, 94, 0.3)',
-                    background: 'rgba(34, 197, 94, 0.1)',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    color: '#16a34a',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <LogIn size={18} />
-                  <span>เข้าสู่ระบบ</span>
-                </button>
-              )}
             </div>
           )}
           

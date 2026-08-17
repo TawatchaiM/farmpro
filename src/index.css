@@ -249,6 +249,25 @@ body {
 }
 
 /* Form Styles */
+.buyer-grid {
+  display: grid;
+  grid-template-columns: 7fr 5fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.buyer-grid-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .buyer-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -201,7 +201,7 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
 
       {/* Navigation tabs - Hidden for Sub-Accounts */}
       {(!currentUser || (currentUser.role !== 'CLERK' && currentUser.role !== 'DRC_LAB')) && (
-        <div className="nav-tabs" style={{ marginBottom: '1.5rem' }}>
+        <div className="nav-tabs" style={{ marginBottom: '0.75rem' }}>
           <div 
             className={`nav-tab ${activeSubTab === 'clerk' ? 'active' : ''}`}
             onClick={() => setActiveSubTab('clerk')}

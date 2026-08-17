@@ -54,6 +54,8 @@ body {
   display: flex;
   flex-direction: column;
   padding: 1.5rem 1rem;
+  min-height: 100vh;
+  justify-content: space-between;
 }
 
 .sidebar-logo {
@@ -131,6 +133,8 @@ body {
   }
   .sidebar {
     width: 100%;
+    min-height: auto;
+    justify-content: flex-start;
     border-right: none;
     border-bottom: 1px solid var(--border-color);
     padding: 1rem;

@@ -300,7 +300,7 @@ function App() {
   return (
     <div className="app-layout">
       {/* Sidebar */}
-      <div className="sidebar" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', justifyContent: 'space-between', paddingBottom: '1rem' }}>
+      <div className="sidebar" style={{ display: 'flex', flexDirection: 'column', paddingBottom: '1rem' }}>
         <div>
           <div 
             className="sidebar-logo" 
@@ -626,7 +626,7 @@ function App() {
 
         {/* Admin Login Link */}
         {(!currentUser || (currentUser.role !== 'CLERK' && currentUser.role !== 'DRC_LAB' && currentUser.role !== 'SUPER_ADMIN' && currentUser.role !== 'ADMIN' && currentUser.role !== 'BASIC_ADMIN')) && (
-          <div style={{ marginTop: 'auto', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
+          <div style={{ marginTop: '2rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
            <button 
              onClick={() => window.location.href = '/admin'} 
              style={{ 

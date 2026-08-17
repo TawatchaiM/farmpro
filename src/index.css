@@ -486,3 +486,8 @@ body {
 .record-item:last-child {
   border-bottom: none;
 }
+
+@keyframes shimmer {
+  0% { transform: translateX(-150%) skewX(-20deg); }
+  100% { transform: translateX(200%) skewX(-20deg); }
+}

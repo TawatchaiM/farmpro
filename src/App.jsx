@@ -493,15 +493,6 @@ function App() {
 
           {(!currentUser || (currentUser.role !== 'CLERK' && currentUser.role !== 'DRC_LAB')) && (
             <div className="sidebar-nav">
-            <div 
-              className={`sidebar-item ${activePortal === 'ai_chat' ? 'active' : ''}`}
-              onClick={() => setActivePortal('ai_chat')}
-              style={activePortal === 'ai_chat' ? { background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)', boxShadow: '0 4px 14px 0 rgba(139, 92, 246, 0.39)', color: 'white' } : { color: '#8b5cf6', fontWeight: 'bold', background: 'rgba(139, 92, 246, 0.05)' }}
-            >
-              ✨ FarmPro AI Chat
-            </div>
-            
-            <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0.75rem 0' }}></div>
 
             {/* --- Role-Based Menu Visibility --- */}
             {/* SUPER_ADMIN/ADMIN/BASIC_ADMIN: เห็นทุกเมนู */}
@@ -574,6 +565,63 @@ function App() {
               style={activePortal === 'pricing' ? { background: '#10b981', color: '#fff', fontWeight: 'bold' } : { color: '#10b981' }}
             >
               💎 แพ็กเกจราคา
+            </div>
+
+            {/* Redesigned AI Chat Button */}
+            <div style={{ marginTop: '0.5rem', paddingBottom: '0.5rem' }}>
+              <div 
+                className={`sidebar-item ${activePortal === 'ai_chat' ? 'active' : ''}`}
+                onClick={() => setActivePortal('ai_chat')}
+                style={{
+                  background: activePortal === 'ai_chat' 
+                    ? 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)' 
+                    : 'linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(126, 34, 206, 0.1) 100%)',
+                  color: activePortal === 'ai_chat' ? '#ffffff' : '#9333ea',
+                  fontWeight: 'bold',
+                  boxShadow: activePortal === 'ai_chat' 
+                    ? '0 6px 20px rgba(147, 51, 234, 0.4)' 
+                    : '0 2px 8px rgba(168, 85, 247, 0.1)',
+                  border: activePortal === 'ai_chat' 
+                    ? '1px solid rgba(168, 85, 247, 0.5)' 
+                    : '1px solid rgba(168, 85, 247, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  padding: '0.85rem',
+                  borderRadius: '12px',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+                onMouseEnter={(e) => {
+                  if (activePortal !== 'ai_chat') {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(126, 34, 206, 0.2) 100%)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(168, 85, 247, 0.2)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activePortal !== 'ai_chat') {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(126, 34, 206, 0.1) 100%)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(168, 85, 247, 0.1)';
+                  }
+                }}
+              >
+                {activePortal !== 'ai_chat' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0, left: 0,
+                    width: '100%', height: '100%',
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+                    animation: 'shimmer 2.5s infinite',
+                    pointerEvents: 'none'
+                  }} />
+                )}
+                <span style={{ fontSize: '1.25rem' }}>✨</span>
+                <span style={{ letterSpacing: '0.3px', zIndex: 1 }}>FarmPro AI Chat</span>
+              </div>
             </div>
           </div>
           )}

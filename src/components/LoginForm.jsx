@@ -110,9 +110,9 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <div style={{ marginBottom: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem' }}>
             <Leaf color="#4ade80" size={38} style={{ transform: 'rotate(-15deg)', flexShrink: 0 }} />
-            <span className="login-brand-text" style={{ fontWeight: 'bold', fontSize: '2rem' }}>FarmPro</span>
+            <span className="login-title">FarmPro</span>
           </div>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: 'bold', margin: '0.3rem 0 0.25rem 0', color: '#f8fafc' }}>
+          <h2 className="login-title" style={{ color: '#f8fafc' }}>
             {isForgotPassword ? '🔑 ลืมรหัสผ่าน' : '🔐 เข้าสู่ระบบ'}
           </h2>
           <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.95rem' }}>
@@ -167,17 +167,6 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
                 placeholder="ตัวอย่าง: yourname@email.com"
                 required
                 className="login-input"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  color: '#fff',
-                  padding: '1rem',
-                  borderRadius: '14px',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  fontSize: '1.05rem',
-                  outline: 'none'
-                }}
               />
             </div>
 
@@ -185,7 +174,7 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
               type="submit"
               disabled={resetStatus === 'loading'}
               className="login-btn-primary"
-              style={{ width: '100%', marginBottom: '1rem' }}
+              style={{ marginBottom: '1rem' }}
             >
               {resetStatus === 'loading' ? 'กำลังส่งข้อมูล...' : 'ส่งลิงก์รีเซ็ตรหัสผ่าน'}
             </button>
@@ -216,17 +205,7 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
                   placeholder="ตัวอย่าง: 0812345678"
                   required
                   className="login-input"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    color: '#fff',
-                    padding: '1rem 1rem 1rem 3rem',
-                    borderRadius: '14px',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    fontSize: '1.05rem',
-                    outline: 'none'
-                  }}
+                  style={{ paddingLeft: '3rem' }}
                 />
                 <Phone size={20} color="#94a3b8" style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
               </div>
@@ -245,17 +224,7 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
                   placeholder="กรอกรหัสผ่านของคุณ"
                   required
                   className="login-input"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    color: '#fff',
-                    padding: '1rem 3rem 1rem 3rem',
-                    borderRadius: '14px',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    fontSize: '1.05rem',
-                    outline: 'none'
-                  }}
+                  style={{ paddingRight: '3rem', paddingLeft: '3rem' }}
                 />
                 <Lock size={20} color="#94a3b8" style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                 <button
@@ -277,7 +246,7 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
               type="submit"
               disabled={loading}
               className="login-btn-primary"
-              style={{ width: '100%', marginBottom: '1.25rem' }}
+              style={{ marginBottom: '1.25rem' }}
             >
               {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'} {!loading && <LogIn size={20} />}
             </button>

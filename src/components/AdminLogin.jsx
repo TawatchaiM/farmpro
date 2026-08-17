@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, db, sanitizeProfile } from '../supabase';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Lock } from 'lucide-react';
 
 export const AdminLogin = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('');
@@ -128,56 +128,12 @@ export const AdminLogin = ({ onLoginSuccess }) => {
     }
   };
 
-  const handleQuickDemoLogin = async (role) => {
-    setLoading(true);
-    setMessage(null);
-    try {
-      const demoPhone = role === 'buyer' ? '0812345678' : role === 'seller' ? '0898765432' : '0865432109';
-      let profiles = [];
-      try {
-        const allProfilesRes = await db.getProfiles();
-        profiles = allProfilesRes?.data || [];
-      } catch (e) {
-        console.warn('Could not fetch remote profiles for demo login, using fallback:', e);
-      }
-      
-      const rawTargetProfile = profiles.find(p => p.role === role || p.phone_number === demoPhone) || {
-        id: `demo-${role}-id`,
-        role: role,
-        full_name: role === 'buyer' ? 'ร้านเจ๊น้อย รับซื้อยาง (Demo)' : role === 'seller' ? 'สมชาย รักสวน (Demo)' : 'ร้านปุ๋ยการเกษตร (Demo)',
-        store_name: role === 'buyer' ? 'ร้านเจ๊น้อย รับซื้อยาง' : null,
-        phone_number: demoPhone,
-        email: `phone_${demoPhone}@farmpro.local`,
-        status: 'approved'
-      };
-
-      const targetProfile = sanitizeProfile ? sanitizeProfile(rawTargetProfile) : rawTargetProfile;
-
-      const session = { 
-        user: { id: targetProfile.id, email: targetProfile.email, phone: demoPhone }, 
-        created_at: new Date().toISOString() 
-      };
-      localStorage.setItem('farmpro_profile', JSON.stringify(targetProfile));
-      localStorage.setItem('farmpro_profile_id', targetProfile.id);
-      localStorage.setItem('farmpro_registered', 'true');
-      localStorage.setItem('farmpro_session', JSON.stringify(session));
-
-      // Reload to let App.jsx pick up the session
-      window.location.href = '/';
-    } catch (err) {
-      console.error('Demo login error:', err);
-      setMessage({ type: 'error', text: 'ไม่สามารถใช้ Demo Login ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const renderForm = () => {
     if (isUpdatePasswordMode) {
       return (
-        <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
-            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>รหัสผ่านใหม่</label>
+            <label style={{ display: 'block', color: '#94a3b8', fontSize: '1rem', marginBottom: '0.5rem', fontWeight: '600' }}>รหัสผ่านใหม่</label>
             <div style={{ position: 'relative' }}>
               <input
                 type={showNewPassword ? 'text' : 'password'}
@@ -185,21 +141,23 @@ export const AdminLogin = ({ onLoginSuccess }) => {
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                style={{ width: '100%', padding: '0.75rem', paddingRight: '2.5rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '0.5rem', color: 'white' }}
+                className="login-input admin-login-input"
+                style={{ paddingRight: '3rem' }}
               />
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
                 style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
           </div>
           <button
             type="submit"
             disabled={loading}
-            style={{ width: '100%', padding: '0.75rem', background: '#10b981', color: 'white', fontWeight: 'bold', borderRadius: '0.5rem', border: 'none', cursor: loading ? 'not-allowed' : 'pointer' }}
+            className="login-btn-primary"
+            style={{ marginTop: '0.5rem' }}
           >
             {loading ? 'กำลังบันทึก...' : 'บันทึกรหัสผ่านใหม่'}
           </button>
@@ -209,22 +167,23 @@ export const AdminLogin = ({ onLoginSuccess }) => {
 
     if (isResetMode) {
       return (
-        <form onSubmit={handleForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <form onSubmit={handleForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
-            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>อีเมลแอดมิน</label>
+            <label style={{ display: 'block', color: '#94a3b8', fontSize: '1rem', marginBottom: '0.5rem', fontWeight: '600' }}>อีเมลแอดมิน</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@farmpro.com"
               required
-              style={{ width: '100%', padding: '0.75rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '0.5rem', color: 'white' }}
+              className="login-input admin-login-input"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            style={{ width: '100%', padding: '0.75rem', background: '#10b981', color: 'white', fontWeight: 'bold', borderRadius: '0.5rem', border: 'none', cursor: loading ? 'not-allowed' : 'pointer' }}
+            className="login-btn-primary"
+            style={{ marginTop: '0.5rem' }}
           >
             {loading ? 'กำลังส่ง...' : 'ส่งลิงก์รีเซ็ตรหัสผ่าน'}
           </button>
@@ -232,7 +191,7 @@ export const AdminLogin = ({ onLoginSuccess }) => {
             <button
               type="button"
               onClick={() => { setIsResetMode(false); setMessage(null); }}
-              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.875rem' }}
+              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.9rem', textDecoration: 'underline' }}
             >
               กลับไปหน้าเข้าสู่ระบบ
             </button>
@@ -242,25 +201,25 @@ export const AdminLogin = ({ onLoginSuccess }) => {
     }
 
     return (
-      <form onSubmit={handleAdminLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <form onSubmit={handleAdminLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         <div>
-          <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>อีเมลผู้ดูแลระบบ</label>
+          <label style={{ display: 'block', color: '#94a3b8', fontSize: '1rem', marginBottom: '0.5rem', fontWeight: '600' }}>อีเมลผู้ดูแลระบบ</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="admin@farmpro.com"
             required
-            style={{ width: '100%', padding: '0.75rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '0.5rem', color: 'white' }}
+            className="login-input admin-login-input"
           />
         </div>
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <label style={{ color: '#94a3b8', fontSize: '0.875rem' }}>รหัสผ่าน</label>
+            <label style={{ color: '#94a3b8', fontSize: '1rem', fontWeight: '600' }}>รหัสผ่าน</label>
             <button
               type="button"
               onClick={() => { setIsResetMode(true); setMessage(null); }}
-              style={{ background: 'none', border: 'none', color: '#10b981', fontSize: '0.875rem', cursor: 'pointer' }}
+              style={{ background: 'none', border: 'none', color: '#10b981', fontSize: '0.9rem', cursor: 'pointer' }}
             >
               ลืมรหัสผ่าน?
             </button>
@@ -272,21 +231,23 @@ export const AdminLogin = ({ onLoginSuccess }) => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              style={{ width: '100%', padding: '0.75rem', paddingRight: '2.5rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '0.5rem', color: 'white' }}
+              className="login-input admin-login-input"
+              style={{ paddingRight: '3rem' }}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
         </div>
         <button
           type="submit"
           disabled={loading}
-          style={{ width: '100%', padding: '0.75rem', background: '#10b981', color: 'white', fontWeight: 'bold', borderRadius: '0.5rem', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', marginTop: '0.5rem' }}
+          className="login-btn-primary"
+          style={{ marginTop: '0.5rem' }}
         >
           {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
         </button>
@@ -294,7 +255,7 @@ export const AdminLogin = ({ onLoginSuccess }) => {
           <button
             type="button"
             onClick={() => window.location.href = '/'}
-            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.875rem' }}
+            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.95rem' }}
           >
             &larr; กลับไปหน้าระบบหลัก
           </button>
@@ -304,19 +265,16 @@ export const AdminLogin = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div className="admin-login-card" style={{ width: '100%', backgroundColor: '#1e293b', borderRadius: '1rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #334155', padding: '1.5rem', margin: 'auto', boxSizing: 'border-box' }}>
+    <div className="login-overlay" style={{ backgroundColor: '#0f172a', background: 'none' }}>
+      <div className="login-card admin-login-card">
         
-
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ display: 'inline-flex', padding: '0.75rem', borderRadius: '9999px', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#34d399', marginBottom: '0.75rem' }}>
-            <svg style={{ width: '2rem', height: '2rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
+            <Lock size={32} />
           </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', margin: 0 }}>FarmPro Admin Console</h2>
-          <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+          <h2 className="login-title" style={{ color: 'white' }}>FarmPro Admin Console</h2>
+          <p style={{ color: '#94a3b8', fontSize: '0.95rem', marginTop: '0.25rem' }}>
             {isUpdatePasswordMode ? 'ตั้งรหัสผ่านใหม่' : (isResetMode ? 'รีเซ็ตรหัสผ่านผ่านอีเมล' : 'เข้าสู่ระบบผู้ดูแลระบบ')}
           </p>
         </div>
@@ -325,12 +283,13 @@ export const AdminLogin = ({ onLoginSuccess }) => {
         {message && (
           <div style={{ 
             padding: '1rem', 
-            borderRadius: '0.5rem', 
+            borderRadius: '0.75rem', 
             marginBottom: '1.5rem', 
             backgroundColor: message.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
             border: `1px solid ${message.type === 'success' ? '#10b981' : '#ef4444'}`,
             color: message.type === 'success' ? '#34d399' : '#f87171',
-            fontSize: '0.875rem'
+            fontSize: '0.95rem',
+            textAlign: 'center'
           }}>
             {message.text}
           </div>
@@ -339,8 +298,6 @@ export const AdminLogin = ({ onLoginSuccess }) => {
         {/* Dynamic Form */}
         {renderForm()}
         
-
-
       </div>
     </div>
   );

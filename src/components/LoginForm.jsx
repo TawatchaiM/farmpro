@@ -81,51 +81,23 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
     }
   };
 
-
   return (
-    <div className="onboarding-overlay" style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
-      background: 'radial-gradient(circle at 10% 20%, rgba(26, 77, 46, 1) 0%, rgba(12, 36, 21, 1) 90%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 9999,
-      overflowY: 'auto',
-      padding: '0.75rem',
-      boxSizing: 'border-box',
-      WebkitOverflowScrolling: 'touch'
-    }}>
-      <div className="login-card-responsive" style={{
-        background: 'rgba(255, 255, 255, 0.08)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255, 255, 255, 0.15)',
-        borderRadius: '24px',
-        width: '100%',
-        maxWidth: '520px',
-        margin: 'auto',
-        padding: 'clamp(1.75rem, 6vw, 3rem) clamp(1.25rem, 5vw, 2.5rem)',
-        color: '#f8fafc',
-        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
-        boxSizing: 'border-box',
-        position: 'relative'
-      }}>
+    <div className="login-overlay">
+      <div className="login-card">
+        {/* Home Button */}
         {onGoHome && (
           <div style={{ position: 'absolute', top: '1.25rem', right: '1.25rem' }}>
-            <button 
+            <button
               type="button"
               onClick={onGoHome}
               style={{
                 background: 'rgba(255, 255, 255, 0.12)',
                 border: '1px solid rgba(255, 255, 255, 0.25)',
                 color: '#f8fafc',
-                padding: '0.4rem 0.85rem',
+                padding: '0.45rem 1rem',
                 borderRadius: '20px',
                 cursor: 'pointer',
-                fontSize: '0.85rem',
+                fontSize: '0.9rem',
                 fontWeight: '500'
               }}
             >
@@ -135,28 +107,31 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
         )}
 
         {/* Logo & Header */}
-        <div style={{ textAlign: 'center', marginBottom: 'clamp(1.5rem, 4vw, 2.5rem)' }}>
-          <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem' }}>
-            <Leaf color="#4ade80" size={36} style={{ transform: 'rotate(-15deg)', flexShrink: 0 }} />
-            <span style={{ fontWeight: 'bold', fontSize: 'clamp(1.6rem, 6vw, 2.2rem)' }}>FarmPro</span>
+        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+          <div style={{ marginBottom: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem' }}>
+            <Leaf color="#4ade80" size={38} style={{ transform: 'rotate(-15deg)', flexShrink: 0 }} />
+            <span className="login-brand-text" style={{ fontWeight: 'bold', fontSize: '2rem' }}>FarmPro</span>
           </div>
-          <h2 style={{ fontSize: 'clamp(1.3rem, 5vw, 1.75rem)', fontWeight: 'bold', margin: '0.4rem 0 0.3rem 0' }}>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 'bold', margin: '0.3rem 0 0.25rem 0', color: '#f8fafc' }}>
             {isForgotPassword ? '🔑 ลืมรหัสผ่าน' : '🔐 เข้าสู่ระบบ'}
           </h2>
-          <p style={{ color: '#94a3b8', margin: 0, fontSize: 'clamp(0.85rem, 3vw, 1rem)' }}>
-            {isForgotPassword ? 'กรอกอีเมลของคุณเพื่อรับลิงก์รีเซ็ตรหัสผ่าน' : 'เข้าใช้งานระบบด้วยเบอร์โทรศัพท์และรหัสผ่าน'}
+          <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.95rem' }}>
+            {isForgotPassword
+              ? 'กรอกอีเมลของคุณเพื่อรับลิงก์รีเซ็ตรหัสผ่าน'
+              : 'เข้าใช้งานระบบด้วยเบอร์โทรศัพท์และรหัสผ่าน'}
           </p>
         </div>
 
+        {/* Error Message */}
         {errorMsg && !isForgotPassword && (
           <div style={{
             background: 'rgba(239, 68, 68, 0.15)',
             border: '1px solid #ef4444',
             color: '#fca5a5',
-            padding: '0.75rem 1rem',
+            padding: '0.85rem 1rem',
             borderRadius: '12px',
             marginBottom: '1.5rem',
-            fontSize: '0.875rem',
+            fontSize: '0.9rem',
             textAlign: 'center'
           }}>
             ⚠️ {errorMsg}
@@ -164,52 +139,53 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
         )}
 
         {isForgotPassword ? (
+          /* ---- Forgot Password Form ---- */
           <form onSubmit={handleResetPassword}>
             {resetMsg && (
               <div style={{
                 background: resetStatus === 'success' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                 border: resetStatus === 'success' ? '1px solid #22c55e' : '1px solid #ef4444',
                 color: resetStatus === 'success' ? '#4ade80' : '#fca5a5',
-                padding: '0.75rem 1rem',
+                padding: '0.85rem 1rem',
                 borderRadius: '12px',
                 marginBottom: '1.5rem',
-                fontSize: '0.875rem',
+                fontSize: '0.9rem',
                 textAlign: 'center'
               }}>
                 {resetStatus === 'success' ? '✅' : '⚠️'} {resetMsg}
               </div>
             )}
 
-            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-              <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'block', fontSize: '0.875rem', fontWeight: '500' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ color: '#cbd5e1', marginBottom: '0.5rem', display: 'block', fontSize: '1rem', fontWeight: '600' }}>
                 อีเมล (Email) <span style={{ color: '#ef4444' }}>*</span>
               </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="email"
-                  value={emailForReset}
-                  onChange={(e) => setEmailForReset(e.target.value)}
-                  placeholder="ตัวอย่าง: yourname@email.com"
-                  required
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.18)',
-                    color: '#fff',
-                    padding: '0.85rem 1rem',
-                    borderRadius: '12px',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
+              <input
+                type="email"
+                value={emailForReset}
+                onChange={(e) => setEmailForReset(e.target.value)}
+                placeholder="ตัวอย่าง: yourname@email.com"
+                required
+                className="login-input"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  color: '#fff',
+                  padding: '1rem',
+                  borderRadius: '14px',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  fontSize: '1.05rem',
+                  outline: 'none'
+                }}
+              />
             </div>
 
             <button
               type="submit"
               disabled={resetStatus === 'loading'}
-              className="onboarding-btn-primary"
-              style={{ width: '100%', padding: '0.9rem', fontSize: '1.05rem', marginBottom: '1rem' }}
+              className="login-btn-primary"
+              style={{ width: '100%', marginBottom: '1rem' }}
             >
               {resetStatus === 'loading' ? 'กำลังส่งข้อมูล...' : 'ส่งลิงก์รีเซ็ตรหัสผ่าน'}
             </button>
@@ -218,165 +194,130 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
               <button
                 type="button"
                 onClick={() => { setIsForgotPassword(false); setResetMsg(''); setResetStatus('idle'); }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#94a3b8',
-                  fontSize: '0.875rem',
-                  cursor: 'pointer',
-                  textDecoration: 'underline'
-                }}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'underline' }}
               >
                 กลับไปหน้าเข้าสู่ระบบ
               </button>
             </div>
           </form>
         ) : (
+          /* ---- Login Form ---- */
           <form onSubmit={handleSubmit}>
-            {/* Phone Number Input */}
-            <div className="form-group" style={{ marginBottom: 'clamp(1rem, 3vw, 1.5rem)' }}>
-            <label style={{ color: '#cbd5e1', marginBottom: '0.5rem', display: 'block', fontSize: 'clamp(0.85rem, 3vw, 1rem)', fontWeight: '600' }}>
-              เบอร์โทรศัพท์ (10 หลัก) <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="ตัวอย่าง: 0812345678"
-                required
-                style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  color: '#fff',
-                  padding: 'clamp(0.85rem, 3vw, 1.1rem) 1rem clamp(0.85rem, 3vw, 1.1rem) 2.8rem',
-                  borderRadius: '14px',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  fontSize: 'clamp(0.95rem, 3.5vw, 1.1rem)'
-                }}
-              />
-              <Phone size={20} color="#94a3b8" style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)' }} />
+            {/* Phone */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ color: '#cbd5e1', marginBottom: '0.5rem', display: 'block', fontSize: '1rem', fontWeight: '600' }}>
+                เบอร์โทรศัพท์ (10 หลัก) <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="ตัวอย่าง: 0812345678"
+                  required
+                  className="login-input"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    color: '#fff',
+                    padding: '1rem 1rem 1rem 3rem',
+                    borderRadius: '14px',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    fontSize: '1.05rem',
+                    outline: 'none'
+                  }}
+                />
+                <Phone size={20} color="#94a3b8" style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+              </div>
             </div>
-          </div>
 
-          {/* Password Input */}
-          <div className="form-group" style={{ marginBottom: 'clamp(1.25rem, 4vw, 2rem)' }}>
-            <label style={{ color: '#cbd5e1', marginBottom: '0.5rem', display: 'block', fontSize: 'clamp(0.85rem, 3vw, 1rem)', fontWeight: '600' }}>
-              รหัสผ่าน (Password) <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="กรอกรหัสผ่านของคุณ"
-                required
-                style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  color: '#fff',
-                  padding: 'clamp(0.85rem, 3vw, 1.1rem) 2.8rem clamp(0.85rem, 3vw, 1.1rem) 2.8rem',
-                  borderRadius: '14px',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  fontSize: 'clamp(0.95rem, 3.5vw, 1.1rem)'
-                }}
-              />
-              <Lock size={20} color="#94a3b8" style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)' }} />
+            {/* Password */}
+            <div style={{ marginBottom: '1.75rem' }}>
+              <label style={{ color: '#cbd5e1', marginBottom: '0.5rem', display: 'block', fontSize: '1rem', fontWeight: '600' }}>
+                รหัสผ่าน (Password) <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="กรอกรหัสผ่านของคุณ"
+                  required
+                  className="login-input"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    color: '#fff',
+                    padding: '1rem 3rem 1rem 3rem',
+                    borderRadius: '14px',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    fontSize: '1.05rem',
+                    outline: 'none'
+                  }}
+                />
+                <Lock size={20} color="#94a3b8" style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute', right: '0.9rem', top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0,
+                    display: 'flex', alignItems: 'center'
+                  }}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="login-btn-primary"
+              style={{ width: '100%', marginBottom: '1.25rem' }}
+            >
+              {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'} {!loading && <LogIn size={20} />}
+            </button>
+
+            <div style={{ textAlign: 'right' }}>
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '0.9rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  color: '#94a3b8',
-                  cursor: 'pointer',
-                  padding: 0
-                }}
+                onClick={() => setIsForgotPassword(true)}
+                style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.9rem', cursor: 'pointer', padding: 0 }}
               >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                ลืมรหัสผ่าน?
               </button>
             </div>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="onboarding-btn-primary"
-            style={{ width: '100%', padding: 'clamp(0.9rem, 3.5vw, 1.2rem)', fontSize: 'clamp(1rem, 4vw, 1.2rem)', marginBottom: '1.25rem', borderRadius: '14px' }}
-          >
-            {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'} <LogIn size={20} />
-          </button>
-
-          <div style={{ marginTop: '1rem', textAlign: 'right' }}>
-            <button
-              type="button"
-              onClick={() => setIsForgotPassword(true)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#64748b',
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                padding: 0
-              }}
-            >
-              ลืมรหัสผ่าน?
-            </button>
-          </div>
-        </form>
+          </form>
         )}
 
-
-
-        {/* Switch to Register link */}
+        {/* Register Link */}
         {onSwitchToRegister && (
-          <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.875rem', color: '#94a3b8' }}>
+          <div style={{ marginTop: '1.75rem', textAlign: 'center', fontSize: '0.95rem', color: '#94a3b8' }}>
             ยังไม่มีบัญชีใช้งาน?{' '}
             <button
               type="button"
               onClick={onSwitchToRegister}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#4ade80',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                padding: 0
-              }}
+              style={{ background: 'none', border: 'none', color: '#4ade80', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: '0.95rem' }}
             >
               ลงทะเบียนใหม่ที่นี่ (ฟรี 100%)
             </button>
           </div>
         )}
-        
-        {/* Admin Login Link */}
-        <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+
+        {/* Admin Link */}
+        <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
           <button
             type="button"
             onClick={() => window.location.href = '/admin'}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#64748b',
-              fontSize: '0.8rem',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
+            style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
           >
             <Lock size={14} /> สำหรับผู้ดูแลระบบ (Admin)
           </button>
         </div>
-
       </div>
     </div>
   );

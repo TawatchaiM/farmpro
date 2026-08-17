@@ -507,6 +507,19 @@ function App() {
 
               return (
                 <>
+                  {/* แดชบอร์ดผู้ดูแล: เฉพาะ admin */}
+                  {isAdmin && (
+                    <>
+                      <div
+                        className={`sidebar-item ${activePortal === 'admin' ? 'active' : ''}`}
+                        onClick={() => setActivePortal('admin')}
+                      >
+                        🛡️ แดชบอร์ดผู้ดูแล
+                      </div>
+                      <div style={{ height: '1px', background: 'var(--border-color)', margin: '0.75rem 0' }}></div>
+                    </>
+                  )}
+
                   {/* หมวดผู้ซื้อ: แสดงเมื่อ buyer หรือ admin */}
                   {(isBuyer || isAdmin) && (
                     <div
@@ -535,19 +548,6 @@ function App() {
                     >
                       🛒 หมวดร้านค้าและบริการ
                     </div>
-                  )}
-
-                  {/* แดชบอร์ดผู้ดูแล: เฉพาะ admin */}
-                  {isAdmin && (
-                    <>
-                      <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0.75rem 0' }}></div>
-                      <div
-                        className={`sidebar-item ${activePortal === 'admin' ? 'active' : ''}`}
-                        onClick={() => setActivePortal('admin')}
-                      >
-                        🛡️ แดชบอร์ดผู้ดูแล
-                      </div>
-                    </>
                   )}
                 </>
               );

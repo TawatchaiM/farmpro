@@ -581,21 +581,31 @@ body {
   cursor: not-allowed;
 }
 
-/* Mobile: card fills near-full width */
-@media (max-width: 540px) {
+.admin-login-card {
+  max-width: 28rem;
+}
+
+/* Mobile & Tablets: card fills near-full width */
+@media (max-width: 850px) {
   .login-overlay {
-    padding: 0.75rem;
+    padding: 1rem;
     align-items: center;
   }
 
   .login-card {
-    max-width: 100%;
+    max-width: 94%;
     padding: 2.25rem 1.5rem;
     border-radius: 20px;
   }
 
+  .admin-login-card {
+    max-width: 94%;
+    padding: 2.25rem 1.5rem !important;
+  }
+
   .login-btn-primary {
-    padding: 1.1rem;
-    font-size: 1.15rem;
+    padding: 1.15rem;
+    font-size: 1.2rem;
   }
 }
+

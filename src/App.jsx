@@ -650,7 +650,7 @@ function App() {
 
       {/* Main Content */}
       <div className="main-content">
-        <div className="content-wrapper" style={activePortal === 'pricing' ? { maxWidth: '1100px' } : {}}>
+        <div className="content-wrapper" style={{ maxWidth: (activePortal === 'pricing' || activePortal === 'buyer') ? '1200px' : '' }}>
           {activePortal !== 'admin' && activePortal !== 'ai_chat' && activePortal !== 'pricing' && (
             <div className="header" style={{ marginBottom: '1rem', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>

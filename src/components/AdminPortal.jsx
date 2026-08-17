@@ -211,7 +211,7 @@ function AdminPortal() {
       <div className="header" style={{ textAlign: 'left', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 style={{ color: '#1e293b', fontSize: '1.5rem', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
-            <span style={{ background: 'linear-gradient(135deg, #0f766e, #0d9488)', padding: '0.4rem 0.6rem', borderRadius: '10px', color: '#fff', fontSize: '1.1rem' }}>🛡️</span>
+            <span style={{ background: '#dcfce7', padding: '0.4rem 0.6rem', borderRadius: '10px', color: '#16a34a', fontSize: '1.1rem', border: '1px solid #bbf7d0' }}>🛡️</span>
             ระบบจัดการหลังบ้าน (Admin Portal)
           </h2>
           <p style={{ color: '#64748b', margin: 0, fontSize: '0.875rem' }}>ศูนย์ดูแลระบบฟาร์มโปร ตรวจสอบผู้ลงทะเบียน และอนุมัติสถานะสิทธิ์การใช้งาน</p>
@@ -257,81 +257,29 @@ function AdminPortal() {
         </div>
       )}
 
-      {/* Tabs Header - Eye Pleasing Soft Palette */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
+      {/* Tabs Header */}
+      <div className="nav-tabs" style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', background: 'transparent', boxShadow: 'none' }}>
         <button 
+          className={`nav-tab ${activeTab === 'users' ? 'active' : ''}`}
           onClick={() => setActiveTab('users')}
-          style={{
-            flex: 1,
-            minWidth: '150px',
-            padding: '0.75rem 1rem',
-            borderRadius: '10px',
-            fontSize: '0.925rem',
-            fontWeight: 'bold',
-            border: activeTab === 'users' ? 'none' : '1px solid #e2e8f0',
-            background: activeTab === 'users' ? 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)' : '#f8fafc',
-            color: activeTab === 'users' ? '#ffffff' : '#64748b',
-            boxShadow: activeTab === 'users' ? '0 4px 12px rgba(15, 118, 110, 0.25)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
         >
           👥 จัดการผู้ใช้งาน
         </button>
         <button 
+          className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
           onClick={() => setActiveTab('dashboard')}
-          style={{
-            flex: 1,
-            minWidth: '150px',
-            padding: '0.75rem 1rem',
-            borderRadius: '10px',
-            fontSize: '0.925rem',
-            fontWeight: 'bold',
-            border: activeTab === 'dashboard' ? 'none' : '1px solid #e2e8f0',
-            background: activeTab === 'dashboard' ? 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)' : '#f8fafc',
-            color: activeTab === 'dashboard' ? '#ffffff' : '#64748b',
-            boxShadow: activeTab === 'dashboard' ? '0 4px 12px rgba(15, 118, 110, 0.25)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
         >
           📊 ภาพรวมและสถิติ
         </button>
         <button 
+          className={`nav-tab ${activeTab === 'subscriptions' ? 'active' : ''}`}
           onClick={() => setActiveTab('subscriptions')}
-          style={{
-            flex: 1,
-            minWidth: '150px',
-            padding: '0.75rem 1rem',
-            borderRadius: '10px',
-            fontSize: '0.925rem',
-            fontWeight: 'bold',
-            border: activeTab === 'subscriptions' ? 'none' : '1px solid #e2e8f0',
-            background: activeTab === 'subscriptions' ? 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)' : '#f8fafc',
-            color: activeTab === 'subscriptions' ? '#ffffff' : '#64748b',
-            boxShadow: activeTab === 'subscriptions' ? '0 4px 12px rgba(15, 118, 110, 0.25)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
         >
           💎 แพ็กเกจ & รายได้
         </button>
         <button 
+          className={`nav-tab ${activeTab === 'demo_login' ? 'active' : ''}`}
           onClick={() => setActiveTab('demo_login')}
-          style={{
-            flex: 1,
-            minWidth: '150px',
-            padding: '0.75rem 1rem',
-            borderRadius: '10px',
-            fontSize: '0.925rem',
-            fontWeight: 'bold',
-            border: activeTab === 'demo_login' ? 'none' : '1px solid #e2e8f0',
-            background: activeTab === 'demo_login' ? 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)' : '#f8fafc',
-            color: activeTab === 'demo_login' ? '#ffffff' : '#64748b',
-            boxShadow: activeTab === 'demo_login' ? '0 4px 12px rgba(15, 118, 110, 0.25)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
         >
           ⚡ ทดสอบระบบ (Demo)
         </button>
@@ -425,12 +373,13 @@ function AdminPortal() {
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="🔍 พิมพ์ค้นหาชื่อ, เบอร์โทร, จังหวัด..."
               style={{
-                padding: '0.5rem 0.9rem',
-                borderRadius: '8px',
+                padding: '0.6rem 1rem',
+                borderRadius: '9999px',
                 border: '1px solid #cbd5e1',
-                fontSize: '0.85rem',
-                minWidth: '240px',
-                outline: 'none'
+                fontSize: '0.875rem',
+                minWidth: '260px',
+                outline: 'none',
+                background: '#f8fafc'
               }}
             />
           </div>
@@ -441,8 +390,20 @@ function AdminPortal() {
               ⏳ กำลังโหลดรายการผู้ลงทะเบียน...
             </div>
           ) : filteredProfiles.length === 0 ? (
-            <div style={{ padding: '3rem', textAlign: 'center', background: '#f8fafc', borderRadius: '12px', color: '#64748b', border: '1px dashed #cbd5e1' }}>
-              📭 ไม่พบรายการผู้ลงทะเบียนตามเงื่อนไขที่เลือก
+            <div style={{ 
+              padding: '4rem 2rem', 
+              textAlign: 'center', 
+              background: '#f8fafc', 
+              borderRadius: '16px', 
+              color: '#64748b', 
+              border: '2px dashed #cbd5e1',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1rem'
+            }}>
+              <span style={{ fontSize: '3rem', opacity: 0.5 }}>📭</span>
+              <div style={{ fontWeight: '600', fontSize: '1.1rem' }}>ไม่พบรายการลงทะเบียนตามเงื่อนไขที่เลือก</div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

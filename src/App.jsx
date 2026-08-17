@@ -304,7 +304,6 @@ function App() {
         <div>
           <div 
             className="sidebar-logo" 
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', cursor: 'pointer' }}
             onClick={() => {
               if (currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || currentUser?.role === 'BASIC_ADMIN') {
                 setActivePortal('admin');
@@ -545,7 +544,6 @@ function App() {
                       <div
                         className={`sidebar-item ${activePortal === 'admin' ? 'active' : ''}`}
                         onClick={() => setActivePortal('admin')}
-                        style={activePortal === 'admin' ? { background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', color: 'white', boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.39)' } : { color: '#3b82f6', fontWeight: 'bold' }}
                       >
                         🛡️ แดชบอร์ดผู้ดูแล
                       </div>
@@ -562,7 +560,6 @@ function App() {
             <div 
               className={`sidebar-item ${activePortal === 'pricing' ? 'active' : ''}`}
               onClick={() => { setActivePortal('pricing'); setIsLoggedInAdmin(false); }}
-              style={activePortal === 'pricing' ? { background: '#10b981', color: '#fff', fontWeight: 'bold' } : { color: '#10b981' }}
             >
               💎 แพ็กเกจราคา
             </div>
@@ -574,16 +571,16 @@ function App() {
                 onClick={() => setActivePortal('ai_chat')}
                 style={{
                   background: activePortal === 'ai_chat' 
-                    ? 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)' 
-                    : 'linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(126, 34, 206, 0.1) 100%)',
-                  color: activePortal === 'ai_chat' ? '#ffffff' : '#9333ea',
+                    ? '#ea580c' 
+                    : '#fff7ed',
+                  color: activePortal === 'ai_chat' ? '#ffffff' : '#ea580c',
                   fontWeight: 'bold',
                   boxShadow: activePortal === 'ai_chat' 
-                    ? '0 6px 20px rgba(147, 51, 234, 0.4)' 
-                    : '0 2px 8px rgba(168, 85, 247, 0.1)',
+                    ? '0 4px 12px rgba(234, 88, 12, 0.25)' 
+                    : 'none',
                   border: activePortal === 'ai_chat' 
-                    ? '1px solid rgba(168, 85, 247, 0.5)' 
-                    : '1px solid rgba(168, 85, 247, 0.3)',
+                    ? '1px solid #ea580c' 
+                    : '1px solid #fed7aa',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -596,16 +593,16 @@ function App() {
                 }}
                 onMouseEnter={(e) => {
                   if (activePortal !== 'ai_chat') {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(126, 34, 206, 0.2) 100%)';
+                    e.currentTarget.style.background = '#ffedd5';
                     e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(168, 85, 247, 0.2)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(234, 88, 12, 0.15)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (activePortal !== 'ai_chat') {
-                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(126, 34, 206, 0.1) 100%)';
+                    e.currentTarget.style.background = '#fff7ed';
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(168, 85, 247, 0.1)';
+                    e.currentTarget.style.boxShadow = 'none';
                   }
                 }}
               >
@@ -614,8 +611,8 @@ function App() {
                     position: 'absolute',
                     top: 0, left: 0,
                     width: '100%', height: '100%',
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-                    animation: 'shimmer 2.5s infinite',
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)',
+                    animation: 'shimmer 3s infinite',
                     pointerEvents: 'none'
                   }} />
                 )}

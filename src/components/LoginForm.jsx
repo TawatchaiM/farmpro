@@ -95,7 +95,7 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
       justifyContent: 'center',
       zIndex: 9999,
       overflowY: 'auto',
-      padding: '2rem 1rem',
+      padding: '1rem',
       boxSizing: 'border-box',
       WebkitOverflowScrolling: 'touch'
     }}>
@@ -105,9 +105,9 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
         border: '1px solid rgba(255, 255, 255, 0.12)',
         borderRadius: '24px',
         width: '100%',
-        maxWidth: '400px',
+        maxWidth: '480px',
         margin: 'auto',
-        padding: '2rem 1.5rem',
+        padding: '3rem 2.5rem',
         color: '#f8fafc',
         boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
         boxSizing: 'border-box',
@@ -249,11 +249,11 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
                   background: 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid rgba(255, 255, 255, 0.18)',
                   color: '#fff',
-                  padding: '0.85rem 1rem 0.85rem 2.6rem',
+                  padding: '1rem 1rem 1rem 2.6rem',
                   borderRadius: '12px',
                   width: '100%',
                   boxSizing: 'border-box',
-                  fontSize: '0.95rem'
+                  fontSize: '1rem'
                 }}
               />
               <Phone size={18} color="#94a3b8" style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }} />
@@ -276,11 +276,11 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
                   background: 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid rgba(255, 255, 255, 0.18)',
                   color: '#fff',
-                  padding: '0.85rem 2.6rem 0.85rem 2.6rem',
+                  padding: '1rem 2.6rem 1rem 2.6rem',
                   borderRadius: '12px',
                   width: '100%',
                   boxSizing: 'border-box',
-                  fontSize: '0.95rem'
+                  fontSize: '1rem'
                 }}
               />
               <Lock size={18} color="#94a3b8" style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }} />
@@ -309,7 +309,7 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
             type="submit"
             disabled={loading}
             className="onboarding-btn-primary"
-            style={{ width: '100%', padding: '0.9rem', fontSize: '1.05rem' }}
+            style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', marginBottom: '1.25rem' }}
           >
             {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'} <LogIn size={20} />
           </button>

@@ -23,11 +23,18 @@
   padding: 0;
 }
 
+html, body, #root {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
 body {
   font-family: 'Inter', sans-serif;
   background: var(--bg-color);
   color: var(--text-main);
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;

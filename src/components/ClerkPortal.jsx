@@ -901,7 +901,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
       </div>
 
       {/* Paid Transactions Queue (รายการที่ชำระเงินแล้ววันนี้) */}
-      <div className="card" style={{ marginTop: '2rem' }}>
+      <div className="card" style={{ marginBottom: 0 }}>
         <h3 className="section-title-icon">✅ รายการที่ชำระเงินแล้ววันนี้ (Paid)</h3>
         {paidList.length === 0 ? (
           <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.95rem' }}>

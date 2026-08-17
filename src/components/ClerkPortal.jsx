@@ -955,6 +955,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
           </div>
         )}
       </div>
+      </div>
 
       {/* Payment Success Modal */}
       {paymentSuccessTx && (

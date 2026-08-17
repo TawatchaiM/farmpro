@@ -95,21 +95,21 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
       justifyContent: 'center',
       zIndex: 9999,
       overflowY: 'auto',
-      padding: '1rem',
+      padding: '0.75rem',
       boxSizing: 'border-box',
       WebkitOverflowScrolling: 'touch'
     }}>
-      <div className="onboarding-card" style={{
+      <div className="login-card-responsive" style={{
         background: 'rgba(255, 255, 255, 0.08)',
         backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255, 255, 255, 0.12)',
+        border: '1px solid rgba(255, 255, 255, 0.15)',
         borderRadius: '24px',
         width: '100%',
-        maxWidth: '480px',
+        maxWidth: '520px',
         margin: 'auto',
-        padding: '3rem 2.5rem',
+        padding: 'clamp(1.75rem, 6vw, 3rem) clamp(1.25rem, 5vw, 2.5rem)',
         color: '#f8fafc',
-        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
         boxSizing: 'border-box',
         position: 'relative'
       }}>
@@ -135,15 +135,15 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
         )}
 
         {/* Logo & Header */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
-            <Leaf color="#4ade80" size={40} style={{ transform: 'rotate(-15deg)', flexShrink: 0 }} />
-            <span style={{ fontWeight: 'bold' }}>FarmPro</span>
+        <div style={{ textAlign: 'center', marginBottom: 'clamp(1.5rem, 4vw, 2.5rem)' }}>
+          <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem' }}>
+            <Leaf color="#4ade80" size={36} style={{ transform: 'rotate(-15deg)', flexShrink: 0 }} />
+            <span style={{ fontWeight: 'bold', fontSize: 'clamp(1.6rem, 6vw, 2.2rem)' }}>FarmPro</span>
           </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '0.5rem 0 0.25rem 0' }}>
+          <h2 style={{ fontSize: 'clamp(1.3rem, 5vw, 1.75rem)', fontWeight: 'bold', margin: '0.4rem 0 0.3rem 0' }}>
             {isForgotPassword ? '🔑 ลืมรหัสผ่าน' : '🔐 เข้าสู่ระบบ'}
           </h2>
-          <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.9rem' }}>
+          <p style={{ color: '#94a3b8', margin: 0, fontSize: 'clamp(0.85rem, 3vw, 1rem)' }}>
             {isForgotPassword ? 'กรอกอีเมลของคุณเพื่อรับลิงก์รีเซ็ตรหัสผ่าน' : 'เข้าใช้งานระบบด้วยเบอร์โทรศัพท์และรหัสผ่าน'}
           </p>
         </div>
@@ -234,8 +234,8 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
         ) : (
           <form onSubmit={handleSubmit}>
             {/* Phone Number Input */}
-            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-            <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'block', fontSize: '0.875rem', fontWeight: '500' }}>
+            <div className="form-group" style={{ marginBottom: 'clamp(1rem, 3vw, 1.5rem)' }}>
+            <label style={{ color: '#cbd5e1', marginBottom: '0.5rem', display: 'block', fontSize: 'clamp(0.85rem, 3vw, 1rem)', fontWeight: '600' }}>
               เบอร์โทรศัพท์ (10 หลัก) <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <div style={{ position: 'relative' }}>
@@ -246,23 +246,23 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
                 placeholder="ตัวอย่าง: 0812345678"
                 required
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
                   color: '#fff',
-                  padding: '1rem 1rem 1rem 2.6rem',
-                  borderRadius: '12px',
+                  padding: 'clamp(0.85rem, 3vw, 1.1rem) 1rem clamp(0.85rem, 3vw, 1.1rem) 2.8rem',
+                  borderRadius: '14px',
                   width: '100%',
                   boxSizing: 'border-box',
-                  fontSize: '1rem'
+                  fontSize: 'clamp(0.95rem, 3.5vw, 1.1rem)'
                 }}
               />
-              <Phone size={18} color="#94a3b8" style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }} />
+              <Phone size={20} color="#94a3b8" style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)' }} />
             </div>
           </div>
 
           {/* Password Input */}
-          <div className="form-group" style={{ marginBottom: '1.75rem' }}>
-            <label style={{ color: '#cbd5e1', marginBottom: '0.4rem', display: 'block', fontSize: '0.875rem', fontWeight: '500' }}>
+          <div className="form-group" style={{ marginBottom: 'clamp(1.25rem, 4vw, 2rem)' }}>
+            <label style={{ color: '#cbd5e1', marginBottom: '0.5rem', display: 'block', fontSize: 'clamp(0.85rem, 3vw, 1rem)', fontWeight: '600' }}>
               รหัสผ่าน (Password) <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <div style={{ position: 'relative' }}>
@@ -273,23 +273,23 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
                 placeholder="กรอกรหัสผ่านของคุณ"
                 required
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
                   color: '#fff',
-                  padding: '1rem 2.6rem 1rem 2.6rem',
-                  borderRadius: '12px',
+                  padding: 'clamp(0.85rem, 3vw, 1.1rem) 2.8rem clamp(0.85rem, 3vw, 1.1rem) 2.8rem',
+                  borderRadius: '14px',
                   width: '100%',
                   boxSizing: 'border-box',
-                  fontSize: '1rem'
+                  fontSize: 'clamp(0.95rem, 3.5vw, 1.1rem)'
                 }}
               />
-              <Lock size={18} color="#94a3b8" style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)' }} />
+              <Lock size={20} color="#94a3b8" style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)' }} />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 style={{
                   position: 'absolute',
-                  right: '0.85rem',
+                  right: '0.9rem',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   background: 'none',
@@ -299,7 +299,7 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
                   padding: 0
                 }}
               >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
           </div>
@@ -309,7 +309,7 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
             type="submit"
             disabled={loading}
             className="onboarding-btn-primary"
-            style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', marginBottom: '1.25rem' }}
+            style={{ width: '100%', padding: 'clamp(0.9rem, 3.5vw, 1.2rem)', fontSize: 'clamp(1rem, 4vw, 1.2rem)', marginBottom: '1.25rem', borderRadius: '14px' }}
           >
             {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'} <LogIn size={20} />
           </button>

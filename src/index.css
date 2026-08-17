@@ -507,3 +507,18 @@ body {
   0% { transform: translateX(-150%) skewX(-20deg); }
   100% { transform: translateX(200%) skewX(-20deg); }
 }
+
+/* ===== Login Card Responsive ===== */
+.login-card-responsive {
+  width: 100%;
+  max-width: 520px;
+  margin: auto;
+  box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+  .login-card-responsive {
+    max-width: 100%;
+    border-radius: 20px !important;
+  }
+}

@@ -113,8 +113,8 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
   const handleAddTier = () => {
     const newId = 't' + Date.now();
     setPriceTiers(prev => [
-      ...prev,
-      { id: newId, label: 'เกรดใหม่', drc_min: 0, drc_max: 0, price_per_kg: '' }
+      { id: newId, label: 'เกรดใหม่', drc_min: 0, drc_max: 0, price_per_kg: '' },
+      ...prev
     ]);
   };
 
@@ -401,12 +401,25 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           {/* TIERED MODE: tier table */}
           {pricingMode === 'tiered' && (
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label style={{ fontWeight: '700', color: '#0f172a', fontSize: '0.95rem' }}>
-                📊 ตารางราคาตามช่วง %DRC
-                <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '400', marginLeft: '0.5rem' }}>
-                  (tier บนสุด = %DRC สูงสุด / ไม่มีเพดาน)
-                </span>
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ fontWeight: '700', color: '#0f172a', fontSize: '0.95rem', margin: 0 }}>
+                  📊 ตารางราคาตามช่วง %DRC
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '400', marginLeft: '0.5rem' }}>
+                    (tier บนสุด = %DRC สูงสุด / ไม่มีเพดาน)
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAddTier}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem',
+                    background: '#f0fdf4', color: '#166534', border: '1px dashed #86efac',
+                    borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600'
+                  }}
+                >
+                  <span style={{ fontSize: '1rem' }}>+</span> เพิ่มช่วงราคา
+                </button>
+              </div>
 
               <div style={{ overflowX: 'auto', marginTop: '0.75rem' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -496,20 +509,6 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
                     ))}
                   </tbody>
                 </table>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '0.75rem' }}>
-                <button
-                  type="button"
-                  onClick={handleAddTier}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem',
-                    background: '#f0fdf4', color: '#166534', border: '1px dashed #86efac',
-                    borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600'
-                  }}
-                >
-                  <span style={{ fontSize: '1rem' }}>+</span> เพิ่มช่วงราคา
-                </button>
               </div>
 
               {/* Preview hint for tiered */}

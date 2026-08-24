@@ -330,17 +330,6 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
         subtitle="ตั้งราคารับซื้อประจำวันและปริมาณน้ำหนักสุ่มตรวจมาตรฐาน"
         icon="⚙️"
         defaultExpanded={true}
-        headerRight={
-          <button 
-            type="button" 
-            onClick={handleLoadYesterdaySettings}
-            disabled={savingSettings}
-            className="btn" 
-            style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-          >
-            <span style={{ fontSize: '1rem' }}>🔄</span> ดึงราคาของเมื่อวาน
-          </button>
-        }
       >
       <form onSubmit={handleSaveDailySettings}>
         <div className="form-grid">
@@ -408,17 +397,31 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
                     (tier บนสุด = %DRC สูงสุด / ไม่มีเพดาน)
                   </span>
                 </label>
-                <button
-                  type="button"
-                  onClick={handleAddTier}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem',
-                    background: '#f0fdf4', color: '#166534', border: '1px dashed #86efac',
-                    borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600'
-                  }}
-                >
-                  <span style={{ fontSize: '1rem' }}>+</span> เพิ่มช่วงราคา
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button 
+                    type="button" 
+                    onClick={handleLoadYesterdaySettings}
+                    disabled={savingSettings}
+                    style={{
+                      background: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1',
+                      borderRadius: '8px', padding: '0.4rem 0.75rem', fontSize: '0.85rem',
+                      display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontWeight: '600'
+                    }}
+                  >
+                    <span style={{ fontSize: '1rem' }}>🔄</span> ดึงราคาของเมื่อวาน
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddTier}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem',
+                      background: '#f0fdf4', color: '#166534', border: '1px dashed #86efac',
+                      borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600'
+                    }}
+                  >
+                    <span style={{ fontSize: '1rem' }}>+</span> เพิ่มช่วงราคา
+                  </button>
+                </div>
               </div>
 
               <div style={{ overflowX: 'auto', marginTop: '0.75rem' }}>

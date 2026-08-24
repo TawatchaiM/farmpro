@@ -25,6 +25,21 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
     [safeTxList]
   );
 
+  const completedDrcList = useMemo(() => 
+    safeTxList.filter(t => 
+      t.status === 'ready_to_pay' || 
+      t.status === 'READY_TO_PAY' || 
+      t.status === 'completed' || 
+      t.status === 'COMPLETED' || 
+      t.status === 'paid' || 
+      t.status === 'PAID'
+    ).sort((a, b) => {
+      // เรียงจากล่าสุดไปเก่าสุด (สมมติว่าคิวล่าสุดจะอยู่บนๆ)
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    }),
+    [safeTxList]
+  );
+
   // Auto-select first item in queue if nothing is selected
   useEffect(() => {
     if (waitingDrcList.length > 0) {
@@ -56,8 +71,8 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
     setGrossWeightInput('');
     setMobileTab('testing');
 
-    // Acquire lock if transaction is currently in waiting state
-    if (tx.status === 'waiting_drc' || tx.status === 'PENDING_DRC') {
+    // Acquire lock if transaction is currently in waiting state or ready_to_pay (recall)
+    if (tx.status === 'waiting_drc' || tx.status === 'PENDING_DRC' || tx.status === 'ready_to_pay' || tx.status === 'READY_TO_PAY') {
       try {
         await onUpdateTransaction(tx.id, {
           status: 'in_drc_testing',
@@ -329,6 +344,63 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Completed / Ready to Pay section */}
+          {completedDrcList.length > 0 && (
+            <div style={{ marginTop: '2rem' }}>
+              <h4 style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
+                <span>✅ ตรวจเสร็จแล้ววันนี้ ({completedDrcList.length})</span>
+              </h4>
+              <div className="drc-queue-list">
+                {completedDrcList.map((tx) => {
+                  const isPaid = tx.status === 'completed' || tx.status === 'COMPLETED' || tx.status === 'paid' || tx.status === 'PAID';
+                  const isReady = tx.status === 'ready_to_pay' || tx.status === 'READY_TO_PAY';
+
+                  return (
+                    <div 
+                      key={tx.id} 
+                      className="drc-queue-item"
+                      onClick={() => {
+                        if (isPaid) {
+                          alert('รายการนี้ถูกชำระเงินหรือออกบิลไปแล้ว ไม่สามารถดึงกลับมาแก้ไขได้ครับ');
+                          return;
+                        }
+                        if (window.confirm(`ต้องการดึงคิว ${tx.queue_number} กลับมาแก้ไขผล DRC หรือไม่?\n\n(หากเสมียนกำลังทำรายการจ่ายเงินอยู่ อาจเกิดข้อผิดพลาดได้)`)) {
+                          handleSelectTx(tx);
+                        }
+                      }}
+                      style={{
+                        opacity: isPaid ? 0.6 : 1,
+                        cursor: isPaid ? 'not-allowed' : 'pointer',
+                        borderLeft: isReady ? '4px solid #3b82f6' : '4px solid #10b981',
+                        background: 'transparent'
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <strong style={{ fontSize: '1.05rem', color: isPaid ? '#94a3b8' : 'var(--primary-dark)', textDecoration: isPaid ? 'line-through' : 'none' }}>{tx.queue_number}</strong>
+                          {isPaid ? (
+                            <span style={{ fontSize: '0.7rem', background: '#f1f5f9', color: '#64748b', padding: '1px 6px', borderRadius: '6px', fontWeight: 'bold' }}>
+                              💵 บิลออกแล้ว
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.7rem', background: '#eff6ff', color: '#2563eb', padding: '1px 6px', borderRadius: '6px', fontWeight: 'bold' }}>
+                              ⏳ รอออกบิล (แก้ได้)
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2px' }}>{tx.seller_name}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#166534' }}>DRC {parseFloat(tx.drc_percentage || 0).toFixed(2)}%</span>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>แห้ง: {tx.dry_weight_sample_g}g</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

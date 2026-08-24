@@ -3,7 +3,9 @@ import { db } from '../supabase';
 
 function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransaction, labInspector }) {
   const [selectedTx, setSelectedTx] = useState(null);
-  const [dryWeightInput, setDryWeightInput] = useState('');
+  const [grossWeightInput, setGrossWeightInput] = useState('');
+  const [cupWeightInput, setCupWeightInput] = useState(() => localStorage.getItem('farmpro_drc_cup_weight') || '');
+  const [focusedInput, setFocusedInput] = useState('gross'); // 'gross' | 'cup'
   const [submitting, setSubmitting] = useState(false);
   const [mobileTab, setMobileTab] = useState('queue'); // 'queue' | 'testing'
 
@@ -29,11 +31,11 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
       const exists = selectedTx && waitingDrcList.some(t => t.id === selectedTx.id);
       if (!exists) {
         setSelectedTx(waitingDrcList[0]);
-        setDryWeightInput('');
+        setGrossWeightInput('');
       }
     } else {
       setSelectedTx(null);
-      setDryWeightInput('');
+      setGrossWeightInput('');
     }
   }, [waitingDrcList]);
 
@@ -51,7 +53,7 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
     }
 
     setSelectedTx(tx);
-    setDryWeightInput('');
+    setGrossWeightInput('');
     setMobileTab('testing');
 
     // Acquire lock if transaction is currently in waiting state
@@ -76,7 +78,7 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
         testing_by: null
       });
       setSelectedTx(null);
-      setDryWeightInput('');
+      setGrossWeightInput('');
       setMobileTab('queue');
     } catch (err) {
       console.error(err);
@@ -86,35 +88,64 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
 
   // Numpad key handlers
   const handleNumClick = (val) => {
-    if (dryWeightInput.includes('.') && val === '.') return;
-    if (dryWeightInput === '0' && val !== '.') {
-      setDryWeightInput(val);
+    const currentInput = focusedInput === 'gross' ? grossWeightInput : cupWeightInput;
+    if (currentInput.includes('.') && val === '.') return;
+    if (currentInput === '0' && val !== '.') {
+      if (focusedInput === 'gross') setGrossWeightInput(val);
+      else {
+        setCupWeightInput(val);
+        localStorage.setItem('farmpro_drc_cup_weight', val);
+      }
       return;
     }
-    if (dryWeightInput.replace('.', '').length >= 4 && val !== '.') return;
-    setDryWeightInput(prev => prev + val);
+    if (currentInput.replace('.', '').length >= 4 && val !== '.') return;
+    
+    if (focusedInput === 'gross') {
+      setGrossWeightInput(prev => prev + val);
+    } else {
+      const newVal = cupWeightInput + val;
+      setCupWeightInput(newVal);
+      localStorage.setItem('farmpro_drc_cup_weight', newVal);
+    }
   };
 
   const handleBackspace = () => {
-    setDryWeightInput(prev => prev.slice(0, -1));
+    if (focusedInput === 'gross') {
+      setGrossWeightInput(prev => prev.slice(0, -1));
+    } else {
+      const newVal = cupWeightInput.slice(0, -1);
+      setCupWeightInput(newVal);
+      localStorage.setItem('farmpro_drc_cup_weight', newVal);
+    }
   };
 
   const handleClear = () => {
-    setDryWeightInput('');
+    if (focusedInput === 'gross') {
+      setGrossWeightInput('');
+    } else {
+      setCupWeightInput('');
+      localStorage.removeItem('farmpro_drc_cup_weight');
+    }
   };
 
   // Calculations
   const defaultWetWeightG = parseFloat(dailySettings?.wet_sample_weight_g || 10);
   const wetWeightG = selectedTx ? parseFloat(selectedTx.wet_weight_sample_g || defaultWetWeightG) : defaultWetWeightG;
-  const dryWeightG = parseFloat(dryWeightInput) || 0;
+  const cupWeightG = parseFloat(cupWeightInput) || 0;
+  const grossWeightG = parseFloat(grossWeightInput) || 0;
+  const dryWeightG = Math.max(0, grossWeightG - cupWeightG);
   const drcPercentage = wetWeightG > 0 ? (dryWeightG / wetWeightG) * 100 : 0;
   const isImpossibleDrc = drcPercentage > 60 || drcPercentage < 10;
 
   // Handle DRC Submit
   const handleSubmitDrc = async () => {
     if (!selectedTx) return;
+    if (grossWeightG > 0 && cupWeightG >= grossWeightG) {
+      alert('น้ำหนักถ้วยเปล่าต้องน้อยกว่าน้ำหนักรวม (ถ้วย + ยางแห้ง)');
+      return;
+    }
     if (dryWeightG <= 0) {
-      alert('กรุณากรอกน้ำหนักแห้งให้ถูกต้อง');
+      alert('กรุณากรอกน้ำหนักให้ถูกต้อง (ยางแห้งสุทธิต้องมากกว่า 0)');
       return;
     }
     if (dryWeightG >= wetWeightG) {
@@ -192,7 +223,7 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
         setSelectedTx(null);
         setMobileTab('queue');
       }
-      setDryWeightInput('');
+      setGrossWeightInput('');
     } catch (err) {
       console.error(err);
       alert('เกิดข้อผิดพลาดในการบันทึกผล DRC');
@@ -328,19 +359,54 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
                 </div>
               </div>
 
-              {/* Digital Numpad Display */}
-              <div className="numpad-display-box">
-                <div className="numpad-display-label">น้ำหนักยางแห้งตัวอย่าง (อบแห้งแล้ว)</div>
-                <div className={`numpad-display-val ${dryWeightInput ? '' : 'placeholder'}`}>
-                  {dryWeightInput || '0.00'} <span style={{ fontSize: '1.5rem', color: '#64748b' }}>กรัม</span>
+              {/* Digital Numpad Display - Split into Cup and Gross */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                {/* Cup Weight */}
+                <div 
+                  className={`numpad-display-box ${focusedInput === 'cup' ? 'focused' : ''}`}
+                  onClick={() => setFocusedInput('cup')}
+                  style={{ 
+                    cursor: 'pointer', margin: 0, padding: '0.75rem',
+                    border: focusedInput === 'cup' ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                    background: focusedInput === 'cup' ? '#f0fdf4' : '#f8fafc',
+                    boxShadow: focusedInput === 'cup' ? '0 4px 12px rgba(22, 163, 74, 0.15)' : 'none',
+                    textAlign: 'center'
+                  }}
+                >
+                  <div className="numpad-display-label" style={{ fontSize: '0.85rem', color: focusedInput === 'cup' ? '#166534' : '#64748b', marginBottom: '0.4rem' }}>
+                    1. น้ำหนักถ้วยเปล่า
+                  </div>
+                  <div className={`numpad-display-val ${cupWeightInput ? '' : 'placeholder'}`} style={{ fontSize: '2rem', textAlign: 'center' }}>
+                    {cupWeightInput || '0'} <span style={{ fontSize: '1.2rem', color: '#94a3b8' }}>g</span>
+                  </div>
+                </div>
+
+                {/* Gross Weight */}
+                <div 
+                  className={`numpad-display-box ${focusedInput === 'gross' ? 'focused' : ''}`}
+                  onClick={() => setFocusedInput('gross')}
+                  style={{ 
+                    cursor: 'pointer', margin: 0, padding: '0.75rem',
+                    border: focusedInput === 'gross' ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                    background: focusedInput === 'gross' ? '#f0fdf4' : '#fff',
+                    boxShadow: focusedInput === 'gross' ? '0 4px 12px rgba(22, 163, 74, 0.15)' : 'none',
+                    textAlign: 'center'
+                  }}
+                >
+                  <div className="numpad-display-label" style={{ fontSize: '0.85rem', color: focusedInput === 'gross' ? '#166534' : '#64748b', marginBottom: '0.4rem' }}>
+                    2. ถ้วย + ยางแห้ง
+                  </div>
+                  <div className={`numpad-display-val ${grossWeightInput ? '' : 'placeholder'}`} style={{ fontSize: '2rem', textAlign: 'center' }}>
+                    {grossWeightInput || '0.00'} <span style={{ fontSize: '1.2rem', color: '#94a3b8' }}>g</span>
+                  </div>
                 </div>
               </div>
 
               {/* Automatic Calculation Preview */}
               <div className="drc-calculator-preview" style={isImpossibleDrc && dryWeightG > 0 ? { background: '#fffbeb', borderColor: '#fef08a' } : {}}>
                 <div className="drc-calc-formula">
-                  <div>น้ำหนักเปียกตรวจ: {wetWeightG.toFixed(2)} กรัม</div>
-                  <div>สูตร: (น้ำหนักแห้ง / {wetWeightG.toFixed(1)}) * 100</div>
+                  <div style={{ fontSize: '0.9rem', marginBottom: '0.2rem' }}>ยางแห้งสุทธิ: {grossWeightG || 0} - {cupWeightG || 0} = <strong style={{color: '#16a34a', fontSize: '1.1rem'}}>{dryWeightG.toFixed(2)}g</strong></div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>สูตร DRC: (แห้ง {dryWeightG.toFixed(2)} / เปียก {wetWeightG.toFixed(1)}) × 100</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div className="drc-calc-result" style={isImpossibleDrc && dryWeightG > 0 ? { color: '#b45309' } : {}}>

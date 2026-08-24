@@ -110,6 +110,22 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
     setPriceTiers(prev => prev.map(t => t.id === id ? { ...t, [field]: value } : t));
   };
 
+  const handleAddTier = () => {
+    const newId = 't' + Date.now();
+    setPriceTiers(prev => [
+      ...prev,
+      { id: newId, label: 'เกรดใหม่', drc_min: 0, drc_max: 0, price_per_kg: '' }
+    ]);
+  };
+
+  const handleRemoveTier = (id) => {
+    if (priceTiers.length <= 1) {
+      alert('ต้องมีอย่างน้อย 1 ช่วงราคา');
+      return;
+    }
+    setPriceTiers(prev => prev.filter(t => t.id !== id));
+  };
+
   const handleSaveDailySettings = async (e) => {
     e.preventDefault();
     // Validate
@@ -131,8 +147,8 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
     try {
       const tiersToSave = priceTiers.map(t => ({
         ...t,
-        drc_min: parseFloat(t.drc_min),
-        drc_max: t.drc_max != null ? parseFloat(t.drc_max) : null,
+        drc_min: parseFloat(t.drc_min) || 0,
+        drc_max: t.drc_max != null && t.drc_max !== '' ? parseFloat(t.drc_max) : null,
         price_per_kg: parseFloat(t.price_per_kg) || 0
       }));
 
@@ -400,6 +416,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
                       <th style={{ padding: '0.6rem 0.75rem', textAlign: 'center', fontWeight: '700', color: '#166534' }}>%DRC ต่ำสุด</th>
                       <th style={{ padding: '0.6rem 0.75rem', textAlign: 'center', fontWeight: '700', color: '#166534' }}>%DRC สูงสุด</th>
                       <th style={{ padding: '0.6rem 0.75rem', textAlign: 'center', fontWeight: '700', color: '#166534' }}>ราคา (บาท/กก.)</th>
+                      <th style={{ padding: '0.6rem 0.75rem', width: '40px' }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -427,16 +444,22 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
                         </td>
                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
                           {tier.drc_max == null ? (
-                            <span style={{ fontWeight: '700', color: '#16a34a', fontSize: '1rem' }}>∞</span>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                              <span style={{ fontWeight: '700', color: '#16a34a', fontSize: '1.2rem', lineHeight: 1 }}>∞</span>
+                              <button type="button" onClick={() => handleTierChange(tier.id, 'drc_max', 100)} style={{ border: 'none', background: '#f1f5f9', borderRadius: '4px', cursor: 'pointer', padding: '0.2rem 0.4rem', fontSize: '0.75rem', color: '#64748b' }} title="กำหนดค่าสูงสุด">✏️</button>
+                            </div>
                           ) : (
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-input"
-                              value={tier.drc_max}
-                              onChange={e => handleTierChange(tier.id, 'drc_max', e.target.value)}
-                              style={{ padding: '0.35rem 0.5rem', fontSize: '0.82rem', textAlign: 'center', width: '80px' }}
-                            />
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="form-input"
+                                value={tier.drc_max}
+                                onChange={e => handleTierChange(tier.id, 'drc_max', e.target.value)}
+                                style={{ padding: '0.35rem 0.5rem', fontSize: '0.82rem', textAlign: 'center', width: '70px' }}
+                              />
+                              <button type="button" onClick={() => handleTierChange(tier.id, 'drc_max', null)} style={{ border: 'none', background: '#f1f5f9', borderRadius: '4px', cursor: 'pointer', padding: '0.2rem 0.4rem', fontSize: '0.8rem', fontWeight: 'bold', color: '#16a34a' }} title="ไม่มีเพดาน (Infinity)">∞</button>
+                            </div>
                           )}
                         </td>
                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
@@ -457,10 +480,36 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
                             <span style={{ fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}>฿/กก.</span>
                           </div>
                         </td>
+                        <td style={{ padding: '0.5rem 0.2rem', textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTier(tier.id)}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.1rem', opacity: 0.7 }}
+                            title="ลบช่วงราคานี้"
+                            onMouseOver={e => e.target.style.opacity = 1}
+                            onMouseOut={e => e.target.style.opacity = 0.7}
+                          >
+                            🗑️
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={handleAddTier}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem',
+                    background: '#f0fdf4', color: '#166534', border: '1px dashed #86efac',
+                    borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600'
+                  }}
+                >
+                  <span style={{ fontSize: '1rem' }}>+</span> เพิ่มช่วงราคา
+                </button>
               </div>
 
               {/* Preview hint for tiered */}

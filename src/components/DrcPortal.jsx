@@ -45,13 +45,20 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
     if (waitingDrcList.length > 0) {
       const exists = selectedTx && waitingDrcList.some(t => t.id === selectedTx.id);
       if (!exists) {
-        setSelectedTx(waitingDrcList[0]);
-        setGrossWeightInput('');
+        const tx = waitingDrcList[0];
+        setSelectedTx(tx);
+        if (tx.dry_weight_sample_g) {
+          const storedCup = parseFloat(localStorage.getItem('farmpro_drc_cup_weight')) || 0;
+          setGrossWeightInput(parseFloat(parseFloat(tx.dry_weight_sample_g) + storedCup).toString());
+        } else {
+          setGrossWeightInput('');
+        }
       }
     } else {
       setSelectedTx(null);
       setGrossWeightInput('');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [waitingDrcList]);
 
   // Handle Queue Item Selection (Race condition lock: acquires lock in_drc_testing)
@@ -68,7 +75,16 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
     }
 
     setSelectedTx(tx);
-    setGrossWeightInput('');
+    
+    // Restore gross weight if available
+    if (tx.dry_weight_sample_g) {
+      const currentCup = parseFloat(cupWeightInput) || 0;
+      const restoredGross = parseFloat(parseFloat(tx.dry_weight_sample_g) + currentCup);
+      setGrossWeightInput(restoredGross.toString());
+    } else {
+      setGrossWeightInput('');
+    }
+    
     setMobileTab('testing');
 
     // Acquire lock if transaction is currently in waiting state or ready_to_pay (recall)
@@ -82,7 +98,7 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
         console.warn('Failed to acquire lock for DRC testing:', err);
       }
     }
-  }, [selectedTx, onUpdateTransaction, inspectorName]);
+  }, [selectedTx, onUpdateTransaction, inspectorName, cupWeightInput]);
 
   // Release Lock / Cancel current testing
   const handleReleaseLock = async () => {

@@ -148,8 +148,8 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
       alert('กรุณากรอกน้ำหนักให้ถูกต้อง (ยางแห้งสุทธิต้องมากกว่า 0)');
       return;
     }
-    if (dryWeightG >= wetWeightG) {
-      alert('น้ำหนักแห้งตัวอย่างต้องน้อยกว่าน้ำหนักเปียกตัวอย่าง');
+    if (grossWeightG > (cupWeightG + wetWeightG)) {
+      alert(`ข้อมูลผิดพลาด: น้ำหนัก "2. ถ้วย+ยางแห้ง" (${grossWeightG}g) มีค่ามากกว่า "1. ถ้วยเปล่า" (${cupWeightG}g) + "น้ำหนักเปียก" (${wetWeightG}g)\n(รวมกันได้ ${cupWeightG + wetWeightG}g) ซึ่งเป็นไปไม่ได้ครับ`);
       return;
     }
 
@@ -417,7 +417,15 @@ function DrcPortal({ currentUser, dailySettings, transactions, onUpdateTransacti
               </div>
 
               {/* Warnings for unusual DRC % */}
-              {isImpossibleDrc && dryWeightG > 0 && (
+              {grossWeightG > (cupWeightG + wetWeightG) && (
+                <div style={{ padding: '0.5rem 0.75rem', background: '#fef2f2', border: '1px solid #f87171', color: '#b91c1c', borderRadius: '8px', fontSize: '0.8rem', marginBottom: '1rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                  <span>🚨</span> 
+                  <span>
+                    <strong>ข้อมูลผิดพลาด:</strong> "2. ถ้วย+ยางแห้ง" ต้องไม่เกิน "1. ถ้วยเปล่า" + "น้ำหนักเปียก" (รวม {cupWeightG + wetWeightG}g)
+                  </span>
+                </div>
+              )}
+              {isImpossibleDrc && dryWeightG > 0 && !(grossWeightG > (cupWeightG + wetWeightG)) && (
                 <div style={{ padding: '0.5rem 0.75rem', background: '#fffbeb', border: '1px solid #fef08a', color: '#b45309', borderRadius: '8px', fontSize: '0.8rem', marginBottom: '1rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
                   <span>⚠️</span> 
                   <span>

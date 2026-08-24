@@ -185,6 +185,7 @@ function ExpenseManagement({ currentUser }) {
                   <label><DollarSign size={14} style={{ display: 'inline', verticalAlign: 'text-bottom' }} /> จำนวนเงิน (บาท)</label>
                   <input 
                     type="number" 
+                    inputMode="decimal"
                     step="0.01"
                     name="amount"
                     className="form-input"

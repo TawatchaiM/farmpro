@@ -306,7 +306,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           </div>
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
             <label>เบอร์โทรศัพท์ติดต่อร้านค้า <span style={{ color: '#ef4444' }}>*</span></label>
-            <input type="tel" name="phone" value={storeData.phone} onChange={handleChange} className="form-input" required />
+            <input type="tel" inputMode="numeric" pattern="[0-9]*" name="phone" value={storeData.phone} onChange={handleChange} className="form-input" required />
           </div>
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
             <label>ที่อยู่ / พิกัดที่ตั้งลานรับซื้อ</label>
@@ -337,7 +337,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           <div className="form-group">
             <label>น้ำหนักตัวอย่างเปียกตรวจ DRC (กรัม) <span style={{ color: '#ef4444' }}>*</span></label>
             <div className="input-with-icon">
-              <input type="number" step="0.1" className="form-input" placeholder="10" value={wetWeightG} onChange={e => setWetWeightG(e.target.value)} required />
+              <input type="number" inputMode="decimal" step="0.1" className="form-input" placeholder="10" value={wetWeightG} onChange={e => setWetWeightG(e.target.value)} required />
               <span className="input-unit">กรัม</span>
             </div>
           </div>
@@ -381,7 +381,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
               <label>ราคายางพาราวันนี้ (บาท/กก.) <span style={{ color: '#ef4444' }}>*</span></label>
               <div className="input-with-icon">
-                <input type="number" step="0.01" className="form-input" placeholder="เช่น 75.50" value={basePrice} onChange={e => setBasePrice(e.target.value)} />
+                <input type="number" inputMode="decimal" step="0.01" className="form-input" placeholder="เช่น 75.50" value={basePrice} onChange={e => setBasePrice(e.target.value)} />
                 <span className="input-unit">บาท</span>
               </div>
             </div>
@@ -451,6 +451,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
                           <input
                             type="number"
+                            inputMode="decimal"
                             step="0.01"
                             className="form-input"
                             value={tier.drc_min}
@@ -468,6 +469,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
                               <input
                                 type="number"
+                                inputMode="decimal"
                                 step="0.01"
                                 className="form-input"
                                 value={tier.drc_max}
@@ -482,6 +484,7 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', justifyContent: 'center' }}>
                             <input
                               type="number"
+                              inputMode="decimal"
                               step="0.01"
                               className="form-input"
                               placeholder="0.00"

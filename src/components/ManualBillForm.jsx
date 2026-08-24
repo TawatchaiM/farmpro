@@ -177,6 +177,7 @@ function ManualBillForm({ transactions, currentUser, onUpdateTransaction }) {
             <div className="input-with-icon">
               <input 
                 type="number" 
+                inputMode="decimal"
                 step="0.01"
                 name="raw_weight_kg" 
                 value={formData.raw_weight_kg} 
@@ -193,6 +194,7 @@ function ManualBillForm({ transactions, currentUser, onUpdateTransaction }) {
             <div className="input-with-icon">
               <input 
                 type="number" 
+                inputMode="decimal"
                 step="0.01"
                 name="drc_percentage" 
                 value={formData.drc_percentage} 
@@ -209,6 +211,7 @@ function ManualBillForm({ transactions, currentUser, onUpdateTransaction }) {
             <div className="input-with-icon">
               <input 
                 type="number" 
+                inputMode="decimal"
                 step="0.01"
                 name="price_per_kg" 
                 value={formData.price_per_kg} 

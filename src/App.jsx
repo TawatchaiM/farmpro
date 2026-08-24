@@ -299,7 +299,44 @@ function App() {
 
   return (
     <div className="app-layout">
-      {/* Sidebar */}
+      {/* Mobile Header (Hidden on Desktop) */}
+      <div className="mobile-header">
+        <div 
+          onClick={() => {
+            if (currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || currentUser?.role === 'BASIC_ADMIN') {
+              setActivePortal('admin');
+            } else if (currentUser?.role === 'vendor') {
+              setActivePortal('marketplace');
+            } else if (currentUser?.role === 'seller') {
+              setActivePortal('seller');
+            } else {
+              setActivePortal('buyer');
+            }
+          }}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#16a34a', fontWeight: 'bold', cursor: 'pointer' }}
+        >
+          <Leaf color="#4ade80" size={24} style={{ transform: 'rotate(-15deg)' }} />
+          <span style={{ fontSize: '1.25rem' }}>FarmPro</span>
+        </div>
+        {currentUser && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div 
+              style={{
+                width: '32px', height: '32px', borderRadius: '50%',
+                background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontWeight: 'bold', cursor: 'pointer',
+                boxShadow: '0 2px 5px rgba(34, 197, 94, 0.3)'
+              }}
+              onClick={() => setShowEditProfile(true)}
+            >
+              {displayStoreName?.charAt(0).toUpperCase() || 'U'}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Sidebar (Hidden on Mobile) */}
       <div className="sidebar" style={{ display: 'flex', flexDirection: 'column', paddingBottom: '1rem' }}>
         <div>
           <div 

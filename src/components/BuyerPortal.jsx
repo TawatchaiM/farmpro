@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Home, Beaker, FileText, Settings } from 'lucide-react';
 import StoreRegistration from './StoreRegistration';
 import ManualBillForm from './ManualBillForm';
 import ClerkPortal from './ClerkPortal';
@@ -273,6 +274,40 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
           />
         )}
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      {(!currentUser || (currentUser.role !== 'CLERK' && currentUser.role !== 'DRC_LAB')) && (
+        <div className="mobile-bottom-nav">
+          <div 
+            className={`bottom-nav-item ${activeSubTab === 'clerk' ? 'active' : ''}`}
+            onClick={() => setActiveSubTab('clerk')}
+          >
+            <Home />
+            <span>หน้าร้าน/รับซื้อ</span>
+          </div>
+          <div 
+            className={`bottom-nav-item ${activeSubTab === 'drc' ? 'active' : ''}`}
+            onClick={() => setActiveSubTab('drc')}
+          >
+            <Beaker />
+            <span>คิว/สถานะ</span>
+          </div>
+          <div 
+            className={`bottom-nav-item ${activeSubTab === 'manual' ? 'active' : ''}`}
+            onClick={() => setActiveSubTab('manual')}
+          >
+            <FileText />
+            <span>ออกบิล</span>
+          </div>
+          <div 
+            className={`bottom-nav-item ${(activeSubTab === 'registration' || activeSubTab === 'dashboard') ? 'active' : ''}`}
+            onClick={() => setActiveSubTab('registration')}
+          >
+            <Settings />
+            <span>โปรไฟล์/ตั้งค่า</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

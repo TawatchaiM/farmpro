@@ -691,7 +691,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                 <label>น้ำหนักน้ำยางสดขาเข้า (Weight In)</label>
                 <div className="input-with-icon">
                   <input
-                    type="number" step="0.01" className="form-input"
+                    type="number" inputMode="decimal" step="0.01" className="form-input"
                     placeholder="0.00" value={rawWeightKg}
                     onChange={e => setRawWeightKg(e.target.value)}
                     required
@@ -773,6 +773,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                       <div className="input-with-icon" style={{ flex: 1 }}>
                         <input
                           type="number"
+                          inputMode="decimal"
                           step="0.01"
                           className="form-input"
                           placeholder="ระบุราคา เช่น 78.50"

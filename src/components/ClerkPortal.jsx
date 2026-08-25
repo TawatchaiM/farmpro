@@ -104,7 +104,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
     setSelectedPlotId('');
     try {
       let plots = [];
-      if (sellerId && !sellerId.startsWith('ab-')) {
+      if (sellerId) {
         plots = await db.getRubberPlots(sellerId);
       }
       if (plots.length === 0 && phone) {

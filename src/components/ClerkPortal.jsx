@@ -151,6 +151,13 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
     setNewPlotName('');
   };
 
+  // ---- Auto-select new plot for manual sellers ----
+  useEffect(() => {
+    if (sellerName.trim().length > 0 && sellerPlots.length === 0 && selectedPlotId === '') {
+      setSelectedPlotId('new');
+    }
+  }, [sellerName, sellerPlots.length, selectedPlotId]);
+
   const handlePlotSelect = (e) => {
     const val = e.target.value;
     setSelectedPlotId(val);
@@ -668,7 +675,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                 </div>
               )}
 
-              {sellerPlots.length > 0 && (
+              {(sellerPlots.length > 0 || sellerName.trim().length > 0) && (
                 <div className="form-group" style={{
                   gridColumn: '1 / -1', padding: '0.85rem 1rem',
                   background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
@@ -676,7 +683,9 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                 }}>
                   <label style={{ color: '#14532d', fontWeight: '700' }}>
                     🌳 เลือกสวน / เจ้าของสวน
-                    <span style={{ fontSize: '0.72rem', color: '#16a34a', marginLeft: '0.4rem' }}>({sellerPlots.length} สวน)</span>
+                    {sellerPlots.length > 0 && (
+                      <span style={{ fontSize: '0.72rem', color: '#16a34a', marginLeft: '0.4rem' }}>({sellerPlots.length} สวน)</span>
+                    )}
                   </label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
                     {sellerPlots.map(f => (

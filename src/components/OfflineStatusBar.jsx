@@ -121,9 +121,32 @@ function OfflineStatusBar({ pendingCount = 0, onSync }) {
           fontSize: '0.85rem',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: '8px'
         }}>
           <span>⚠️ <strong>อัปเดตล้มเหลว:</strong> {firstError}</span>
+          <button 
+            type="button"
+            onClick={() => {
+              if (window.confirm('คุณต้องการลบข้อมูลที่รออัปเดตและค้างอยู่ทั้งหมดหรือไม่? (เพื่อแก้ปัญหาค้าง)')) {
+                localStorage.removeItem('farmpro_pending_sync');
+                window.location.reload();
+              }
+            }}
+            style={{
+              background: '#dc2626',
+              color: 'white',
+              border: 'none',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            ล้างคิวที่ค้าง
+          </button>
         </div>
       )}
     </div>

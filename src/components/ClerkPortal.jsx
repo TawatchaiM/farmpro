@@ -264,6 +264,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
     try {
       let finalPlotId = (selectedPlotId && selectedPlotId !== 'new') ? selectedPlotId : null;
       let tapperId = (selectedPlotId && selectedPlotId !== 'new') ? sellerPlots.find(p => p.plot_id === selectedPlotId)?.tapper_id : null;
+      let finalPlotName = (selectedPlotId && selectedPlotId !== 'new') ? sellerPlots.find(p => p.plot_id === selectedPlotId)?.plot_name : null;
 
       // บันทึก seller ลง address book (เพื่อ autofill ครั้งหน้า) และเอา ID มาใช้
       const sellerEntry = db.saveSellerToAddressBook({
@@ -286,13 +287,19 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
           });
           finalPlotId = newPlot.plot_id;
           tapperId = sellerEntry.id;
+          finalPlotName = newPlot.plot_name;
         } catch (plotErr) {
           console.error('Error saving manual plot:', plotErr);
           // ทำต่อไปแม้บันทึกสวนไม่สำเร็จ
         }
       }
 
-      await onCreateTransaction({
+      // ถ้าเลือก "สวนใหม่" แต่ไม่ได้กดบันทึก
+      if (selectedPlotId === 'new' && !saveManualPlot) {
+        finalPlotName = newPlotName || `สวนของ ${ownerName || sellerName}`;
+      }
+
+      const createdTx = await onCreateTransaction({
         seller_name: sellerName,
         buyer_name: currentUser?.store_name || currentUser?.full_name || 'ร้านรับซื้อยาง FarmPro',
         phone_number: phoneNumber,
@@ -420,6 +427,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
 
   // ---- Handle thermal print ----
   const handlePrint = (tx) => {
+    const plotNameMapping = JSON.parse(localStorage.getItem('farmpro_tx_plot_names') || '{}');
     const storeProfile = JSON.parse(localStorage.getItem('farmpro_store_profile') || '{}') || {};
     const storeName = currentUser?.store_name || storeProfile.storeName || currentUser?.full_name || 'ร้านรับซื้อยาง FarmPro';
     const storePhone = currentUser?.phone_number || storeProfile.phone || '08X-XXX-XXXX';
@@ -465,6 +473,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
           <div class="divider"></div>
           <div class="row-data"><span>วันที่:</span><span>${tx.date}</span></div>
           <div class="row-data"><span>ลูกค้า:</span><span>${tx.seller_name}</span></div>
+          ${plotNameMapping[tx.id] ? `<div class="row-data"><span>สวน:</span><span>${plotNameMapping[tx.id]}</span></div>` : ''}
           ${tx.phone_number ? `<div class="row-data"><span>เบอร์โทร:</span><span>${tx.phone_number}</span></div>` : ''}
           <div class="divider"></div>
           <div class="row-data"><span>น้ำยางสด (Weight In):</span><span>${parseFloat(tx.raw_weight_kg).toFixed(2)} กก.</span></div>
@@ -493,6 +502,8 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
   };
 
   // ===== RENDER =====
+  const plotNameMapping = JSON.parse(localStorage.getItem('farmpro_tx_plot_names') || '{}');
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div className="card">
@@ -951,6 +962,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                   </div>
                   <div className="queue-body">
                     <p><span>ลูกค้า:</span> <span className="val">{tx.seller_name}</span></p>
+                    {plotNameMapping[tx.id] && <p><span>สวน:</span> <span className="val" style={{ fontSize: '0.85rem', color: '#475569' }}>{plotNameMapping[tx.id]}</span></p>}
                     <p><span>น้ำยางสด (Weight In):</span> <span className="val">{parseFloat(tx.raw_weight_kg).toFixed(2)} กก.</span></p>
                     <p><span>% DRC:</span> <span className="val" style={{ color: '#16a34a', fontWeight: 'bold' }}>{parseFloat(tx.drc_percentage || 0).toFixed(2)}%</span></p>
                     <p><span>ยางแห้ง:</span> <span className="val">{parseFloat(tx.dry_weight_kg || 0).toFixed(2)} กก.</span></p>
@@ -1009,6 +1021,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                   </div>
                   <div className="queue-body">
                     <p><span>ลูกค้า:</span> <span className="val">{tx.seller_name}</span></p>
+                    {plotNameMapping[tx.id] && <p><span>สวน:</span> <span className="val" style={{ fontSize: '0.85rem', color: '#475569' }}>{plotNameMapping[tx.id]}</span></p>}
                     <p><span>น้ำยางสด (Weight In):</span> <span className="val">{parseFloat(tx.raw_weight_kg).toFixed(2)} กก.</span></p>
                     <p><span>% DRC:</span> <span className="val" style={{ color: '#16a34a', fontWeight: 'bold' }}>{parseFloat(tx.drc_percentage || 0).toFixed(2)}%</span></p>
                     <div style={{ height: '1px', background: '#e2e8f0', margin: '0.5rem 0' }}></div>

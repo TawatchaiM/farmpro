@@ -293,8 +293,9 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
             tapper_phone: phoneNumber,
             default_share_ratio: parseFloat(ownerSharePercentage)
           });
-          finalPlotId = newPlot.plot_id;
-          tapperId = sellerEntry.id;
+          // Manual plots only exist in localStorage — don't send their IDs to Supabase (FK violation)
+          finalPlotId = null;
+          tapperId = null;
           finalPlotName = newPlot.plot_name;
         } catch (plotErr) {
           console.error('Error saving manual plot:', plotErr);
@@ -313,6 +314,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
         phone_number: phoneNumber,
         plot_id: finalPlotId,
         tapper_id: tapperId,
+        plot_name: finalPlotName || null,
         owner_name: ownerName || sellerName,
         raw_weight_kg: parseFloat(rawWeightKg),
         wet_weight_sample_g: parseFloat(currentSettings?.wet_sample_weight_g || 10),

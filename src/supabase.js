@@ -108,7 +108,7 @@ const sanitizeTransaction = (tx) => {
     'status', 'created_at',
     'tested_by_name', 'tested_by_phone', 'tested_by_user_id',
     'testing_by', 'price_source', 'manual_price_override', 'override_reason', 'edit_logs',
-    'plot_id', 'tapper_id'
+    'plot_id', 'tapper_id', 'plot_name'
   ];
   // UUID fields that must match strict UUID v4 format in Supabase (FK constraints)
   const UUID_FIELDS = new Set(['id', 'buyer_id', 'plot_id', 'tapper_id', 'tested_by_user_id']);

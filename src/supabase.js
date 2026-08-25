@@ -101,7 +101,7 @@ const delay = (ms = 400) => new Promise(resolve => setTimeout(resolve, ms));
 const sanitizeTransaction = (tx) => {
   if (!tx) return null;
   const allowedKeys = [
-    'id', 'queue_number', 'seller_name', 'buyer_name', 'phone_number', 
+    'id', 'queue_number', 'seller_name', 'buyer_name', 'buyer_id', 'phone_number', 
     'date', 'raw_weight_kg', 'wet_weight_sample_g', 'dry_weight_sample_g', 
     'drc_percentage', 'dry_weight_kg', 'price_per_kg', 'total_amount', 
     'owner_share_percentage', 'owner_share_amount', 'tapper_share_amount', 
@@ -131,6 +131,11 @@ const generateQueueNumber = (txs, dateStr) => {
 export const getMockProfileKey = () => {
   const role = localStorage.getItem('farmpro_current_role') || 'BUYER';
   return role === 'SELLER' ? 'farmpro_mock_seller' : 'farmpro_mock_buyer';
+};
+
+// Helper to get current store owner ID (buyer's profile ID) for data isolation
+const getCurrentStoreId = () => {
+  return localStorage.getItem('farmpro_profile_id') || null;
 };
 
 const seedMockData = () => {
@@ -686,19 +691,24 @@ export const phoneToVirtualEmail = (phone) => {
 export const db = {
   // --- Daily Settings ---
   getDailySettings: async (dateStr) => {
+    const storeId = getCurrentStoreId();
     if (isMock) {
       await delay(200);
       const settingsList = safeJsonParse('farmpro_daily_settings', []);
-      const found = settingsList.find(s => s.date === dateStr);
+      // Filter by storeId if available, else legacy fallback
+      const found = storeId
+        ? settingsList.find(s => s.date === dateStr && s.store_owner_id === storeId)
+        : settingsList.find(s => s.date === dateStr);
       return found || null;
     }
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('daily_settings')
         .select('*')
-        .eq('date', dateStr)
-        .maybeSingle();
+        .eq('date', dateStr);
+      if (storeId) query = query.eq('store_owner_id', storeId);
+      const { data, error } = await query.maybeSingle();
 
       if (error) throw error;
       return data;
@@ -706,17 +716,23 @@ export const db = {
       console.error('Error fetching daily settings:', err);
       // Fallback to local storage settings if Supabase fails (offline fallback)
       const settingsList = safeJsonParse('farmpro_daily_settings', []);
-      return settingsList.find(s => s.date === dateStr) || null;
+      return storeId
+        ? (settingsList.find(s => s.date === dateStr && s.store_owner_id === storeId) || null)
+        : (settingsList.find(s => s.date === dateStr) || null);
     }
   },
 
   saveDailySettings: async (settings) => {
+    const storeId = getCurrentStoreId();
     // ---- Always persist to localStorage first (offline + fast) ----
     const settingsList = safeJsonParse('farmpro_daily_settings', []);
-    const localIndex = settingsList.findIndex(s => s.date === settings.date);
+    const localIndex = storeId
+      ? settingsList.findIndex(s => s.date === settings.date && s.store_owner_id === storeId)
+      : settingsList.findIndex(s => s.date === settings.date);
     const localSetting = {
       id: settings.id || (localIndex >= 0 ? settingsList[localIndex].id : null) || uuidv4(),
       ...settings,
+      store_owner_id: storeId || settings.store_owner_id || null,
       created_at: (localIndex >= 0 ? settingsList[localIndex].created_at : null) || new Date().toISOString()
     };
     if (localIndex >= 0) settingsList[localIndex] = localSetting;
@@ -730,9 +746,10 @@ export const db = {
 
     // ---- Try Supabase upsert (full payload including new columns) ----
     try {
+      const settingsPayload = { ...localSetting };
       const { data, error } = await supabase
         .from('daily_settings')
-        .upsert(settings, { onConflict: 'date' })
+        .upsert(settingsPayload, { onConflict: 'date,store_owner_id' })
         .select()
         .single();
 
@@ -1251,20 +1268,22 @@ export const db = {
 
 // --- Transactions ---
   getTransactions: async (dateStr) => {
+    const storeId = getCurrentStoreId();
     if (isMock) {
       await delay(300);
       const txs = safeJsonParse('farmpro_transactions', []);
       return (Array.isArray(txs) ? txs : [])
-        .filter(t => t.date === dateStr)
+        .filter(t => t.date === dateStr && (!storeId || !t.buyer_id || t.buyer_id === storeId))
         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     }
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('rubber_transactions')
         .select('*')
-        .eq('date', dateStr)
-        .order('created_at', { ascending: true });
+        .eq('date', dateStr);
+      if (storeId) query = query.eq('buyer_id', storeId);
+      const { data, error } = await query.order('created_at', { ascending: true });
 
       if (error) throw error;
       
@@ -1306,6 +1325,7 @@ export const db = {
   },
 
   getTransactionsHistory: async (startDateStr, endDateStr) => {
+    const storeId = getCurrentStoreId();
     if (isMock) {
       // Return from local cache, simulating mock DB
       const txs = safeJsonParse('farmpro_transactions', []);
@@ -1313,7 +1333,8 @@ export const db = {
         if (!t.date) return false;
         const inStart = !startDateStr || t.date >= startDateStr;
         const inEnd = !endDateStr || t.date <= endDateStr;
-        return inStart && inEnd && (t.status === 'completed' || t.status === 'paid');
+        const isOwner = !storeId || !t.buyer_id || t.buyer_id === storeId;
+        return inStart && inEnd && isOwner && (t.status === 'completed' || t.status === 'paid');
       });
     }
 
@@ -1324,6 +1345,7 @@ export const db = {
         
       if (startDateStr) query = query.gte('date', startDateStr);
       if (endDateStr) query = query.lte('date', endDateStr);
+      if (storeId) query = query.eq('buyer_id', storeId);
       
       const { data, error } = await query
         .in('status', ['completed', 'paid'])
@@ -1340,14 +1362,20 @@ export const db = {
 
   createTransaction: async (tx, isOffline = false) => {
     const dateStr = tx.date || new Date().toISOString().split('T')[0];
+    const storeId = getCurrentStoreId();
 
     // Always fetch cache for queue numbering to prevent duplicate/incorrect queue
-    const cachedTxs = safeJsonParse('farmpro_transactions', []);
-    const queueNo = tx.queue_number || generateQueueNumber(cachedTxs, dateStr);
+    // Filter by storeId to count only THIS store's queues for today
+    const allCachedTxs = safeJsonParse('farmpro_transactions', []);
+    const storeCachedTxs = storeId
+      ? allCachedTxs.filter(t => !t.buyer_id || t.buyer_id === storeId)
+      : allCachedTxs;
+    const queueNo = tx.queue_number || generateQueueNumber(storeCachedTxs, dateStr);
 
     const newTx = {
       id: tx.id || uuidv4(),
       ...tx,
+      buyer_id: storeId || tx.buyer_id || null,
       queue_number: queueNo,
       date: dateStr,
       status: tx.status || 'waiting_drc',

@@ -9,6 +9,8 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
   const [rawWeightKg, setRawWeightKg] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [ownerSharePercentage, setOwnerSharePercentage] = useState(50);
+  const [saveManualPlot, setSaveManualPlot] = useState(false);
+  const [newPlotName, setNewPlotName] = useState('');
   const [creatingTx, setCreatingTx] = useState(false);
 
   // ---- Smart Search States ----
@@ -145,6 +147,8 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
     setSelectedPlotId('');
     setOwnerName('');
     setOwnerSharePercentage(50);
+    setSaveManualPlot(false);
+    setNewPlotName('');
   };
 
   const handlePlotSelect = (e) => {
@@ -251,12 +255,42 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
 
     setCreatingTx(true);
     try {
+      let finalPlotId = (selectedPlotId && selectedPlotId !== 'new') ? selectedPlotId : null;
+      let tapperId = (selectedPlotId && selectedPlotId !== 'new') ? sellerPlots.find(p => p.plot_id === selectedPlotId)?.tapper_id : null;
+
+      // บันทึก seller ลง address book (เพื่อ autofill ครั้งหน้า) และเอา ID มาใช้
+      const sellerEntry = db.saveSellerToAddressBook({
+        id: selectedSeller?.id,
+        full_name: sellerName,
+        phone_number: phoneNumber,
+        is_app_user: selectedSeller?.is_app_user || false,
+      });
+
+      // ถ้าเลือก "สวนใหม่" และติ๊ก "บันทึกข้อมูลสวนนี้สำหรับครั้งต่อไป"
+      if (selectedPlotId === 'new' && saveManualPlot && sellerEntry) {
+        try {
+          const newPlot = await db.addManualPlot({
+            plot_name: newPlotName || `สวนของ ${ownerName || sellerName}`,
+            owner_id: sellerEntry.id,
+            owner_phone: phoneNumber,
+            tapper_id: sellerEntry.id,
+            tapper_phone: phoneNumber,
+            default_share_ratio: parseFloat(ownerSharePercentage)
+          });
+          finalPlotId = newPlot.plot_id;
+          tapperId = sellerEntry.id;
+        } catch (plotErr) {
+          console.error('Error saving manual plot:', plotErr);
+          // ทำต่อไปแม้บันทึกสวนไม่สำเร็จ
+        }
+      }
+
       await onCreateTransaction({
         seller_name: sellerName,
         buyer_name: currentUser?.store_name || currentUser?.full_name || 'ร้านรับซื้อยาง FarmPro',
         phone_number: phoneNumber,
-        plot_id: (selectedPlotId && selectedPlotId !== 'new') ? selectedPlotId : null,
-        tapper_id: (selectedPlotId && selectedPlotId !== 'new') ? sellerPlots.find(p => p.plot_id === selectedPlotId)?.tapper_id : null,
+        plot_id: finalPlotId,
+        tapper_id: tapperId,
         owner_name: ownerName || sellerName,
         raw_weight_kg: parseFloat(rawWeightKg),
         wet_weight_sample_g: parseFloat(currentSettings?.wet_sample_weight_g || 10),
@@ -269,14 +303,6 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
         status: 'waiting_drc',
         created_by_user_id: currentUser?.id,
         created_by_name: currentUser?.full_name || 'พนักงาน'
-      });
-
-      // บันทึก seller ลง address book (เพื่อ autofill ครั้งหน้า)
-      db.saveSellerToAddressBook({
-        id: selectedSeller?.id,
-        full_name: sellerName,
-        phone_number: phoneNumber,
-        is_app_user: selectedSeller?.is_app_user || false,
       });
 
       handleClearSelection();
@@ -702,15 +728,51 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
 
               {/* Owner Name (new farm only) */}
               {selectedPlotId === 'new' && (
-                <div className="form-group">
-                  <label>ชื่อเจ้าของสวน (สำหรับออกบิล)</label>
-                  <input
-                    type="text" className="form-input"
-                    placeholder="เช่น ลุงบุญ"
-                    value={ownerName}
-                    onChange={e => setOwnerName(e.target.value)}
-                  />
-                </div>
+                <>
+                  <div className="form-group">
+                    <label>ชื่อเจ้าของสวน (สำหรับออกบิล)</label>
+                    <input
+                      type="text" className="form-input"
+                      placeholder="เช่น ลุงบุญ"
+                      value={ownerName}
+                      onChange={e => setOwnerName(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="form-group" style={{ 
+                    marginTop: '0.5rem', padding: '0.75rem', 
+                    background: saveManualPlot ? '#f0fdf4' : '#f8fafc',
+                    border: saveManualPlot ? '1px solid #86efac' : '1px solid #e2e8f0',
+                    borderRadius: '8px'
+                  }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', margin: 0, fontWeight: '600' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={saveManualPlot}
+                        onChange={(e) => setSaveManualPlot(e.target.checked)}
+                        style={{ width: '1.2rem', height: '1.2rem', cursor: 'pointer' }}
+                      />
+                      <span>💾 บันทึกข้อมูลสวนนี้สำหรับครั้งต่อไป</span>
+                      <span style={{ 
+                        fontSize: '0.65rem', background: '#e0e7ff', color: '#4338ca', 
+                        padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: '700', marginLeft: 'auto'
+                      }}>PRO</span>
+                    </label>
+                    
+                    {saveManualPlot && (
+                      <div style={{ marginTop: '0.75rem', paddingLeft: '1.7rem' }}>
+                        <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '0.25rem' }}>ตั้งชื่อสวน (เพื่อให้จำง่าย)</label>
+                        <input
+                          type="text" className="form-input"
+                          placeholder={`เช่น สวนของ ${ownerName || sellerName || 'ลุงบุญ'}`}
+                          value={newPlotName}
+                          onChange={e => setNewPlotName(e.target.value)}
+                          style={{ fontSize: '0.85rem', padding: '0.4rem 0.6rem' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
 
               {/* Owner share % */}

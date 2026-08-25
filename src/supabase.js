@@ -970,6 +970,7 @@ export const db = {
     }
 
     localStorage.setItem('farmpro_seller_address_book', JSON.stringify(book));
+    return entry;
   },
 
   /**
@@ -1044,10 +1045,14 @@ export const db = {
   // --- Rubber Plots Management ---
 
   getRubberPlots: async (userId) => {
-    if (isMock) {
+    const manualPlots = safeJsonParse('farmpro_manual_plots', []);
+    const userManualPlots = manualPlots.filter(p => p.owner_id === userId || p.tapper_id === userId);
+
+    if (isMock || userId?.startsWith('ab-')) {
       await delay(200);
       const plots = safeJsonParse('farmpro_rubber_plots', []);
-      return plots.filter(p => p.owner_id === userId || p.tapper_id === userId);
+      const userPlots = plots.filter(p => p.owner_id === userId || p.tapper_id === userId);
+      return [...userPlots, ...userManualPlots];
     }
     try {
       const { data, error } = await supabase
@@ -1056,11 +1061,25 @@ export const db = {
         .or(`owner_id.eq.${userId},tapper_id.eq.${userId}`)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data || [];
+      return [...(data || []), ...userManualPlots];
     } catch (err) {
       console.error('Error fetching rubber plots:', err);
-      return [];
+      return [...userManualPlots];
     }
+  },
+
+  addManualPlot: async (plotData) => {
+    await delay(100);
+    const plots = safeJsonParse('farmpro_manual_plots', []);
+    const newPlot = {
+      plot_id: uuidv4(),
+      ...plotData,
+      is_manual: true,
+      created_at: new Date().toISOString()
+    };
+    plots.push(newPlot);
+    localStorage.setItem('farmpro_manual_plots', JSON.stringify(plots));
+    return newPlot;
   },
 
   addRubberPlot: async (plotData) => {

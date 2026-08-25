@@ -1392,8 +1392,8 @@ export const db = {
     };
 
     // Update local storage cache immediately
-    cachedTxs.push(newTx);
-    localStorage.setItem('farmpro_transactions', JSON.stringify(cachedTxs));
+    allCachedTxs.push(newTx);
+    localStorage.setItem('farmpro_transactions', JSON.stringify(allCachedTxs));
     
     // Dispatch local realtime event for multi-tab sync
     try {

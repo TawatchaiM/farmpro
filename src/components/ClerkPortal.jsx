@@ -255,7 +255,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
         seller_name: sellerName,
         buyer_name: currentUser?.store_name || currentUser?.full_name || 'ร้านรับซื้อยาง FarmPro',
         phone_number: phoneNumber,
-        plot_id: selectedPlotId === 'new' ? null : selectedPlotId,
+        plot_id: (selectedPlotId && selectedPlotId !== 'new') ? selectedPlotId : null,
         tapper_id: (selectedPlotId && selectedPlotId !== 'new') ? sellerPlots.find(p => p.plot_id === selectedPlotId)?.tapper_id : null,
         owner_name: ownerName || sellerName,
         raw_weight_kg: parseFloat(rawWeightKg),

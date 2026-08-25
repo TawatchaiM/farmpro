@@ -110,10 +110,19 @@ const sanitizeTransaction = (tx) => {
     'testing_by', 'price_source', 'manual_price_override', 'override_reason', 'edit_logs',
     'plot_id', 'tapper_id'
   ];
+  // UUID fields that must match strict UUID v4 format in Supabase (FK constraints)
+  const UUID_FIELDS = new Set(['id', 'buyer_id', 'plot_id', 'tapper_id', 'tested_by_user_id']);
+  const isValidUUID = (val) => val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
   const safeTx = {};
   for (const key of allowedKeys) {
     if (tx[key] !== undefined) {
-      safeTx[key] = tx[key];
+      if (UUID_FIELDS.has(key)) {
+        // Convert empty strings and non-UUID values (e.g. 'ab-...') to null
+        safeTx[key] = isValidUUID(tx[key]) ? tx[key] : null;
+      } else {
+        safeTx[key] = tx[key];
+      }
     }
   }
   return safeTx;

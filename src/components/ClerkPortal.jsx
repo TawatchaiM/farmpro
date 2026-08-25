@@ -266,6 +266,14 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
       let tapperId = (selectedPlotId && selectedPlotId !== 'new') ? sellerPlots.find(p => p.plot_id === selectedPlotId)?.tapper_id : null;
       let finalPlotName = (selectedPlotId && selectedPlotId !== 'new') ? sellerPlots.find(p => p.plot_id === selectedPlotId)?.plot_name : null;
 
+      // Manual plots only exist in localStorage (not in Supabase rubber_plots table)
+      // → null out plot_id and tapper_id to avoid FK constraint violations
+      const selectedPlotObj = sellerPlots.find(p => p.plot_id === selectedPlotId);
+      if (selectedPlotObj?.is_manual) {
+        finalPlotId = null;
+        tapperId = null;
+      }
+
       // บันทึก seller ลง address book (เพื่อ autofill ครั้งหน้า) และเอา ID มาใช้
       const sellerEntry = db.saveSellerToAddressBook({
         id: selectedSeller?.id,

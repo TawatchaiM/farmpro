@@ -319,6 +319,15 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
         created_by_name: currentUser?.full_name || 'พนักงาน'
       });
 
+      // Save plot name mapping for local display
+      if (createdTx && createdTx.id && finalPlotName) {
+        try {
+          const mapping = JSON.parse(localStorage.getItem('farmpro_tx_plot_names') || '{}');
+          mapping[createdTx.id] = finalPlotName;
+          localStorage.setItem('farmpro_tx_plot_names', JSON.stringify(mapping));
+        } catch (e) {}
+      }
+
       handleClearSelection();
       setRawWeightKg('');
       setManualPriceOverride(false);

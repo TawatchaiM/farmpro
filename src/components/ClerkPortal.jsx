@@ -739,7 +739,24 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
               {selectedPlotId === 'new' && (
                 <>
                   <div className="form-group">
-                    <label>ชื่อเจ้าของสวน (สำหรับออกบิล)</label>
+                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <span>ชื่อเจ้าของสวน (สำหรับออกบิล)</span>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', margin: 0, cursor: 'pointer', fontSize: '0.75rem', color: '#166534', fontWeight: '600', background: '#dcfce7', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                        <input
+                          type="checkbox"
+                          checked={ownerName === sellerName && sellerName !== ''}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setOwnerName(sellerName);
+                            } else {
+                              setOwnerName('');
+                            }
+                          }}
+                          style={{ cursor: 'pointer', accentColor: '#16a34a' }}
+                        />
+                        ใช้ชื่อเดียวกับผู้ขาย
+                      </label>
+                    </label>
                     <input
                       type="text" className="form-input"
                       placeholder="เช่น ลุงบุญ"

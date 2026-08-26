@@ -294,7 +294,8 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           if (!error && data) dataList = data;
         }
         if (dataList.length === 0) {
-          dataList = JSON.parse(localStorage.getItem('farmpro_transactions') || '[]');
+          const localData = JSON.parse(localStorage.getItem('farmpro_transactions') || '[]');
+          dataList = localData.filter(tx => tx.buyer_id === storeId);
         }
       } else if (tableName === 'daily_settings') {
         if (supabase) {
@@ -302,7 +303,8 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           if (!error && data) dataList = data;
         }
         if (dataList.length === 0) {
-          dataList = JSON.parse(localStorage.getItem('farmpro_daily_settings') || '[]');
+          const localData = JSON.parse(localStorage.getItem('farmpro_daily_settings') || '[]');
+          dataList = localData.filter(s => s.store_owner_id === storeId);
         }
       }
 

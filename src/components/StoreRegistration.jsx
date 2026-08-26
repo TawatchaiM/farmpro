@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from '../supabase';
+import { db, supabase } from '../supabase';
 import QRCode from 'qrcode';
 import { getOrCreateSeed, generateDailyToken, buildLabUrl, revokeSeed } from '../utils/labToken';
 import CollapsibleSection from './CollapsibleSection';

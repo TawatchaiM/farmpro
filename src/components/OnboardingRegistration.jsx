@@ -389,7 +389,12 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
       business_hours: (role === 'buyer' || role === 'vendor') ? businessHours : null,
       rubber_types: role === 'buyer' ? rubberTypes.join(',') : null,
       vendor_category: role === 'vendor' ? vendorCategory : null,
-      vendor_description: role === 'vendor' ? vendorDescription : null
+      vendor_description: role === 'vendor' ? vendorDescription : null,
+      
+      // PDPA Consent
+      pdpa_accepted: localStorage.getItem('farmpro_pdpa_accepted') === 'true',
+      pdpa_accepted_at: localStorage.getItem('farmpro_pdpa_accepted') === 'true' ? new Date().toISOString() : null,
+      marketing_opt_in: localStorage.getItem('farmpro_marketing_opt_in') === 'true'
     };
 
     try {

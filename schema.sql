@@ -63,6 +63,11 @@ CREATE TABLE IF NOT EXISTS profiles (
   vendor_description TEXT,
   business_hours VARCHAR(100),
   
+  -- PDPA and Marketing Consent
+  pdpa_accepted BOOLEAN DEFAULT false,
+  pdpa_accepted_at TIMESTAMPTZ,
+  marketing_opt_in BOOLEAN DEFAULT false,
+  
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

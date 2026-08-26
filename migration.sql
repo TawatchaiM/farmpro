@@ -106,3 +106,9 @@ EXCEPTION
     WHEN OTHERS THEN
         RAISE NOTICE 'Migration of user_farms data skipped or partially applied: %', SQLERRM;
 END $$;
+
+-- 8. Add PDPA & Marketing Consent columns to profiles
+ALTER TABLE public.profiles 
+ADD COLUMN IF NOT EXISTS pdpa_accepted BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS pdpa_accepted_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS marketing_opt_in BOOLEAN DEFAULT false;

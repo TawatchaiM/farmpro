@@ -597,50 +597,6 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
       )}
       </CollapsibleSection>
 
-      {/* ===== DATA BACKUP & EXPORT ===== */}
-      <CollapsibleSection
-        id="data_backup"
-        title="สำรองและส่งออกข้อมูล (Backup)"
-        subtitle="ดาวน์โหลดข้อมูลรายการรับซื้อและตั้งค่าต่างๆ ออกมาเป็นไฟล์ Excel (CSV)"
-        icon="💾"
-        defaultExpanded={false}
-      >
-        <div style={{
-          background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
-          border: '1px solid #bfdbfe', borderRadius: '16px', padding: '1.5rem'
-        }}>
-          <p style={{ color: '#1e40af', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
-            ฟีเจอร์นี้ช่วยให้คุณดึงข้อมูลทั้งหมดจากระบบออนไลน์ (หรือออฟไลน์) ออกมาเก็บไว้ในเครื่องเพื่อป้องกันข้อมูลสูญหาย หรือใช้เปิดดูในโปรแกรม Excel ได้ครับ
-          </p>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => handleExportData('rubber_transactions')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem',
-                background: '#2563eb', color: '#fff', border: 'none', borderRadius: '10px',
-                cursor: 'pointer', fontWeight: '600', fontSize: '0.95rem', flex: '1 1 auto', justifyContent: 'center'
-              }}
-            >
-              <span style={{ fontSize: '1.2rem' }}>📥</span>
-              ส่งออกรายการรับซื้อ (Transactions)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleExportData('daily_settings')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem',
-                background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '10px',
-                cursor: 'pointer', fontWeight: '600', fontSize: '0.95rem', flex: '1 1 auto', justifyContent: 'center'
-              }}
-            >
-              <span style={{ fontSize: '1.2rem' }}>⚙️</span>
-              ส่งออกการตั้งค่าร้าน (Daily Settings)
-            </button>
-          </div>
-        </div>
-      </CollapsibleSection>
-
       {/* ===== QR CODE LAB MANAGEMENT ===== */}
       <CollapsibleSection
         id="qr_lab"
@@ -710,6 +666,50 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           </button>
         </div>
       </div>
+      </CollapsibleSection>
+
+      {/* ===== DATA BACKUP & EXPORT ===== */}
+      <CollapsibleSection
+        id="data_backup"
+        title="สำรองและส่งออกข้อมูล (Backup)"
+        subtitle="ดาวน์โหลดข้อมูลรายการรับซื้อและตั้งค่าต่างๆ ออกมาเป็นไฟล์ Excel (CSV)"
+        icon="💾"
+        defaultExpanded={false}
+      >
+        <div style={{
+          background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+          border: '1px solid #bfdbfe', borderRadius: '16px', padding: '1.5rem'
+        }}>
+          <p style={{ color: '#1e40af', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+            ฟีเจอร์นี้ช่วยให้คุณดึงข้อมูลทั้งหมดจากระบบออนไลน์ (หรือออฟไลน์) ออกมาเก็บไว้ในเครื่องเพื่อป้องกันข้อมูลสูญหาย หรือใช้เปิดดูในโปรแกรม Excel ได้ครับ
+          </p>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleExportData('rubber_transactions')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem',
+                background: '#2563eb', color: '#fff', border: 'none', borderRadius: '10px',
+                cursor: 'pointer', fontWeight: '600', fontSize: '0.95rem', flex: '1 1 auto', justifyContent: 'center'
+              }}
+            >
+              <span style={{ fontSize: '1.2rem' }}>📥</span>
+              ส่งออกรายการรับซื้อ (Transactions)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExportData('daily_settings')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem',
+                background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '10px',
+                cursor: 'pointer', fontWeight: '600', fontSize: '0.95rem', flex: '1 1 auto', justifyContent: 'center'
+              }}
+            >
+              <span style={{ fontSize: '1.2rem' }}>⚙️</span>
+              ส่งออกการตั้งค่าร้าน (Daily Settings)
+            </button>
+          </div>
+        </div>
       </CollapsibleSection>
 
       {/* QR Code Modal */}

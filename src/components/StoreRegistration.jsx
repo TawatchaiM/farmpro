@@ -283,6 +283,51 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
     }
   };
 
+  const handleExportData = async (tableName) => {
+    try {
+      let dataList = [];
+      const storeId = currentUser?.id;
+      
+      if (tableName === 'rubber_transactions') {
+        if (supabase) {
+          const { data, error } = await supabase.from('rubber_transactions').select('*').eq('buyer_id', storeId);
+          if (!error && data) dataList = data;
+        }
+        if (dataList.length === 0) {
+          dataList = JSON.parse(localStorage.getItem('farmpro_transactions') || '[]');
+        }
+      } else if (tableName === 'daily_settings') {
+        if (supabase) {
+          const { data, error } = await supabase.from('daily_settings').select('*').eq('store_owner_id', storeId);
+          if (!error && data) dataList = data;
+        }
+        if (dataList.length === 0) {
+          dataList = JSON.parse(localStorage.getItem('farmpro_daily_settings') || '[]');
+        }
+      }
+
+      if (!dataList || dataList.length === 0) {
+        alert(`ไม่พบข้อมูลในตาราง ${tableName} เพื่อส่งออก`);
+        return;
+      }
+
+      const keys = Object.keys(dataList[0]);
+      const header = keys.join(',');
+      const rows = dataList.map(obj => keys.map(k => `"${String(obj[k] !== null && obj[k] !== undefined ? obj[k] : '').replace(/"/g, '""')}"`).join(','));
+      const csvContent = [header, ...rows].join('\n');
+
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `backup_${tableName}_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('เกิดข้อผิดพลาดในการดึงข้อมูล Backup');
+    }
+  };
+
   return (
     <div>
       <CollapsibleSection
@@ -550,6 +595,50 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           )}
         </div>
       )}
+      </CollapsibleSection>
+
+      {/* ===== DATA BACKUP & EXPORT ===== */}
+      <CollapsibleSection
+        id="data_backup"
+        title="สำรองและส่งออกข้อมูล (Backup)"
+        subtitle="ดาวน์โหลดข้อมูลรายการรับซื้อและตั้งค่าต่างๆ ออกมาเป็นไฟล์ Excel (CSV)"
+        icon="💾"
+        defaultExpanded={false}
+      >
+        <div style={{
+          background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+          border: '1px solid #bfdbfe', borderRadius: '16px', padding: '1.5rem'
+        }}>
+          <p style={{ color: '#1e40af', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+            ฟีเจอร์นี้ช่วยให้คุณดึงข้อมูลทั้งหมดจากระบบออนไลน์ (หรือออฟไลน์) ออกมาเก็บไว้ในเครื่องเพื่อป้องกันข้อมูลสูญหาย หรือใช้เปิดดูในโปรแกรม Excel ได้ครับ
+          </p>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleExportData('rubber_transactions')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem',
+                background: '#2563eb', color: '#fff', border: 'none', borderRadius: '10px',
+                cursor: 'pointer', fontWeight: '600', fontSize: '0.95rem', flex: '1 1 auto', justifyContent: 'center'
+              }}
+            >
+              <span style={{ fontSize: '1.2rem' }}>📥</span>
+              ส่งออกรายการรับซื้อ (Transactions)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExportData('daily_settings')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem',
+                background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '10px',
+                cursor: 'pointer', fontWeight: '600', fontSize: '0.95rem', flex: '1 1 auto', justifyContent: 'center'
+              }}
+            >
+              <span style={{ fontSize: '1.2rem' }}>⚙️</span>
+              ส่งออกการตั้งค่าร้าน (Daily Settings)
+            </button>
+          </div>
+        </div>
       </CollapsibleSection>
 
       {/* ===== QR CODE LAB MANAGEMENT ===== */}

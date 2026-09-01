@@ -780,6 +780,7 @@ function AdminPortal() {
                           onMouseLeave={(e) => { e.target.style.background = '#fff'; }}
                         >
                           🟡 🔄 ปรับเป็นรออนุมัติ
+                        </button>
                       )}
 
                       {/* Reset Password Button */}

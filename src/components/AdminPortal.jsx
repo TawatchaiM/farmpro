@@ -22,6 +22,10 @@ function AdminPortal() {
   const [tempPassword, setTempPassword] = useState('');
   const [resetStatus, setResetStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
 
+  // Settings Tab State
+  const [supportLineId, setSupportLineId] = useState('');
+  const [supportPhone, setSupportPhone] = useState('');
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -43,9 +47,22 @@ function AdminPortal() {
     }
   };
 
+
+
   useEffect(() => {
+    const savedLineId = localStorage.getItem('farmpro_support_line_id') || '@farmpro';
+    const savedPhone = localStorage.getItem('farmpro_support_phone') || '02-123-4567';
+    setSupportLineId(savedLineId);
+    setSupportPhone(savedPhone);
     loadData();
   }, []);
+
+  const handleSaveSettings = () => {
+    localStorage.setItem('farmpro_support_line_id', supportLineId);
+    localStorage.setItem('farmpro_support_phone', supportPhone);
+    setNotification('บันทึกการตั้งค่าระบบเรียบร้อยแล้ว');
+    setTimeout(() => setNotification(''), 3000);
+  };
 
   const handleAction = async (id, newStatus, name) => {
     try {
@@ -535,6 +552,12 @@ function AdminPortal() {
           onClick={() => setActiveTab('demo_login')}
         >
           ⚡ ทดสอบระบบ (Demo)
+        </button>
+        <button 
+          className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('settings')}
+        >
+          ⚙️ ตั้งค่าระบบ
         </button>
       </div>
 
@@ -1240,6 +1263,74 @@ function AdminPortal() {
             >
               🧑‍🌾 ล็อกอินโหมด: ชาวสวนยาง (0898765432)
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: SETTINGS */}
+      {activeTab === 'settings' && (
+        <div style={{ background: '#fff', borderRadius: '16px', padding: '2rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+          <h2 style={{ margin: '0 0 1.5rem 0', color: '#1e293b' }}>⚙️ ตั้งค่าระบบ (System Settings)</h2>
+          <p style={{ color: '#64748b', marginBottom: '2rem' }}>
+            ตั้งค่าข้อมูลพื้นฐานของระบบ เช่น ช่องทางการติดต่อศูนย์ช่วยเหลือ ที่จะนำไปแสดงในหน้า "ลืมรหัสผ่าน" และส่วนอื่นๆ ของแอปพลิเคชัน
+          </p>
+
+          <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Line ID Setting */}
+            <div>
+              <label style={{ display: 'block', fontWeight: 'bold', color: '#334155', marginBottom: '0.5rem' }}>
+                LINE ID สำหรับติดต่อศูนย์ช่วยเหลือ
+              </label>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <span style={{ fontSize: '1.5rem' }}>💬</span>
+                <input
+                  type="text"
+                  value={supportLineId}
+                  onChange={(e) => setSupportLineId(e.target.value)}
+                  placeholder="เช่น @farmpro"
+                  style={{
+                    flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', color: '#1e293b'
+                  }}
+                />
+              </div>
+              <p style={{ margin: '0.25rem 0 0 2rem', fontSize: '0.8rem', color: '#64748b' }}>
+                ผู้ใช้จะถูกส่งไปยังลิงก์ https://line.me/R/ti/p/{supportLineId || '...'}
+              </p>
+            </div>
+
+            {/* Phone Number Setting */}
+            <div>
+              <label style={{ display: 'block', fontWeight: 'bold', color: '#334155', marginBottom: '0.5rem' }}>
+                เบอร์โทรศัพท์ติดต่อศูนย์ช่วยเหลือ
+              </label>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <span style={{ fontSize: '1.5rem' }}>📞</span>
+                <input
+                  type="text"
+                  value={supportPhone}
+                  onChange={(e) => setSupportPhone(e.target.value)}
+                  placeholder="เช่น 02-123-4567"
+                  style={{
+                    flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', color: '#1e293b'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div style={{ marginTop: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
+              <button
+                onClick={handleSaveSettings}
+                style={{
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: '#fff', padding: '0.8rem 2rem', borderRadius: '8px', border: 'none',
+                  fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer',
+                  boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3)'
+                }}
+              >
+                💾 บันทึกการตั้งค่า
+              </button>
+            </div>
           </div>
         </div>
       )}

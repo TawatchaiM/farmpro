@@ -304,10 +304,24 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
                   กรุณาติดต่อผู้ดูแลระบบ FarmPro เพื่อยืนยันตัวตนและขอรีเซ็ตรหัสผ่านใหม่
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <button type="button" onClick={() => alert('เปิด LINE: @FarmProSupport')} style={{ padding: '0.85rem', background: '#06c755', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      const lineId = localStorage.getItem('farmpro_support_line_id') || '@farmpro';
+                      window.open(`https://line.me/R/ti/p/${lineId}`, '_blank');
+                    }} 
+                    style={{ padding: '0.85rem', background: '#06c755', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}
+                  >
                     💬 ติดต่อผ่าน LINE Official
                   </button>
-                  <button type="button" onClick={() => alert('โทร: 02-XXX-XXXX')} style={{ padding: '0.85rem', background: 'rgba(255,255,255,0.1)', color: '#f8fafc', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      const phone = localStorage.getItem('farmpro_support_phone') || '02-123-4567';
+                      window.location.href = `tel:${phone.replace(/\D/g, '')}`;
+                    }} 
+                    style={{ padding: '0.85rem', background: 'rgba(255,255,255,0.1)', color: '#f8fafc', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}
+                  >
                     📞 โทรศัพท์ติดต่อศูนย์ช่วยเหลือ
                   </button>
                 </div>

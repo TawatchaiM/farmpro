@@ -9,6 +9,8 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
   const [error, setError] = useState(null);
   
   const [filterMonth, setFilterMonth] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [filterBuyer, setFilterBuyer] = useState('all');
   const [viewRole, setViewRole] = useState('owner'); // 'owner' or 'tapper'
 
@@ -142,13 +144,16 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
           if (rowDateStr < thirtyDaysAgo) return false;
         } else if (filterMonth === 'thisYear') {
           if (!rowDateStr.includes(currentYear)) return false;
+        } else if (filterMonth === 'custom') {
+          if (customStartDate && rowDateStr < customStartDate) return false;
+          if (customEndDate && rowDateStr > customEndDate) return false;
         } else {
           if (rowDateStr.substring(0, 7) !== filterMonth) return false;
         }
       }
       return true;
     });
-  }, [data, filterMonth, filterBuyer, viewRole, currentUser, plots]);
+  }, [data, filterMonth, filterBuyer, viewRole, currentUser, plots, customStartDate, customEndDate]);
 
   const formatDateDisplay = (dateStr) => {
     if (!dateStr) return '';
@@ -219,10 +224,29 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
               <option value="7days">7 วันย้อนหลัง (สัปดาห์นี้)</option>
               <option value="30days">30 วันย้อนหลัง (เดือนนี้)</option>
               <option value="thisYear">ปีนี้ (ทั้งปี)</option>
+              <option value="custom">กำหนดเอง (Custom)</option>
               <optgroup label="เลือกตามเดือนปี">
                 {uniqueMonths.map(m => <option key={m} value={m}>{m}</option>)}
               </optgroup>
             </select>
+            {filterMonth === 'custom' && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <input 
+                  type="date" 
+                  className="form-input" 
+                  value={customStartDate} 
+                  onChange={e => setCustomStartDate(e.target.value)} 
+                  style={{ width: '50%', fontSize: '0.8rem', padding: '0.4rem' }}
+                />
+                <input 
+                  type="date" 
+                  className="form-input" 
+                  value={customEndDate} 
+                  onChange={e => setCustomEndDate(e.target.value)} 
+                  style={{ width: '50%', fontSize: '0.8rem', padding: '0.4rem' }}
+                />
+              </div>
+            )}
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>ผู้รับซื้อ</label>

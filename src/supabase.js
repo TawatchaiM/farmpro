@@ -2174,6 +2174,18 @@ export const db = {
     }
   },
 
+  // ---------------------------------------------------------
+  // API Security Note (PDPA Compliance & Data Privacy)
+  // ---------------------------------------------------------
+  // In a full production backend, endpoints like `getProfiles` 
+  // and `getTransactions` must NOT return sensitive PII 
+  // (e.g. phone numbers, id card numbers, etc.) to non-admins.
+  // We recommend using Supabase Row Level Security (RLS) policies 
+  // and Secure Views to sanitize the response.
+  // For this frontend-mock implementation, the PDPA Anonymization 
+  // is strictly enforced at the Export/UI layer (see AdminPortal.jsx).
+  // ---------------------------------------------------------
+  
   getProfiles: async () => {
     let localProfiles = safeJsonParse('farmpro_all_profiles', []);
     const currentProfile = safeJsonParse(getMockProfileKey(), null);

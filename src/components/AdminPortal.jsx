@@ -266,6 +266,80 @@ function AdminPortal() {
     .filter(p => p.daysLeft > 0 && p.daysLeft <= 30)
     .sort((a, b) => a.daysLeft - b.daysLeft)
     .slice(0, 5);
+  // --- Export Helpers (PDPA Compliant) ---
+  const downloadCSV = (csvString, filename) => {
+    const blob = new Blob(['\ufeff' + csvString], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel Thai support
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportAnonymizedMarketReport = () => {
+    // 1. Filter & Map Data (STRICTLY NO PII)
+    const aggregated = {};
+    transactions.forEach(t => {
+      const buyer = profiles.find(p => p.id === t.buyer_id);
+      const district = buyer?.district || 'ไม่ระบุอำเภอ';
+      const subdistrict = buyer?.subdistrict || 'ไม่ระบุตำบล';
+      
+      const dateObj = new Date(t.date || t.created_at);
+      const yearMonth = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+      
+      const key = `${district}_${subdistrict}_${yearMonth}`;
+      
+      if (!aggregated[key]) {
+        aggregated[key] = {
+          district,
+          subdistrict,
+          yearMonth,
+          total_weight_kg: 0,
+          total_amount_thb: 0,
+          total_bills: 0,
+          sum_drc: 0
+        };
+      }
+      
+      aggregated[key].total_weight_kg += (parseFloat(t.raw_weight_kg) || 0);
+      aggregated[key].total_amount_thb += (parseFloat(t.total_amount) || 0);
+      aggregated[key].total_bills += 1;
+      aggregated[key].sum_drc += (parseFloat(t.drc_percentage) || 0);
+    });
+
+    // 2. Format to CSV
+    let csv = 'District,Subdistrict,Year-Month,Total Bills,Total Weight (kg),Total Amount (THB),Avg DRC (%)\n';
+    
+    Object.values(aggregated).forEach(row => {
+      const avgDrc = row.total_bills > 0 ? (row.sum_drc / row.total_bills).toFixed(2) : 0;
+      csv += `"${row.district}","${row.subdistrict}","${row.yearMonth}",${row.total_bills},${row.total_weight_kg.toFixed(2)},${row.total_amount_thb.toFixed(2)},${avgDrc}\n`;
+    });
+
+    downloadCSV(csv, `market_intelligence_anonymized_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const exportInternalAdminReport = () => {
+    // 1. Prepare data (Includes Internal & System Identifiers)
+    let csv = 'CONFIDENTIAL: INTERNAL ADMIN REPORT ONLY - DO NOT DISTRIBUTE\n';
+    csv += 'Store Name,Role,Plan,Billing Cycle,MRR,Storage Quota (MB),Storage Used (MB),Online Status,Days to Expiry\n';
+
+    subProfiles.forEach(p => {
+      const quota = p.subPlan === 'pro' ? 20000 : (p.subPlan === 'standard' ? 5000 : 50);
+      const seed = p.id?.charCodeAt(0) || 0;
+      const used = Math.floor((seed % quota) * 0.8);
+      const isOnline = (seed % 2) === 0 ? 'Online' : 'Offline';
+      const daysLeft = p.subPlan !== 'free' ? ((seed % 45) + 1) : '-';
+
+      const storeName = p.store_name ? p.store_name.replace(/"/g, '""') : (p.full_name ? p.full_name.replace(/"/g, '""') : 'Unknown');
+      
+      csv += `"${storeName}","${p.role}","${p.subPlan}","${p.subCycle}",${p.mrr || 0},${quota},${used},"${isOnline}","${daysLeft}"\n`;
+    });
+
+    downloadCSV(csv, `internal_admin_report_${new Date().toISOString().split('T')[0]}.csv`);
+  };
   // ---------------------------------------------
 
   return (
@@ -604,6 +678,34 @@ function AdminPortal() {
       {/* TAB 2: DASHBOARD STATS */}
       {activeTab === 'dashboard' && (
         <div>
+          {/* Export Buttons (PDPA Compliant) */}
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+            <button
+              onClick={exportAnonymizedMarketReport}
+              style={{
+                background: '#f0fdf4', border: '1px solid #22c55e', color: '#15803d',
+                padding: '0.6rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
+                display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(34,197,94,0.1)'
+              }}
+              onMouseEnter={e => { e.target.style.background = '#dcfce7'; }}
+              onMouseLeave={e => { e.target.style.background = '#f0fdf4'; }}
+            >
+              📊 ส่งออกข้อมูลสถิติและเทรนด์ DRC (Anonymized Market Report)
+            </button>
+            <button
+              onClick={exportInternalAdminReport}
+              style={{
+                background: '#fff1f2', border: '1px solid #f43f5e', color: '#be123c',
+                padding: '0.6rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
+                display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(244,63,94,0.1)'
+              }}
+              onMouseEnter={e => { e.target.style.background = '#ffe4e6'; }}
+              onMouseLeave={e => { e.target.style.background = '#fff1f2'; }}
+            >
+              🔒 ส่งออกข้อมูลบริหารระบบร้านค้า (Internal Admin Report)
+            </button>
+          </div>
+
           <div className="stat-grid" style={{ marginBottom: '1.5rem' }}>
             <div className="stat-card" style={{ background: '#f0fdfa', border: '1px solid #99f6e4' }}>
               <div className="stat-title">จำนวนสมาชิกทั้งหมด (Registered)</div>

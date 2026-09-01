@@ -161,7 +161,10 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
   const handlePlotSelect = (e) => {
     const val = e.target.value;
     setSelectedPlotId(val);
-    if (val !== 'new' && val !== '') {
+    if (val === 'unspecified') {
+      setOwnerName('ไม่ระบุสวน');
+      setOwnerSharePercentage(100);
+    } else if (val !== 'new' && val !== '') {
       const plot = sellerPlots.find(p => p.plot_id === val);
       if (plot) {
         setOwnerName(plot.owner?.full_name || sellerName);
@@ -262,9 +265,9 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
 
     setCreatingTx(true);
     try {
-      let finalPlotId = (selectedPlotId && selectedPlotId !== 'new') ? selectedPlotId : null;
-      let tapperId = (selectedPlotId && selectedPlotId !== 'new') ? sellerPlots.find(p => p.plot_id === selectedPlotId)?.tapper_id : null;
-      let finalPlotName = (selectedPlotId && selectedPlotId !== 'new') ? sellerPlots.find(p => p.plot_id === selectedPlotId)?.plot_name : null;
+      let finalPlotId = (selectedPlotId && selectedPlotId !== 'new' && selectedPlotId !== 'unspecified') ? selectedPlotId : null;
+      let tapperId = (selectedPlotId && selectedPlotId !== 'new' && selectedPlotId !== 'unspecified') ? sellerPlots.find(p => p.plot_id === selectedPlotId)?.tapper_id : null;
+      let finalPlotName = (selectedPlotId && selectedPlotId !== 'new' && selectedPlotId !== 'unspecified') ? sellerPlots.find(p => p.plot_id === selectedPlotId)?.plot_name : (selectedPlotId === 'unspecified' ? 'ไม่ระบุสวน' : null);
 
       // Manual plots only exist in localStorage (not in Supabase rubber_plots table)
       // → null out plot_id and tapper_id to avoid FK constraint violations
@@ -746,6 +749,19 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
                       }}
                     >
                       + สวนใหม่
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePlotSelect({ target: { value: 'unspecified' } })}
+                      style={{
+                        padding: '0.45rem 0.85rem', borderRadius: '8px', fontSize: '0.82rem',
+                        fontWeight: '600', cursor: 'pointer',
+                        border: selectedPlotId === 'unspecified' ? '2px solid #64748b' : '1px solid #cbd5e1',
+                        background: selectedPlotId === 'unspecified' ? '#475569' : '#f8fafc',
+                        color: selectedPlotId === 'unspecified' ? '#fff' : '#64748b',
+                      }}
+                    >
+                      ไม่ระบุสวน
                     </button>
                   </div>
                 </div>

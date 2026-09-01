@@ -213,7 +213,13 @@ function AdminPortal() {
     .slice(0, 5) // top 5
     .map((p, i) => {
       const quota = p.plan_id === 'pro' || p.subscription_plan === 'pro' ? 20000 : (p.plan_id === 'standard' || p.subscription_plan === 'standard' ? 5000 : 50); // MB
-      const used = Math.floor(Math.random() * (quota * 0.8)); // random usage up to 80%
+      
+      // Use real data if available, otherwise mock it
+      let used = p.used_storage_mb;
+      if (used === undefined || used === null) {
+        used = Math.floor(Math.random() * (quota * 0.8)); // random usage up to 80%
+      }
+      
       return {
         name: p.store_name || p.full_name || `Larn ${i+1}`,
         used: used,
@@ -227,15 +233,28 @@ function AdminPortal() {
     .filter(p => p.role !== 'seller')
     .slice(0, 8)
     .map(p => {
-      // Create a deterministic pseudo-random online status based on ID
-      const seed = p.id?.charCodeAt(0) || 0;
-      const isOnline = (seed % 2) === 0;
-      const lastActiveMins = Math.floor((seed * 3) % 60) + 1;
-      return {
-        ...p,
-        isOnline,
-        lastActiveStr: isOnline ? 'ออนไลน์' : `${lastActiveMins} นาทีที่แล้ว`
-      };
+      // Use real data if available, otherwise mock deterministically based on ID
+      let isOnline = p.is_online;
+      let lastActiveStr = '';
+      
+      if (isOnline === undefined || isOnline === null) {
+        const seed = p.id?.charCodeAt(0) || 0;
+        isOnline = (seed % 2) === 0;
+        const lastActiveMins = Math.floor((seed * 3) % 60) + 1;
+        lastActiveStr = isOnline ? 'ออนไลน์' : `${lastActiveMins} นาทีที่แล้ว`;
+      } else {
+        if (isOnline) {
+          lastActiveStr = 'ออนไลน์';
+        } else if (p.last_active_at) {
+          // simple formatting for real timestamp
+          const diffMins = Math.floor((new Date() - new Date(p.last_active_at)) / 60000);
+          lastActiveStr = diffMins < 60 ? `${diffMins} นาทีที่แล้ว` : `${Math.floor(diffMins/60)} ชั่วโมงที่แล้ว`;
+        } else {
+          lastActiveStr = 'ออฟไลน์';
+        }
+      }
+      
+      return { ...p, isOnline, lastActiveStr };
     });
 
   // 3. Market Intelligence (Value by Province)
@@ -256,11 +275,20 @@ function AdminPortal() {
   const expiringSubscriptions = subProfiles
     .filter(p => p.subPlan !== 'free')
     .map(p => {
-      // Mock expiry date between 1 to 45 days from now
-      const seed = p.id?.charCodeAt(0) || 0;
-      const daysLeft = (seed % 45) + 1; 
-      const expiryDate = new Date(today);
-      expiryDate.setDate(today.getDate() + daysLeft);
+      // Use real data if available, otherwise mock expiry date
+      let expiryDate;
+      let daysLeft;
+      
+      if (p.subscription_expiry_date) {
+        expiryDate = new Date(p.subscription_expiry_date);
+        daysLeft = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+      } else {
+        const seed = p.id?.charCodeAt(0) || 0;
+        daysLeft = (seed % 45) + 1; 
+        expiryDate = new Date(today);
+        expiryDate.setDate(today.getDate() + daysLeft);
+      }
+      
       return { ...p, expiryDate, daysLeft };
     })
     .filter(p => p.daysLeft > 0 && p.daysLeft <= 30)
@@ -328,10 +356,31 @@ function AdminPortal() {
 
     subProfiles.forEach(p => {
       const quota = p.subPlan === 'pro' ? 20000 : (p.subPlan === 'standard' ? 5000 : 50);
-      const seed = p.id?.charCodeAt(0) || 0;
-      const used = Math.floor((seed % quota) * 0.8);
-      const isOnline = (seed % 2) === 0 ? 'Online' : 'Offline';
-      const daysLeft = p.subPlan !== 'free' ? ((seed % 45) + 1) : '-';
+      
+      let used = p.used_storage_mb;
+      if (used === undefined || used === null) {
+        const seed = p.id?.charCodeAt(0) || 0;
+        used = Math.floor((seed % quota) * 0.8);
+      }
+
+      let isOnline = 'Offline';
+      if (p.is_online !== undefined && p.is_online !== null) {
+        isOnline = p.is_online ? 'Online' : 'Offline';
+      } else {
+        const seed = p.id?.charCodeAt(0) || 0;
+        isOnline = (seed % 2) === 0 ? 'Online' : 'Offline';
+      }
+
+      let daysLeft = '-';
+      if (p.subPlan !== 'free') {
+        if (p.subscription_expiry_date) {
+          const exp = new Date(p.subscription_expiry_date);
+          daysLeft = Math.ceil((exp - new Date()) / (1000 * 60 * 60 * 24));
+        } else {
+          const seed = p.id?.charCodeAt(0) || 0;
+          daysLeft = (seed % 45) + 1;
+        }
+      }
 
       const storeName = p.store_name ? p.store_name.replace(/"/g, '""') : (p.full_name ? p.full_name.replace(/"/g, '""') : 'Unknown');
       

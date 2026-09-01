@@ -237,6 +237,7 @@ function ManualBillForm({ transactions, currentUser, onUpdateTransaction }) {
               <option value="60">60%</option>
               <option value="65">65%</option>
               <option value="70">70%</option>
+              <option value="100">100% (รับเงินเต็มจำนวน / ไม่ระบุสวน)</option>
             </select>
           </div>
 

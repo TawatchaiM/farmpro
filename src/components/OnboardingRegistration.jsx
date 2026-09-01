@@ -1572,7 +1572,7 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
                 ย้อนกลับ
               </button>
               <button type="button" onClick={() => { setErrorMsg(''); setStep(5); }} className="onboarding-btn-primary">
-                {onboardingFarms.length > 0 ? `ถัดไป (${onboardingFarms.length} สวน) →` : 'ข้ามขั้นตอนนี้ →'}
+                {onboardingFarms.length > 0 ? `ถัดไป (${onboardingFarms.length} สวน) →` : 'ไม่ระบุสวน (รับจ้างทั่วไป / อิสระ) →'}
               </button>
             </div>
           </div>

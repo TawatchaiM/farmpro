@@ -214,8 +214,15 @@ function FarmManagement({ currentUser }) {
 
       <div className="farm-list">
         {plots.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-            คุณยังไม่มีแปลงสวนในระบบ ลองเพิ่มแปลงสวนด้านบนได้เลย
+          <div style={{ textAlign: 'center', padding: '2.5rem 1rem', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🧑‍🌾</div>
+            <h4 style={{ color: '#0f172a', margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>
+              ✅ สถานะปัจจุบัน: ไม่ระบุสวน (รับจ้างอิสระ)
+            </h4>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', margin: '0' }}>
+              คุณยังไม่มีแปลงสวนในระบบ หากคุณเป็นคนรับจ้างกรีดทั่วไป สามารถใช้สถานะนี้ในการรับบิลได้เลย<br/>
+              (หรือหากต้องการเพิ่มสวนประจำ สามารถทำได้ที่ฟอร์มด้านบน)
+            </p>
           </div>
         ) : (
           plots.map(plot => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../supabase';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 function AdminPortal() {
   const [activeTab, setActiveTab] = useState('users');
@@ -203,6 +204,68 @@ function AdminPortal() {
     }
     return true;
   });
+  // ---------------------------------------------
+
+  // --- Dashboard New Widgets Mock Data ---
+  // 1. System Resources (Storage vs Quota)
+  const systemResourcesData = profiles
+    .filter(p => p.role === 'buyer')
+    .slice(0, 5) // top 5
+    .map((p, i) => {
+      const quota = p.plan_id === 'pro' || p.subscription_plan === 'pro' ? 20000 : (p.plan_id === 'standard' || p.subscription_plan === 'standard' ? 5000 : 50); // MB
+      const used = Math.floor(Math.random() * (quota * 0.8)); // random usage up to 80%
+      return {
+        name: p.store_name || p.full_name || `Larn ${i+1}`,
+        used: used,
+        quota: quota,
+        fill: used > quota * 0.9 ? '#ef4444' : (used > quota * 0.7 ? '#f59e0b' : '#0ea5e9')
+      };
+    });
+
+  // 2. Live Activity (Online/Offline)
+  const liveActivityData = profiles
+    .filter(p => p.role !== 'seller')
+    .slice(0, 8)
+    .map(p => {
+      // Create a deterministic pseudo-random online status based on ID
+      const seed = p.id?.charCodeAt(0) || 0;
+      const isOnline = (seed % 2) === 0;
+      const lastActiveMins = Math.floor((seed * 3) % 60) + 1;
+      return {
+        ...p,
+        isOnline,
+        lastActiveStr: isOnline ? 'ออนไลน์' : `${lastActiveMins} นาทีที่แล้ว`
+      };
+    });
+
+  // 3. Market Intelligence (Value by Province)
+  const marketIntelligence = {};
+  transactions.forEach(t => {
+    const buyer = profiles.find(p => p.id === t.buyer_id);
+    const province = (buyer && buyer.province) ? buyer.province : 'ไม่ระบุ';
+    if (!marketIntelligence[province]) {
+      marketIntelligence[province] = { province, totalValue: 0, billCount: 0 };
+    }
+    marketIntelligence[province].totalValue += (parseFloat(t.total_amount) || 0);
+    marketIntelligence[province].billCount += 1;
+  });
+  const marketIntelligenceData = Object.values(marketIntelligence).sort((a,b) => b.totalValue - a.totalValue).slice(0,5);
+
+  // 4. Subscription Alerts (Expiring < 30 days)
+  const today = new Date();
+  const expiringSubscriptions = subProfiles
+    .filter(p => p.subPlan !== 'free')
+    .map(p => {
+      // Mock expiry date between 1 to 45 days from now
+      const seed = p.id?.charCodeAt(0) || 0;
+      const daysLeft = (seed % 45) + 1; 
+      const expiryDate = new Date(today);
+      expiryDate.setDate(today.getDate() + daysLeft);
+      return { ...p, expiryDate, daysLeft };
+    })
+    .filter(p => p.daysLeft > 0 && p.daysLeft <= 30)
+    .sort((a, b) => a.daysLeft - b.daysLeft)
+    .slice(0, 5);
   // ---------------------------------------------
 
   return (
@@ -591,6 +654,119 @@ function AdminPortal() {
                 <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#92400e', marginTop: '0.2rem' }}>{vendorsCount} ร้าน</div>
               </div>
             </div>
+          </div>
+
+          {/* --- NEW WIDGETS --- */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+            
+            {/* Widget 1: System Resources */}
+            <div style={{ background: '#fff', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 'bold', marginBottom: '1rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                💾 System Resources (Storage Usage)
+              </h4>
+              <div style={{ height: '250px', width: '100%' }}>
+                {systemResourcesData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={systemResourcesData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="name" tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} />
+                      <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}MB`} />
+                      <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} />
+                      <Legend wrapperStyle={{fontSize: '12px'}} />
+                      <Bar dataKey="used" name="Used (MB)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="quota" name="Quota (MB)" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                    ไม่มีข้อมูลร้านรับซื้อ
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Widget 2: Market Intelligence */}
+            <div style={{ background: '#fff', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 'bold', marginBottom: '1rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                📈 Market Intelligence (Top Provinces)
+              </h4>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                      <th style={{ padding: '0.75rem 0.5rem', color: '#64748b', fontSize: '0.85rem' }}>จังหวัด</th>
+                      <th style={{ padding: '0.75rem 0.5rem', color: '#64748b', fontSize: '0.85rem', textAlign: 'right' }}>จำนวนบิล</th>
+                      <th style={{ padding: '0.75rem 0.5rem', color: '#64748b', fontSize: '0.85rem', textAlign: 'right' }}>มูลค่ารวม</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {marketIntelligenceData.length > 0 ? marketIntelligenceData.map((d, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold', color: '#334155' }}>📍 {d.province}</td>
+                        <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right', color: '#475569' }}>{d.billCount}</td>
+                        <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right', color: '#0f766e', fontWeight: 'bold' }}>
+                          ฿{d.totalValue.toLocaleString()}
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr><td colSpan="3" style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>ไม่มีข้อมูลการซื้อขาย</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Widget 3: Live Activity */}
+            <div style={{ background: '#fff', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 'bold', marginBottom: '1rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                📡 Live Activity (Shop Status)
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {liveActivityData.length > 0 ? liveActivityData.map(p => (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: p.isOnline ? '#22c55e' : '#cbd5e1', boxShadow: p.isOnline ? '0 0 8px rgba(34,197,94,0.6)' : 'none' }}></div>
+                      <div>
+                        <div style={{ fontWeight: 'bold', color: '#334155', fontSize: '0.9rem' }}>{p.store_name || p.full_name}</div>
+                        <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{p.role === 'buyer' ? 'ลานรับซื้อ' : 'ร้านค้า/บริการ'}</div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: p.isOnline ? '#16a34a' : '#94a3b8', fontWeight: p.isOnline ? 'bold' : 'normal' }}>
+                      {p.lastActiveStr}
+                    </div>
+                  </div>
+                )) : (
+                  <div style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>ไม่มีข้อมูลร้านค้า</div>
+                )}
+              </div>
+            </div>
+
+            {/* Widget 4: Subscription Alerts */}
+            <div style={{ background: '#fff', borderRadius: '12px', padding: '1.25rem', border: '1px solid #fca5a5', boxShadow: '0 4px 12px rgba(239,68,68,0.08)' }}>
+              <h4 style={{ fontSize: '1.05rem', fontWeight: 'bold', marginBottom: '1rem', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                ⚠️ Subscription Alerts
+              </h4>
+              <p style={{ fontSize: '0.85rem', color: '#7f1d1d', marginBottom: '1rem' }}>รายชื่อร้านค้าที่แพ็กเกจกำลังจะหมดอายุภายใน 30 วัน</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {expiringSubscriptions.length > 0 ? expiringSubscriptions.map(p => (
+                  <div key={p.id} style={{ padding: '0.75rem', background: '#fef2f2', borderRadius: '8px', border: '1px dashed #f87171', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 'bold', color: '#991b1b', fontSize: '0.9rem' }}>{p.store_name || p.full_name}</div>
+                      <div style={{ color: '#b91c1c', fontSize: '0.75rem' }}>{p.subPlan.toUpperCase()} ({p.subCycle === 'yearly' ? 'รายปี' : 'รายเดือน'})</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#dc2626' }}>{p.daysLeft} วัน</div>
+                      <div style={{ fontSize: '0.7rem', color: '#991b1b' }}>หมดอายุ: {p.expiryDate.toLocaleDateString('th-TH')}</div>
+                    </div>
+                  </div>
+                )) : (
+                  <div style={{ padding: '1.5rem', textAlign: 'center', color: '#b91c1c', background: '#fef2f2', borderRadius: '8px' }}>
+                    ✅ ไม่มีแพ็กเกจใกล้หมดอายุ
+                  </div>
+                )}
+              </div>
+            </div>
+
           </div>
         </div>
       )}

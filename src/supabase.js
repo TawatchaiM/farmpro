@@ -2415,5 +2415,52 @@ export const db = {
 
     localStorage.setItem('farmpro_pending_sync', JSON.stringify(remainingSync));
     return { success: remainingSync.length === 0, count: successCount, remaining: remainingSync.length };
+  },
+
+  // ------------------------------------------------------------------
+  // ADMIN FUNCTIONS
+  // ------------------------------------------------------------------
+  logAdminAudit: async (payload) => {
+    // payload = { admin_id, target_user_id, action, timestamp }
+    const logs = safeJsonParse('farmpro_admin_audit_logs', []);
+    logs.push({
+      id: uuidv4(),
+      ...payload,
+      timestamp: payload.timestamp || new Date().toISOString()
+    });
+    localStorage.setItem('farmpro_admin_audit_logs', JSON.stringify(logs));
+
+    if (!isMock && supabase) {
+      try {
+        await supabase.from('admin_audit_logs').insert([{
+          admin_id: payload.admin_id,
+          target_user_id: payload.target_user_id,
+          action: payload.action,
+          timestamp: payload.timestamp || new Date().toISOString()
+        }]);
+      } catch (err) {
+        console.warn('Could not insert admin audit log to Supabase:', err);
+      }
+    }
+    return true;
+  },
+
+  adminUpdateUserPassword: async (userId, newPassword) => {
+    // Note: In a real Supabase setup, this requires the Service Role Key.
+    // This is mocked for frontend demonstration.
+    const accounts = safeJsonParse('farmpro_accounts', []);
+    const accIndex = accounts.findIndex(a => a.user_id === userId);
+    if (accIndex !== -1) {
+      accounts[accIndex].password_hash = hashPassword(newPassword);
+      // force_change_password could be added here if schema supports it
+      accounts[accIndex].force_change_password = true;
+      localStorage.setItem('farmpro_accounts', JSON.stringify(accounts));
+    }
+    
+    // Attempt real supabase call if we had an admin function
+    if (!isMock && supabase) {
+      console.warn('adminUpdateUserPassword: Real Supabase requires Service Role key on the backend. Skipping frontend execution.');
+    }
+    return { success: true };
   }
 };

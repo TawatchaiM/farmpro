@@ -16,6 +16,12 @@ function AdminPortal() {
   const [subFilterCycle, setSubFilterCycle] = useState('all');
   const [subSearchTerm, setSubSearchTerm] = useState('');
 
+  // Password Reset Modal State
+  const [resetModalUser, setResetModalUser] = useState(null);
+  const [resetMode, setResetMode] = useState('temp'); // 'temp' | 'email'
+  const [tempPassword, setTempPassword] = useState('');
+  const [resetStatus, setResetStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -52,6 +58,67 @@ function AdminPortal() {
     } catch (err) {
       console.error('Error updating status:', err);
       alert('เกิดข้อผิดพลาดในการอัปเดตสถานะ');
+    }
+  };
+
+  const handleOpenResetModal = (user) => {
+    setResetModalUser(user);
+    setResetMode('temp');
+    setTempPassword('');
+    setResetStatus('idle');
+  };
+
+  const generateTempPassword = () => {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    let newPwd = '';
+    for (let i = 0; i < 8; i++) {
+      newPwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setTempPassword(newPwd);
+  };
+
+  const handleAdminResetPassword = async (e) => {
+    e.preventDefault();
+    if (!resetModalUser) return;
+    setResetStatus('loading');
+    
+    try {
+      if (resetMode === 'temp') {
+        if (!tempPassword || tempPassword.length < 6) {
+          alert('รหัสผ่านชั่วคราวต้องมีอย่างน้อย 6 ตัวอักษร');
+          setResetStatus('idle');
+          return;
+        }
+        await db.adminUpdateUserPassword(resetModalUser.id, tempPassword);
+        await db.logAdminAudit({
+          admin_id: 'super_admin', // Should be current user id, hardcoded for demo
+          target_user_id: resetModalUser.id,
+          action: 'reset_password_temp'
+        });
+        setNotification(`รีเซ็ตรหัสผ่านชั่วคราวให้ "${resetModalUser.full_name || resetModalUser.store_name}" สำเร็จ`);
+      } else {
+        if (!resetModalUser.email) {
+          alert('ผู้ใช้งานนี้ไม่มีข้อมูลอีเมล ไม่สามารถส่งลิงก์ได้');
+          setResetStatus('idle');
+          return;
+        }
+        await db.resetPassword(resetModalUser.email);
+        await db.logAdminAudit({
+          admin_id: 'super_admin',
+          target_user_id: resetModalUser.id,
+          action: 'reset_password_email'
+        });
+        setNotification(`ส่งอีเมลรีเซ็ตรหัสผ่านให้ "${resetModalUser.full_name || resetModalUser.store_name}" สำเร็จ`);
+      }
+      
+      setResetStatus('success');
+      setTimeout(() => {
+        setResetModalUser(null);
+        setNotification('');
+      }, 2500);
+    } catch (err) {
+      console.error('Reset pwd error:', err);
+      setResetStatus('error');
     }
   };
 
@@ -713,8 +780,28 @@ function AdminPortal() {
                           onMouseLeave={(e) => { e.target.style.background = '#fff'; }}
                         >
                           🟡 🔄 ปรับเป็นรออนุมัติ
-                        </button>
                       )}
+
+                      {/* Reset Password Button */}
+                      <button 
+                        onClick={() => handleOpenResetModal(store)} 
+                        style={{
+                          margin: 0,
+                          padding: '0.45rem 0.85rem',
+                          background: '#fff',
+                          border: '1px solid #cbd5e1',
+                          color: '#475569',
+                          borderRadius: '8px',
+                          fontSize: '0.825rem',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => { e.target.style.background = '#f1f5f9'; }}
+                        onMouseLeave={(e) => { e.target.style.background = '#fff'; }}
+                      >
+                        🔑 รีเซ็ตรหัสผ่าน
+                      </button>
                     </div>
                   </div>
                 );
@@ -1156,6 +1243,138 @@ function AdminPortal() {
         </div>
       )}
 
+      {/* Reset Password Modal */}
+      {resetModalUser && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.75)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, padding: '1rem', backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '480px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden',
+            display: 'flex', flexDirection: 'column'
+          }}>
+            <div style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', padding: '1.5rem', color: '#fff' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                🔑 จัดการรหัสผ่านผู้ใช้งาน
+              </h3>
+              <p style={{ margin: '0.5rem 0 0 0', opacity: 0.9, fontSize: '0.9rem' }}>
+                สำหรับผู้ใช้: {resetModalUser.full_name || resetModalUser.store_name}
+              </p>
+            </div>
+            
+            <div style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', background: '#f1f5f9', padding: '0.35rem', borderRadius: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setResetMode('temp')}
+                  style={{
+                    flex: 1, padding: '0.6rem', border: 'none', borderRadius: '8px', cursor: 'pointer',
+                    fontWeight: '600', fontSize: '0.9rem', transition: 'all 0.2s',
+                    background: resetMode === 'temp' ? '#fff' : 'transparent',
+                    color: resetMode === 'temp' ? '#2563eb' : '#64748b',
+                    boxShadow: resetMode === 'temp' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
+                  }}
+                >
+                  ตั้งรหัสผ่านชั่วคราว
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setResetMode('email')}
+                  style={{
+                    flex: 1, padding: '0.6rem', border: 'none', borderRadius: '8px', cursor: 'pointer',
+                    fontWeight: '600', fontSize: '0.9rem', transition: 'all 0.2s',
+                    background: resetMode === 'email' ? '#fff' : 'transparent',
+                    color: resetMode === 'email' ? '#2563eb' : '#64748b',
+                    boxShadow: resetMode === 'email' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
+                  }}
+                >
+                  ส่งอีเมลรีเซ็ต
+                </button>
+              </div>
+
+              {resetStatus === 'success' && (
+                <div style={{ padding: '1rem', background: '#dcfce7', color: '#166534', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem', textAlign: 'center' }}>
+                  ✅ ทำรายการสำเร็จ! กำลังปิดหน้าต่าง...
+                </div>
+              )}
+
+              {resetStatus === 'error' && (
+                <div style={{ padding: '1rem', background: '#fee2e2', color: '#991b1b', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem', textAlign: 'center' }}>
+                  ⚠️ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง
+                </div>
+              )}
+
+              <form onSubmit={handleAdminResetPassword}>
+                {resetMode === 'temp' ? (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.9rem', color: '#475569', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                      รหัสผ่านชั่วคราว (อย่างน้อย 6 ตัวอักษร)
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="text"
+                        value={tempPassword}
+                        onChange={(e) => setTempPassword(e.target.value)}
+                        placeholder="กรอกรหัสผ่าน"
+                        style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem' }}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={generateTempPassword}
+                        style={{ padding: '0 1rem', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', color: '#475569', fontWeight: '600' }}
+                      >
+                        สุ่มรหัส
+                      </button>
+                    </div>
+                    <p style={{ margin: '0.75rem 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                      *ระบบจะบังคับให้ผู้ใช้เปลี่ยนรหัสผ่านนี้ในการเข้าสู่ระบบครั้งถัดไป
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: '1.5rem', textAlign: 'center', color: '#475569', padding: '1rem 0' }}>
+                    {resetModalUser.email ? (
+                      <>
+                        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📧</div>
+                        <p style={{ margin: '0 0 0.5rem 0' }}>ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมล:</p>
+                        <strong style={{ fontSize: '1.1rem', color: '#1e293b' }}>{resetModalUser.email}</strong>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>❌</div>
+                        <p style={{ margin: 0, color: '#ef4444' }}>ผู้ใช้งานนี้ไม่ได้ผูกอีเมลไว้ในระบบ</p>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setResetModalUser(null); setResetStatus('idle'); }}
+                    style={{ padding: '0.75rem 1.25rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#475569', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetStatus === 'loading' || (resetMode === 'email' && !resetModalUser.email)}
+                    style={{
+                      padding: '0.75rem 1.5rem', background: '#2563eb', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 'bold', cursor: 'pointer',
+                      opacity: (resetStatus === 'loading' || (resetMode === 'email' && !resetModalUser.email)) ? 0.6 : 1
+                    }}
+                  >
+                    {resetStatus === 'loading' ? 'กำลังดำเนินการ...' : 'ยืนยันการทำรายการ'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

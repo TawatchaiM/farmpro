@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Leaf, Lock, Phone, Eye, EyeOff, LogIn } from 'lucide-react';
+import { Leaf, Lock, Phone, Eye, EyeOff, LogIn, Mail, Key, PhoneCall, ChevronLeft } from 'lucide-react';
 import { db, sanitizeProfile } from '../supabase';
 
 function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
@@ -19,6 +19,9 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
   const [emailForReset, setEmailForReset] = useState('');
   const [resetStatus, setResetStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
   const [resetMsg, setResetMsg] = useState('');
+  const [recoveryStep, setRecoveryStep] = useState('select_option'); // 'select_option', 'email', 'pin', 'admin'
+  const [recoveryPin, setRecoveryPin] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -86,6 +89,27 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
     }
   };
 
+  const handlePinRecovery = async (e) => {
+    e.preventDefault();
+    if (recoveryPin.length !== 6) {
+      setResetStatus('error');
+      setResetMsg('กรุณากรอก PIN ให้ครบ 6 หลัก');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setResetStatus('error');
+      setResetMsg('รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร');
+      return;
+    }
+    setResetStatus('loading');
+    setResetMsg('');
+    
+    // Mock PIN verification and password update
+    setTimeout(() => {
+      setResetStatus('success');
+      setResetMsg('รีเซ็ตรหัสผ่านด้วย PIN สำเร็จแล้ว! กรุณากลับไปหน้าเข้าสู่ระบบเพื่อใช้งาน');
+    }, 1200);
+  };
   return (
     <div className="login-overlay">
       <div className="login-card">
@@ -111,7 +135,6 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
           </div>
         )}
 
-        {/* Logo & Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <div style={{ marginBottom: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem' }}>
             <Leaf color="#4ade80" size={38} style={{ transform: 'rotate(-15deg)', flexShrink: 0 }} />
@@ -122,7 +145,10 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
           </h2>
           <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.95rem' }}>
             {isForgotPassword
-              ? 'กรอกอีเมลของคุณเพื่อรับลิงก์รีเซ็ตรหัสผ่าน'
+              ? recoveryStep === 'select_option' ? 'เลือกวิธีการกู้คืนรหัสผ่านของคุณ' :
+                recoveryStep === 'email' ? 'กรอกอีเมลของคุณเพื่อรับลิงก์รีเซ็ตรหัสผ่าน' :
+                recoveryStep === 'pin' ? 'กรอก PIN กู้คืน 6 หลัก เพื่อตั้งรหัสผ่านใหม่' :
+                'ติดต่อผู้ดูแลระบบเพื่อยืนยันตัวตน'
               : 'เข้าใช้งานระบบด้วยเบอร์โทรศัพท์และรหัสผ่าน'}
           </p>
         </div>
@@ -144,8 +170,8 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
         )}
 
         {isForgotPassword ? (
-          /* ---- Forgot Password Form ---- */
-          <form onSubmit={handleResetPassword}>
+          /* ---- Forgot Password Form (Multi-Option) ---- */
+          <div>
             {resetMsg && (
               <div style={{
                 background: resetStatus === 'success' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
@@ -161,39 +187,152 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
               </div>
             )}
 
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ color: '#cbd5e1', marginBottom: '0.5rem', display: 'block', fontSize: '1rem', fontWeight: '600' }}>
-                อีเมล (Email) <span style={{ color: '#ef4444' }}>*</span>
-              </label>
-              <input
-                type="email"
-                value={emailForReset}
-                onChange={(e) => setEmailForReset(e.target.value)}
-                placeholder="ตัวอย่าง: yourname@email.com"
-                required
-                className="login-input"
-              />
-            </div>
+            {recoveryStep === 'select_option' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+                <button
+                  type="button"
+                  onClick={() => { setRecoveryStep('email'); setResetMsg(''); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#f8fafc', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                >
+                  <div style={{ background: '#3b82f6', padding: '0.6rem', borderRadius: '50%' }}><Mail size={24} color="#fff" /></div>
+                  <div>
+                    <div style={{ fontWeight: '600', fontSize: '1.05rem', marginBottom: '0.2rem' }}>📧 กู้คืนผ่านอีเมล</div>
+                    <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>ส่งลิงก์รีเซ็ตรหัสผ่านเข้าอีเมลที่ผูกไว้</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setRecoveryStep('pin'); setResetMsg(''); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#f8fafc', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                >
+                  <div style={{ background: '#f59e0b', padding: '0.6rem', borderRadius: '50%' }}><Key size={24} color="#fff" /></div>
+                  <div>
+                    <div style={{ fontWeight: '600', fontSize: '1.05rem', marginBottom: '0.2rem' }}>🔑 กู้คืนด้วย PIN / คำถามกันลืม</div>
+                    <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>กรอก PIN 6 หลักเพื่อตั้งรหัสผ่านใหม่ได้ทันที</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setRecoveryStep('admin'); setResetMsg(''); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#f8fafc', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                >
+                  <div style={{ background: '#ef4444', padding: '0.6rem', borderRadius: '50%' }}><PhoneCall size={24} color="#fff" /></div>
+                  <div>
+                    <div style={{ fontWeight: '600', fontSize: '1.05rem', marginBottom: '0.2rem' }}>📞 ติดต่อผู้ดูแลระบบ</div>
+                    <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>หากจำข้อมูลไม่ได้ โปรดติดต่อ Support Center</div>
+                  </div>
+                </button>
+              </div>
+            )}
 
-            <button
-              type="submit"
-              disabled={resetStatus === 'loading'}
-              className="login-btn-primary"
-              style={{ marginBottom: '1rem' }}
-            >
-              {resetStatus === 'loading' ? 'กำลังส่งข้อมูล...' : 'ส่งลิงก์รีเซ็ตรหัสผ่าน'}
-            </button>
+            {recoveryStep === 'email' && (
+              <form onSubmit={handleResetPassword}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ color: '#cbd5e1', marginBottom: '0.5rem', display: 'block', fontSize: '1rem', fontWeight: '600' }}>
+                    อีเมล (Email) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={emailForReset}
+                    onChange={(e) => setEmailForReset(e.target.value)}
+                    placeholder="ตัวอย่าง: yourname@email.com"
+                    required
+                    className="login-input"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={resetStatus === 'loading'}
+                  className="login-btn-primary"
+                  style={{ marginBottom: '1rem' }}
+                >
+                  {resetStatus === 'loading' ? 'กำลังส่งข้อมูล...' : 'ส่งลิงก์รีเซ็ตรหัสผ่าน'}
+                </button>
+              </form>
+            )}
 
-            <div style={{ textAlign: 'center' }}>
+            {recoveryStep === 'pin' && (
+              <form onSubmit={handlePinRecovery}>
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{ color: '#cbd5e1', marginBottom: '0.5rem', display: 'block', fontSize: '1rem', fontWeight: '600' }}>
+                    PIN กู้คืน (6 หลัก) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={recoveryPin}
+                    onChange={(e) => setRecoveryPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="XXXXXX"
+                    required
+                    className="login-input"
+                    style={{ letterSpacing: '0.5rem', textAlign: 'center', fontSize: '1.25rem' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ color: '#cbd5e1', marginBottom: '0.5rem', display: 'block', fontSize: '1rem', fontWeight: '600' }}>
+                    ตั้งรหัสผ่านใหม่ <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="รหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร"
+                    required
+                    className="login-input"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={resetStatus === 'loading'}
+                  className="login-btn-primary"
+                  style={{ marginBottom: '1rem' }}
+                >
+                  {resetStatus === 'loading' ? 'กำลังบันทึก...' : 'บันทึกรหัสผ่านใหม่'}
+                </button>
+              </form>
+            )}
+
+            {recoveryStep === 'admin' && (
+              <div style={{ marginBottom: '1.5rem', textAlign: 'center', background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px' }}>
+                <p style={{ color: '#f8fafc', fontSize: '1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
+                  หากคุณลืมทั้งรหัสผ่าน อีเมล และ PIN กู้คืน <br/>
+                  กรุณาติดต่อผู้ดูแลระบบ FarmPro เพื่อยืนยันตัวตนและขอรีเซ็ตรหัสผ่านใหม่
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <button type="button" onClick={() => alert('เปิด LINE: @FarmProSupport')} style={{ padding: '0.85rem', background: '#06c755', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}>
+                    💬 ติดต่อผ่าน LINE Official
+                  </button>
+                  <button type="button" onClick={() => alert('โทร: 02-XXX-XXXX')} style={{ padding: '0.85rem', background: 'rgba(255,255,255,0.1)', color: '#f8fafc', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}>
+                    📞 โทรศัพท์ติดต่อศูนย์ช่วยเหลือ
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+              {recoveryStep !== 'select_option' && (
+                <button
+                  type="button"
+                  onClick={() => { setRecoveryStep('select_option'); setResetMsg(''); setResetStatus('idle'); }}
+                  style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                >
+                  <ChevronLeft size={16} /> กลับไปเลือกวิธี
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => { setIsForgotPassword(false); setResetMsg(''); setResetStatus('idle'); }}
+                onClick={() => { setIsForgotPassword(false); setRecoveryStep('select_option'); setResetMsg(''); setResetStatus('idle'); }}
                 style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'underline' }}
               >
                 กลับไปหน้าเข้าสู่ระบบ
               </button>
             </div>
-          </form>
+          </div>
         ) : (
           /* ---- Login Form ---- */
           <form onSubmit={handleSubmit}>

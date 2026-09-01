@@ -13,9 +13,6 @@ function ReviewForm({ initialData, onSave, onCancel, isEdit = false, isManual = 
   const [shareOption, setShareOption] = useState(isPreset ? initialSharePct : 'custom');
   const [customPct, setCustomPct] = useState(isPreset ? '55' : String(initialData?.owner_share_percentage || 55));
 
-  // Use refs to prevent dependency loops when updating manually vs automatic calculation
-  const isUserEdit = useRef(false);
-
   // Calculate current effective owner share percentage
   const getCurrentOwnerPct = () => {
     if (shareOption === '50') return 50;
@@ -33,21 +30,18 @@ function ReviewForm({ initialData, onSave, onCancel, isEdit = false, isManual = 
   const effectiveTapperPct = 100 - effectiveOwnerPct;
 
   useEffect(() => {
-    // Only auto-calculate if the user isn't actively typing
-    if (!isUserEdit.current) {
-      const raw = parseFloat(formData.raw_weight_kg) || 0;
-      const drc = parseFloat(formData.drc_percentage) || 0;
-      const price = parseFloat(formData.price_per_kg) || 0;
-      
-      const dry = (raw * drc) / 100;
-      const total = dry * price;
-      
-      setFormData(prev => ({
-        ...prev,
-        dry_weight_kg: dry ? dry.toFixed(2) : '',
-        total_amount_thb: total ? total.toFixed(2) : ''
-      }));
-    }
+    const raw = parseFloat(formData.raw_weight_kg) || 0;
+    const drc = parseFloat(formData.drc_percentage) || 0;
+    const price = parseFloat(formData.price_per_kg) || 0;
+    
+    const dry = (raw * drc) / 100;
+    const total = dry * price;
+    
+    setFormData(prev => ({
+      ...prev,
+      dry_weight_kg: dry ? dry.toFixed(2) : '',
+      total_amount_thb: total ? total.toFixed(2) : ''
+    }));
   }, [formData.raw_weight_kg, formData.drc_percentage, formData.price_per_kg]);
 
   // Separate effect for owner & tapper share calculation derived from total and selected ratio
@@ -66,7 +60,6 @@ function ReviewForm({ initialData, onSave, onCancel, isEdit = false, isManual = 
   }, [formData.total_amount_thb, effectiveOwnerPct]);
 
   const handleChange = (e) => {
-    isUserEdit.current = true;
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };

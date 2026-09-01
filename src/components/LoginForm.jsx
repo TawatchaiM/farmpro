@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Leaf, Lock, Phone, Eye, EyeOff, LogIn, Mail, Key, PhoneCall, ChevronLeft } from 'lucide-react';
 import { db, sanitizeProfile } from '../supabase';
 

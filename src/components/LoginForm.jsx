@@ -160,7 +160,7 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
                 recoveryStep === 'email' ? 'กรอกอีเมลของคุณเพื่อรับลิงก์รีเซ็ตรหัสผ่าน' :
                 recoveryStep === 'pin' ? 'กรอก PIN กู้คืน 6 หลัก เพื่อตั้งรหัสผ่านใหม่' :
                 'ติดต่อผู้ดูแลระบบเพื่อยืนยันตัวตน'
-              : 'เข้าใช้งานระบบด้วยเบอร์โทรศัพท์และรหัสผ่าน'}
+              : 'เข้าใช้งานระบบด้วยเบอร์โทรศัพท์หรืออีเมล และรหัสผ่าน'}
           </p>
         </div>
 
@@ -366,14 +366,14 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
             {/* Phone */}
             <div style={{ marginBottom: '1.25rem' }}>
               <label style={{ color: '#cbd5e1', marginBottom: '0.5rem', display: 'block', fontSize: '1rem', fontWeight: '600' }}>
-                เบอร์โทรศัพท์ (10 หลัก) <span style={{ color: '#ef4444' }}>*</span>
+                เบอร์โทรศัพท์ (10 หลัก) / อีเมล <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <div style={{ position: 'relative' }}>
                 <input
                   type="text"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="ตัวอย่าง: 0812345678"
+                  placeholder="ตัวอย่าง: 0812345678 หรืออีเมล"
                   required
                   className="login-input"
                   style={{ paddingLeft: '3rem' }}

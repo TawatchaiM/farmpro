@@ -23,6 +23,17 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
   const [recoveryPin, setRecoveryPin] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
+  // Support details state
+  const [supportLineId, setSupportLineId] = useState('@farmpro');
+  const [supportPhone, setSupportPhone] = useState('02-123-4567');
+
+  useEffect(() => {
+    if (isForgotPassword && recoveryStep === 'admin') {
+      setSupportLineId(localStorage.getItem('farmpro_support_line_id') || '@farmpro');
+      setSupportPhone(localStorage.getItem('farmpro_support_phone') || '02-123-4567');
+    }
+  }, [isForgotPassword, recoveryStep]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!identifier.trim() || !password) {
@@ -310,9 +321,10 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
                       const lineId = localStorage.getItem('farmpro_support_line_id') || '@farmpro';
                       window.open(`https://line.me/R/ti/p/${lineId}`, '_blank');
                     }} 
-                    style={{ padding: '0.85rem', background: '#06c755', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}
+                    style={{ padding: '0.85rem', background: '#06c755', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}
                   >
-                    💬 ติดต่อผ่าน LINE Official
+                    <span>💬 ติดต่อผ่าน LINE Official</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 'normal', opacity: 0.9 }}>({supportLineId})</span>
                   </button>
                   <button 
                     type="button" 
@@ -320,9 +332,10 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
                       const phone = localStorage.getItem('farmpro_support_phone') || '02-123-4567';
                       window.location.href = `tel:${phone.replace(/\D/g, '')}`;
                     }} 
-                    style={{ padding: '0.85rem', background: 'rgba(255,255,255,0.1)', color: '#f8fafc', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}
+                    style={{ padding: '0.85rem', background: 'rgba(255,255,255,0.1)', color: '#f8fafc', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}
                   >
-                    📞 โทรศัพท์ติดต่อศูนย์ช่วยเหลือ
+                    <span>📞 โทรศัพท์ติดต่อศูนย์ช่วยเหลือ</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 'normal', opacity: 0.9 }}>({supportPhone})</span>
                   </button>
                 </div>
               </div>

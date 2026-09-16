@@ -2171,8 +2171,10 @@ export const db = {
       if (updateData.email) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          if (session && session.user && session.user.id === id) {
-            if (session.user.email !== updateData.email) {
+          if (session && session.user) {
+            // Check if the current authenticated user owns this profile (either by ID or by matching current email)
+            const isOwner = session.user.id === id || session.user.email === mergedProfile.email || session.user.email === currentProfile.email;
+            if (isOwner && session.user.email !== updateData.email) {
               await supabase.auth.updateUser({ email: updateData.email });
             }
           }

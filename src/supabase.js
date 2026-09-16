@@ -1787,18 +1787,16 @@ export const db = {
 
     if (matchedAccount) {
       targetProfile = allProfiles.find(p => p.user_id === matchedAccount.user_id || p.email === matchedAccount.email || p.username === matchedAccount.username);
-    }
+      
+      if (!targetProfile) {
+        targetProfile = allProfiles.find(p => 
+          (p.phone_number && p.phone_number.replace(/\D/g, '') === digitsOnly) ||
+          (p.email && p.email.toLowerCase() === virtualEmail.toLowerCase()) ||
+          (p.email && p.email.toLowerCase() === cleanId) ||
+          (p.username && p.username.toLowerCase() === cleanId)
+        );
+      }
 
-    if (!targetProfile) {
-      targetProfile = allProfiles.find(p => 
-        (p.phone_number && p.phone_number.replace(/\D/g, '') === digitsOnly) ||
-        (p.email && p.email.toLowerCase() === virtualEmail.toLowerCase()) ||
-        (p.email && p.email.toLowerCase() === cleanId) ||
-        (p.username && p.username.toLowerCase() === cleanId)
-      );
-    }
-
-    if (targetProfile || matchedAccount) {
       const rawProfileToUse = targetProfile || {
         id: matchedAccount.user_id,
         role: 'buyer',

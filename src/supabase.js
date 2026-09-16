@@ -1747,6 +1747,20 @@ export const db = {
             localStorage.setItem('farmpro_profile_id', sanitizedProfile.id);
             localStorage.setItem('farmpro_registered', 'true');
             localStorage.setItem('farmpro_session', JSON.stringify(sanitizedSession));
+            
+            // Auto-heal local accounts password hash to keep it in sync with Supabase
+            try {
+              const accounts = safeJsonParse('farmpro_accounts', []);
+              const accIndex = accounts.findIndex(a => a.user_id === sanitizedProfile.id || (a.email && a.email === sanitizedProfile.email) || (a.phone_number && a.phone_number === sanitizedProfile.phone_number));
+              if (accIndex !== -1 && password) {
+                accounts[accIndex].password_hash = hashPassword(password);
+                accounts[accIndex].password = password;
+                localStorage.setItem('farmpro_accounts', JSON.stringify(accounts));
+              }
+            } catch (e) {
+              console.warn('Could not auto-heal local accounts password:', e);
+            }
+
             return { success: true, session: sanitizedSession, profile: sanitizedProfile };
           }
         }

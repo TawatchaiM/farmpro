@@ -2167,6 +2167,20 @@ export const db = {
         }
       }
 
+      // Sync email to Supabase Auth if provided, so password reset can work for this email
+      if (updateData.email) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session && session.user && session.user.id === id) {
+            if (session.user.email !== updateData.email) {
+              await supabase.auth.updateUser({ email: updateData.email });
+            }
+          }
+        } catch (authErr) {
+          console.warn('Could not sync email to auth.users:', authErr);
+        }
+      }
+
       return { success: true, data: mergedProfile };
     } catch (err) {
       console.warn('Error updating profile in Supabase, updated locally:', err);

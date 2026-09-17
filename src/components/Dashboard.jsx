@@ -14,6 +14,7 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
   const [filterBuyer, setFilterBuyer] = useState('all');
   const [viewRole, setViewRole] = useState('owner'); // 'owner' or 'tapper'
   const [chartAggregation, setChartAggregation] = useState('daily'); // 'daily', 'monthly', 'yearly'
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
 
   // Fetch plots to know which ones the user owns vs taps
   const fetchUserPlots = useCallback(async () => {
@@ -485,50 +486,61 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
         </div>
       </div>
 
-      <div className="chart-container">
-        <div className="chart-title">ประวัติการขายยาง (เรียงตามล่าสุด)</div>
-        <div className="record-list">
-          {allRecords.length > 0 ? allRecords.map((record, i) => (
-            <div key={i} className="record-item" style={{ flexWrap: 'wrap', borderLeft: `4px solid ${viewRole === 'owner' ? '#166534' : '#b45309'}` }}>
-              <div style={{ flex: '1 1 200px', marginBottom: '0.5rem' }}>
-                <div style={{ fontWeight: 600 }}>{record.date ? formatDateDisplay(record.date) : ''} (คิว: {record.queue_number || '-'})</div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{record.buyer_name}</div>
-                {record.note && <div style={{ fontSize: '0.75rem', color: '#ff9800', marginTop: '4px' }}>หมายเหตุ: {record.note}</div>}
-              </div>
-              <div style={{ flex: '1 1 150px', textAlign: 'right', marginBottom: '0.5rem' }}>
-                <div style={{ fontWeight: 700, color: viewRole === 'owner' ? 'var(--primary-dark)' : '#92400e' }}>
-                  ฿{parseFloat(viewRole === 'owner' ? record.owner_share_thb : record.tapper_share_thb || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                </div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  ยางแห้ง: {record.dry_weight_kg} กก.
-                </div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  ราคาตลาด: ฿{parseFloat(record.price_per_kg || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}/กก.
-                </div>
-              </div>
-              <div style={{ width: '100%', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                <button 
-                  onClick={() => onEdit(record)} 
-                  style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', borderRadius: '6px', background: '#e3f2fd', color: '#1976d2', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                >
-                  📝 แก้ไข
-                </button>
-                <button 
-                  onClick={() => {
-                    if (window.confirm('คุณต้องการลบรายการนี้ใช่หรือไม่? (การลบจะไม่สามารถกู้คืนได้)')) {
-                      onDelete(record.id);
-                    }
-                  }} 
-                  style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', borderRadius: '6px', background: '#ffebee', color: '#d32f2f', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                >
-                  🗑️ ลบ
-                </button>
-              </div>
-            </div>
-          )) : (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>ไม่พบข้อมูลการขายสำหรับมุมมองนี้</div>
-          )}
+      <div className="chart-container" style={{ padding: 0, overflow: 'hidden' }}>
+        <div 
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '1.25rem', background: '#f8fafc', borderBottom: isHistoryExpanded ? '1px solid #e2e8f0' : 'none' }}
+          onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
+        >
+          <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b', fontWeight: 600 }}>📝 ประวัติการขายยาง (เรียงตามล่าสุด)</h3>
+          <div style={{ background: '#e2e8f0', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', transition: 'transform 0.2s', transform: isHistoryExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+            ▼
+          </div>
         </div>
+        
+        {isHistoryExpanded && (
+          <div className="record-list" style={{ padding: '1.25rem' }}>
+            {allRecords.length > 0 ? allRecords.map((record, i) => (
+              <div key={i} className="record-item" style={{ flexWrap: 'wrap', borderLeft: `4px solid ${viewRole === 'owner' ? '#166534' : '#b45309'}` }}>
+                <div style={{ flex: '1 1 200px', marginBottom: '0.5rem' }}>
+                  <div style={{ fontWeight: 600 }}>{record.date ? formatDateDisplay(record.date) : ''} (คิว: {record.queue_number || '-'})</div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{record.buyer_name}</div>
+                  {record.note && <div style={{ fontSize: '0.75rem', color: '#ff9800', marginTop: '4px' }}>หมายเหตุ: {record.note}</div>}
+                </div>
+                <div style={{ flex: '1 1 150px', textAlign: 'right', marginBottom: '0.5rem' }}>
+                  <div style={{ fontWeight: 700, color: viewRole === 'owner' ? 'var(--primary-dark)' : '#92400e' }}>
+                    ฿{parseFloat(viewRole === 'owner' ? record.owner_share_thb : record.tapper_share_thb || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                    ยางแห้ง: {record.dry_weight_kg} กก.
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                    ราคาตลาด: ฿{parseFloat(record.price_per_kg || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}/กก.
+                  </div>
+                </div>
+                <div style={{ width: '100%', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                  <button 
+                    onClick={() => onEdit(record)} 
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', borderRadius: '6px', background: '#e3f2fd', color: '#1976d2', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    📝 แก้ไข
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (window.confirm('คุณต้องการลบรายการนี้ใช่หรือไม่? (การลบจะไม่สามารถกู้คืนได้)')) {
+                        onDelete(record.id);
+                      }
+                    }} 
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', borderRadius: '6px', background: '#ffebee', color: '#d32f2f', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    🗑️ ลบ
+                  </button>
+                </div>
+              </div>
+            )) : (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>ไม่พบข้อมูลการขายสำหรับมุมมองนี้</div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

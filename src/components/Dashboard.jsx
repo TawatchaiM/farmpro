@@ -152,6 +152,11 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
         }
       }
       return true;
+    }).sort((a, b) => {
+      const timeA = new Date(a.date || 0).getTime();
+      const timeB = new Date(b.date || 0).getTime();
+      if (timeA === timeB) return (a.id || 0) - (b.id || 0);
+      return timeA - timeB;
     });
   }, [data, filterMonth, filterBuyer, viewRole, currentUser, plots, customStartDate, customEndDate]);
 

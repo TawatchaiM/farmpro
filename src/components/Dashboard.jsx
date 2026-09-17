@@ -170,10 +170,18 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
     return dateStr;
   };
 
-  const totalShare = filteredData.reduce((sum, row) => sum + (viewRole === 'owner' ? (parseFloat(row.owner_share_thb) || 0) : (parseFloat(row.tapper_share_thb) || 0)), 0);
+  const totalRevenue = filteredData.reduce((sum, row) => sum + (parseFloat(row.total_amount_thb) || 0), 0);
+  const ownerRevenue = filteredData.reduce((sum, row) => sum + (parseFloat(row.owner_share_thb) || 0), 0);
+  const tapperRevenue = filteredData.reduce((sum, row) => sum + (parseFloat(row.tapper_share_thb) || 0), 0);
+  
   const totalDryWeight = filteredData.reduce((sum, row) => sum + (parseFloat(row.dry_weight_kg) || 0), 0);
   const totalRawWeight = filteredData.reduce((sum, row) => sum + (parseFloat(row.raw_weight_kg) || 0), 0);
   const totalSalesDays = new Set(filteredData.filter(row => row.date).map(row => row.date.substring(0, 10))).size;
+
+  const uniqueMonthsCount = new Set(filteredData.filter(row => row.date).map(row => String(row.date).substring(0, 7))).size || 1;
+  const avgMonthlyTotal = totalRevenue / uniqueMonthsCount;
+  const avgMonthlyOwner = ownerRevenue / uniqueMonthsCount;
+  const avgMonthlyTapper = tapperRevenue / uniqueMonthsCount;
 
   const drcValues = filteredData.map(row => parseFloat(row.drc_percentage)).filter(val => !isNaN(val) && val > 0);
   const avgDrc = drcValues.length > 0 ? drcValues.reduce((sum, val) => sum + val, 0) / drcValues.length : 0;
@@ -306,13 +314,56 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
         </div>
       </div>
 
-      <div className="share-highlight" style={{ marginBottom: '1.5rem', marginTop: 0, background: viewRole === 'owner' ? 'var(--primary-dark)' : '#92400e' }}>
-        <div>
-          <h3>{viewRole === 'owner' ? 'รายรับส่วนเจ้าของสวน' : 'รายรับส่วนคนรับจ้างกรีด'}</h3>
-          <p style={{ fontSize: '0.875rem', opacity: 0.9 }}>ยอดรวมตามตัวกรองที่คุณเลือก</p>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', color: 'var(--text)', fontWeight: 'bold' }}>📊 สรุปรายรับ (Revenue Summary)</h3>
+        
+        {/* Main Revenue Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+          <div className="share-highlight" style={{ margin: 0, background: '#1e293b', padding: '1.5rem', borderRadius: '12px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.1rem', color: '#fff' }}>รายรับทั้งหมด (Total)</h3>
+              <p style={{ fontSize: '0.875rem', opacity: 0.8, margin: 0, color: '#fff' }}>ยอดรวมตามตัวกรองที่คุณเลือก</p>
+            </div>
+            <div className="amount" style={{ fontSize: '2rem', color: '#fff' }}>
+              ฿{totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            </div>
+          </div>
+          
+          <div className="share-highlight" style={{ margin: 0, background: 'var(--primary-dark)', padding: '1.5rem', borderRadius: '12px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.1rem', color: '#fff' }}>ส่วนเจ้าของสวน</h3>
+              <p style={{ fontSize: '0.875rem', opacity: 0.8, margin: 0, color: '#fff' }}>{((ownerRevenue/totalRevenue)*100 || 0).toFixed(0)}% ของรายรับทั้งหมด</p>
+            </div>
+            <div className="amount" style={{ fontSize: '2rem', color: '#fff' }}>
+              ฿{ownerRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            </div>
+          </div>
+
+          <div className="share-highlight" style={{ margin: 0, background: '#b45309', padding: '1.5rem', borderRadius: '12px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.1rem', color: '#fff' }}>ส่วนคนรับจ้างกรีด</h3>
+              <p style={{ fontSize: '0.875rem', opacity: 0.8, margin: 0, color: '#fff' }}>{((tapperRevenue/totalRevenue)*100 || 0).toFixed(0)}% ของรายรับทั้งหมด</p>
+            </div>
+            <div className="amount" style={{ fontSize: '2rem', color: '#fff' }}>
+              ฿{tapperRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            </div>
+          </div>
         </div>
-        <div className="amount">
-          ฿{totalShare.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+
+        {/* Monthly Averages Grid */}
+        <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', gap: '1rem', display: 'grid' }}>
+          <div className="stat-card" style={{ background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', margin: 0 }}>
+            <div className="stat-title">เฉลี่ยรายรับทั้งหมด / เดือน</div>
+            <div className="stat-value" style={{ color: '#1e293b', fontSize: '1.25rem' }}>฿{avgMonthlyTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+          </div>
+          <div className="stat-card" style={{ background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', margin: 0 }}>
+            <div className="stat-title">เฉลี่ยส่วนเจ้าของ / เดือน</div>
+            <div className="stat-value" style={{ color: 'var(--primary-dark)', fontSize: '1.25rem' }}>฿{avgMonthlyOwner.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+          </div>
+          <div className="stat-card" style={{ background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', margin: 0 }}>
+            <div className="stat-title">เฉลี่ยส่วนคนกรีด / เดือน</div>
+            <div className="stat-value" style={{ color: '#b45309', fontSize: '1.25rem' }}>฿{avgMonthlyTapper.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+          </div>
         </div>
       </div>
 

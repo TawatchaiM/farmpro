@@ -13,6 +13,7 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
   const [customEndDate, setCustomEndDate] = useState('');
   const [filterBuyer, setFilterBuyer] = useState('all');
   const [viewRole, setViewRole] = useState('owner'); // 'owner' or 'tapper'
+  const [chartAggregation, setChartAggregation] = useState('daily'); // 'daily', 'monthly', 'yearly'
 
   // Fetch plots to know which ones the user owns vs taps
   const fetchUserPlots = useCallback(async () => {
@@ -177,11 +178,48 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
   const drcValues = filteredData.map(row => parseFloat(row.drc_percentage)).filter(val => !isNaN(val) && val > 0);
   const avgDrc = drcValues.length > 0 ? drcValues.reduce((sum, val) => sum + val, 0) / drcValues.length : 0;
 
-  const chartData = filteredData.map((row) => ({
-    name: row.date ? formatDateDisplay(String(row.date)) : `รายการ ${row.id}`,
-    'รายรับ (บาท)': viewRole === 'owner' ? (parseFloat(row.owner_share_thb) || 0) : (parseFloat(row.tapper_share_thb) || 0),
-    'ยางแห้ง (กก.)': parseFloat(row.dry_weight_kg) || 0
-  }));
+  const chartData = useMemo(() => {
+    const grouped = {};
+    
+    filteredData.forEach(row => {
+      if (!row.date) return;
+      
+      let key = '';
+      let displayKey = '';
+      const dateStr = String(row.date).substring(0, 10);
+      const parts = dateStr.split('-'); // [yyyy, mm, dd]
+      if (parts.length !== 3) return;
+      
+      if (chartAggregation === 'daily') {
+        key = `${parts[0]}-${parts[1]}-${parts[2]}`;
+        displayKey = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      } else if (chartAggregation === 'monthly') {
+        key = `${parts[0]}-${parts[1]}`;
+        displayKey = `${parts[1]}/${parts[0]}`;
+      } else if (chartAggregation === 'yearly') {
+        key = `${parts[0]}`;
+        displayKey = `${parts[0]}`;
+      }
+
+      if (!grouped[key]) {
+        grouped[key] = {
+          name: displayKey,
+          sortKey: key,
+          'รายรับ (บาท)': 0,
+          'ยางแห้ง (กก.)': 0
+        };
+      }
+      
+      grouped[key]['รายรับ (บาท)'] += viewRole === 'owner' ? (parseFloat(row.owner_share_thb) || 0) : (parseFloat(row.tapper_share_thb) || 0);
+      grouped[key]['ยางแห้ง (กก.)'] += (parseFloat(row.dry_weight_kg) || 0);
+    });
+
+    return Object.values(grouped).sort((a, b) => a.sortKey.localeCompare(b.sortKey)).map(item => ({
+      name: item.name,
+      'รายรับ (บาท)': Number(item['รายรับ (บาท)'].toFixed(2)),
+      'ยางแห้ง (กก.)': Number(item['ยางแห้ง (กก.)'].toFixed(2))
+    }));
+  }, [filteredData, viewRole, chartAggregation]);
 
   const allRecords = [...filteredData].reverse(); // Show newest first
 
@@ -298,7 +336,19 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
       </div>
 
       <div className="chart-container">
-        <div className="chart-title">กราฟแสดงรายรับและปริมาณยางแห้ง</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div className="chart-title" style={{ margin: 0 }}>กราฟแสดงรายรับและปริมาณยางแห้ง</div>
+          <select 
+            className="form-input" 
+            style={{ width: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer', minWidth: '120px' }}
+            value={chartAggregation}
+            onChange={(e) => setChartAggregation(e.target.value)}
+          >
+            <option value="daily">รายวัน (Daily)</option>
+            <option value="monthly">รายเดือน (Monthly)</option>
+            <option value="yearly">รายปี (Yearly)</option>
+          </select>
+        </div>
         <div style={{ width: '100%', height: 350 }}>
           <ResponsiveContainer>
             <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 25, left: -20 }}>

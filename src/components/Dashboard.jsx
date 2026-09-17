@@ -183,6 +183,9 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
   const avgMonthlyOwner = ownerRevenue / uniqueMonthsCount;
   const avgMonthlyTapper = tapperRevenue / uniqueMonthsCount;
 
+  const ownerPercent = totalRevenue > 0 ? ((ownerRevenue / totalRevenue) * 100).toFixed(0) : 0;
+  const tapperPercent = totalRevenue > 0 ? ((tapperRevenue / totalRevenue) * 100).toFixed(0) : 0;
+
   const drcValues = filteredData.map(row => parseFloat(row.drc_percentage)).filter(val => !isNaN(val) && val > 0);
   const avgDrc = drcValues.length > 0 ? drcValues.reduce((sum, val) => sum + val, 0) / drcValues.length : 0;
 
@@ -314,77 +317,143 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
         </div>
       </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', color: 'var(--text)', fontWeight: 'bold' }}>📊 สรุปรายรับ (Revenue Summary)</h3>
-        
-        {/* Main Revenue Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-          <div className="share-highlight" style={{ margin: 0, background: '#1e293b', padding: '1.5rem', borderRadius: '12px' }}>
-            <div>
-              <h3 style={{ fontSize: '1.1rem', color: '#fff' }}>รายรับทั้งหมด (Total)</h3>
-              <p style={{ fontSize: '0.875rem', opacity: 0.8, margin: 0, color: '#fff' }}>ยอดรวมตามตัวกรองที่คุณเลือก</p>
+        {/* PREMIUM REVENUE CARD */}
+        <div style={{ background: 'linear-gradient(145deg, #0f172a, #1e293b)', borderRadius: '20px', padding: '1.5rem', marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)', color: 'white' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34d399' }}></div>
+              <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', fontWeight: 600, letterSpacing: '0.5px' }}>รายรับทั้งหมด (TOTAL REVENUE)</h3>
             </div>
-            <div className="amount" style={{ fontSize: '2rem', color: '#fff' }}>
-              ฿{totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, color: '#cbd5e1' }}>
+              รวม {totalSalesDays} วัน
             </div>
           </div>
           
-          <div className="share-highlight" style={{ margin: 0, background: 'var(--primary-dark)', padding: '1.5rem', borderRadius: '12px' }}>
-            <div>
-              <h3 style={{ fontSize: '1.1rem', color: '#fff' }}>ส่วนเจ้าของสวน</h3>
-              <p style={{ fontSize: '0.875rem', opacity: 0.8, margin: 0, color: '#fff' }}>{((ownerRevenue/totalRevenue)*100 || 0).toFixed(0)}% ของรายรับทั้งหมด</p>
+          {/* Total Amount */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#34d399', lineHeight: 1.2, textShadow: '0 2px 10px rgba(52,211,153,0.2)' }}>
+              <span style={{ fontSize: '2rem', marginRight: '4px' }}>฿</span>
+              {totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
             </div>
-            <div className="amount" style={{ fontSize: '2rem', color: '#fff' }}>
-              ฿{ownerRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+              <span>+</span> ยอดรวมสุทธิตามตัวกรองที่คุณเลือก
             </div>
           </div>
 
-          <div className="share-highlight" style={{ margin: 0, background: '#b45309', padding: '1.5rem', borderRadius: '12px' }}>
-            <div>
-              <h3 style={{ fontSize: '1.1rem', color: '#fff' }}>ส่วนคนรับจ้างกรีด</h3>
-              <p style={{ fontSize: '0.875rem', opacity: 0.8, margin: 0, color: '#fff' }}>{((tapperRevenue/totalRevenue)*100 || 0).toFixed(0)}% ของรายรับทั้งหมด</p>
+          {/* Progress Bar Split */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 600, marginBottom: '8px' }}>
+              <div style={{ color: '#34d399' }}>● เจ้าของสวน {ownerPercent}%</div>
+              <div style={{ color: '#fbbf24' }}>● คนกรีด {tapperPercent}%</div>
             </div>
-            <div className="amount" style={{ fontSize: '2rem', color: '#fff' }}>
-              ฿{tapperRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            <div style={{ display: 'flex', height: '6px', borderRadius: '3px', overflow: 'hidden', background: '#334155' }}>
+              <div style={{ width: `${ownerPercent}%`, background: '#34d399', transition: 'width 1s ease-in-out' }}></div>
+              <div style={{ width: `${tapperPercent}%`, background: '#fbbf24', transition: 'width 1s ease-in-out' }}></div>
+            </div>
+          </div>
+
+          {/* Sub Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
+            <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(52,211,153,0.1)', borderRadius: '12px', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d399' }}></div>
+                  เจ้าของสวน
+                </div>
+                <div style={{ fontSize: '0.7rem', background: 'rgba(52,211,153,0.15)', color: '#34d399', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                  {ownerPercent}%
+                </div>
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#34d399' }}>
+                ฿{ownerRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '4px' }}>ส่วนแบ่งรายรับสุทธิ</div>
+            </div>
+
+            <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(251,191,36,0.1)', borderRadius: '12px', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbbf24' }}></div>
+                  คนรับจ้างกรีด
+                </div>
+                <div style={{ fontSize: '0.7rem', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                  {tapperPercent}%
+                </div>
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fbbf24' }}>
+                ฿{tapperRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '4px' }}>ส่วนแบ่งรายรับสุทธิ</div>
             </div>
           </div>
         </div>
 
-        {/* Monthly Averages Grid */}
-        <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', gap: '1rem', display: 'grid' }}>
-          <div className="stat-card" style={{ background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', margin: 0 }}>
-            <div className="stat-title">เฉลี่ยรายรับทั้งหมด / เดือน</div>
-            <div className="stat-value" style={{ color: '#1e293b', fontSize: '1.25rem' }}>฿{avgMonthlyTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-          </div>
-          <div className="stat-card" style={{ background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', margin: 0 }}>
-            <div className="stat-title">เฉลี่ยส่วนเจ้าของ / เดือน</div>
-            <div className="stat-value" style={{ color: 'var(--primary-dark)', fontSize: '1.25rem' }}>฿{avgMonthlyOwner.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-          </div>
-          <div className="stat-card" style={{ background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', margin: 0 }}>
-            <div className="stat-title">เฉลี่ยส่วนคนกรีด / เดือน</div>
-            <div className="stat-value" style={{ color: '#b45309', fontSize: '1.25rem' }}>฿{avgMonthlyTapper.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-          </div>
-        </div>
-      </div>
+        {/* MONTHLY AVERAGES SECTION */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h3 style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '1rem' }}>ประมาณการเฉลี่ยต่อเดือน (MONTHLY AVERAGES)</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
+            
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, lineHeight: 1.4, marginBottom: '0.75rem' }}>เฉลี่ยรวม<br/>/ เดือน</div>
+              <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '2px' }}>ทั้งหมด</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>฿{avgMonthlyTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            </div>
 
-      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
-        <div className="stat-card">
-          <div className="stat-title">ปริมาณยางแห้งรวม</div>
-          <div className="stat-value">{totalDryWeight.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} กก.</div>
+            <div style={{ background: '#fff', border: '1px solid #86efac', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+              <div style={{ fontSize: '0.8rem', color: '#047857', fontWeight: 600, lineHeight: 1.4, marginBottom: '0.75rem' }}>ส่วนเจ้าของ<br/>/ เดือน</div>
+              <div style={{ fontSize: '0.7rem', color: '#059669', marginBottom: '2px' }}>{ownerPercent}%</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#047857' }}>฿{avgMonthlyOwner.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            </div>
+
+            <div style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+              <div style={{ fontSize: '0.8rem', color: '#b45309', fontWeight: 600, lineHeight: 1.4, marginBottom: '0.75rem' }}>ส่วนคนกรีด<br/>/ เดือน</div>
+              <div style={{ fontSize: '0.7rem', color: '#d97706', marginBottom: '2px' }}>{tapperPercent}%</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#b45309' }}>฿{avgMonthlyTapper.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            </div>
+
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-title">น้ำยางสดรวม</div>
-          <div className="stat-value">{totalRawWeight.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} กก.</div>
+
+        {/* PRODUCTION METRICS SECTION */}
+        <div style={{ marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600, letterSpacing: '0.5px', margin: 0 }}>ข้อมูลผลผลิต & สถิติ (PRODUCTION METRICS)</h3>
+            <div style={{ background: '#d1fae5', color: '#047857', fontSize: '0.75rem', fontWeight: 600, padding: '4px 12px', borderRadius: '20px' }}>ยางสดและยางแห้ง</div>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+            
+            <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', width: '28px', height: '28px', background: '#f0fdf4', color: '#16a34a', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>📦</div>
+              <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600, marginBottom: '1rem' }}>ปริมาณยางแห้งรวม</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>{totalDryWeight.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>กก.</span></div>
+              <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>DRC Content Calculated</div>
+            </div>
+
+            <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', width: '28px', height: '28px', background: '#eff6ff', color: '#2563eb', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>💧</div>
+              <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600, marginBottom: '1rem' }}>น้ำยางสดรวม</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>{totalRawWeight.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>กก.</span></div>
+              <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>น้ำหนักชั่งหน้าลาน</div>
+            </div>
+
+            <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', width: '28px', height: '28px', background: '#f0fdf4', color: '#16a34a', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>📈</div>
+              <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600, marginBottom: '1rem' }}>เฉลี่ย % น้ำยาง</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#047857', marginBottom: '6px' }}>{avgDrc > 0 ? avgDrc.toFixed(2) : '-'} <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>%</span></div>
+              <div style={{ fontSize: '0.7rem', color: '#10b981' }}>เกณฑ์มาตรฐานคุณภาพสูง</div>
+            </div>
+
+            <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', width: '28px', height: '28px', background: '#e0e7ff', color: '#4f46e5', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>📅</div>
+              <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600, marginBottom: '1rem' }}>จำนวนวันที่ขาย</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#4f46e5', marginBottom: '6px' }}>{totalSalesDays} <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>วัน</span></div>
+              <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>บันทึกเปิดกรีดจริง</div>
+            </div>
+
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-title">ค่าเฉลี่ยเปอร์เซ็นต์น้ำยาง</div>
-          <div className="stat-value">{avgDrc > 0 ? avgDrc.toFixed(2) : '-'} %</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-title">จำนวนวันที่ขาย</div>
-          <div className="stat-value">{totalSalesDays} วัน</div>
-        </div>
-      </div>
 
       <div className="chart-container">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>

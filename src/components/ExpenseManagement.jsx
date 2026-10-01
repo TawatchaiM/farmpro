@@ -75,7 +75,7 @@ function ExpenseManagement({ currentUser }) {
     }
     try {
       const payload = {
-        plot_id: selectedPlotId,
+        plot_id: formData.target_plot_id || selectedPlotId,
         recorded_by: currentUser.user_id || currentUser.id,
         expense_date: formData.expense_date,
         category: formData.category,
@@ -90,7 +90,8 @@ function ExpenseManagement({ currentUser }) {
         expense_date: new Date().toISOString().split('T')[0],
         category: 'ปุ๋ย',
         amount: '',
-        description: ''
+        description: '',
+        target_plot_id: ''
       });
       loadExpenses(selectedPlotId);
     } catch (err) {
@@ -364,6 +365,19 @@ function ExpenseManagement({ currentUser }) {
                   >
                     {expenseCategories.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label><Filter size={14} style={{ display: 'inline', verticalAlign: 'text-bottom' }} /> แปลงสวน (เพิ่มให้แปลงนี้)</label>
+                  <select 
+                    name="target_plot_id"
+                    className="form-input"
+                    value={formData.target_plot_id || selectedPlotId}
+                    onChange={handleInputChange}
+                  >
+                    {plots.map(plot => (
+                      <option key={plot.plot_id} value={plot.plot_id}>{plot.plot_name}</option>
                     ))}
                   </select>
                 </div>

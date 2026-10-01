@@ -9,6 +9,10 @@ function ExpenseManagement({ currentUser }) {
   const [loading, setLoading] = useState(true);
   const [selectedPlotId, setSelectedPlotId] = useState('');
   
+  const [filterPeriod, setFilterPeriod] = useState('this_month'); // 'all', 'this_month', 'last_month', 'this_year', 'custom'
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  
   const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState({
     expense_date: new Date().toISOString().split('T')[0],
@@ -107,10 +111,40 @@ function ExpenseManagement({ currentUser }) {
     }
   };
 
-  const totalExpenses = expenses.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+  const filteredExpenses = React.useMemo(() => {
+    if (filterPeriod === 'all') return expenses;
+    
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-11
+    
+    return expenses.filter(expense => {
+      if (!expense.expense_date) return true;
+      const expenseDate = new Date(expense.expense_date);
+      const exYear = expenseDate.getFullYear();
+      const exMonth = expenseDate.getMonth();
+      
+      if (filterPeriod === 'this_month') {
+        return exYear === currentYear && exMonth === currentMonth;
+      } else if (filterPeriod === 'last_month') {
+        const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
+        return exYear === lastMonthDate.getFullYear() && exMonth === lastMonthDate.getMonth();
+      } else if (filterPeriod === 'this_year') {
+        return exYear === currentYear;
+      } else if (filterPeriod === 'custom') {
+        const exDateStr = expense.expense_date.substring(0, 10);
+        if (customStartDate && exDateStr < customStartDate) return false;
+        if (customEndDate && exDateStr > customEndDate) return false;
+        return true;
+      }
+      return true;
+    });
+  }, [expenses, filterPeriod, customStartDate, customEndDate]);
+
+  const totalExpenses = filteredExpenses.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
 
   // --- CHART DATA PREPARATION ---
-  const expensesByCategory = expenses.reduce((acc, item) => {
+  const expensesByCategory = filteredExpenses.reduce((acc, item) => {
     const cat = item.category || 'อื่นๆ';
     acc[cat] = (acc[cat] || 0) + (parseFloat(item.amount) || 0);
     return acc;
@@ -121,7 +155,7 @@ function ExpenseManagement({ currentUser }) {
     value: expensesByCategory[key]
   })).sort((a, b) => b.value - a.value);
 
-  const expensesByMonth = expenses.reduce((acc, item) => {
+  const expensesByMonth = filteredExpenses.reduce((acc, item) => {
     if (!item.expense_date) return acc;
     const month = item.expense_date.substring(0, 7); // YYYY-MM
     acc[month] = (acc[month] || 0) + (parseFloat(item.amount) || 0);
@@ -140,7 +174,7 @@ function ExpenseManagement({ currentUser }) {
   const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'];
 
   const downloadExpensesCSV = () => {
-    if (!expenses || expenses.length === 0) {
+    if (!filteredExpenses || filteredExpenses.length === 0) {
       alert('ไม่มีข้อมูลรายจ่ายสำหรับดาวน์โหลด');
       return;
     }
@@ -152,7 +186,7 @@ function ExpenseManagement({ currentUser }) {
       'จำนวนเงิน (บาท)'
     ];
 
-    const csvRows = expenses.map(row => [
+    const csvRows = filteredExpenses.map(row => [
       row.expense_date ? row.expense_date.substring(0, 10) : '-',
       row.category || '-',
       row.description || '-',
@@ -189,23 +223,65 @@ function ExpenseManagement({ currentUser }) {
         </div>
       ) : (
         <>
-          <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
-              <Filter size={16} /> เลือกแปลงสวน
-            </label>
-            <select 
-              className="form-input" 
-              value={selectedPlotId}
-              onChange={(e) => setSelectedPlotId(e.target.value)}
-              style={{ fontWeight: 'bold', color: '#1e293b' }}
-            >
-              {plots.map(plot => (
-                <option key={plot.plot_id} value={plot.plot_id}>
-                  {plot.plot_name} {(plot.owner_id !== (currentUser?.user_id || currentUser?.id)) ? '(คุณเป็นคนกรีด)' : '(คุณเป็นเจ้าของ)'}
-                </option>
-              ))}
-            </select>
+          <div className="filters-container" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+            <div className="form-group" style={{ flex: '1 1 300px', marginBottom: 0 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                <Filter size={16} /> เลือกแปลงสวน
+              </label>
+              <select 
+                className="form-input" 
+                value={selectedPlotId}
+                onChange={(e) => setSelectedPlotId(e.target.value)}
+                style={{ fontWeight: 'bold', color: '#1e293b' }}
+              >
+                {plots.map(plot => (
+                  <option key={plot.plot_id} value={plot.plot_id}>
+                    {plot.plot_name} {(plot.owner_id !== (currentUser?.user_id || currentUser?.id)) ? '(คุณเป็นคนกรีด)' : '(คุณเป็นเจ้าของ)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="form-group" style={{ flex: '1 1 200px', marginBottom: 0 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                <Calendar size={16} /> ช่วงเวลา
+              </label>
+              <select 
+                className="form-input" 
+                value={filterPeriod}
+                onChange={(e) => setFilterPeriod(e.target.value)}
+              >
+                <option value="this_month">เดือนนี้</option>
+                <option value="last_month">เดือนที่แล้ว</option>
+                <option value="this_year">ปีนี้</option>
+                <option value="all">ทั้งหมด</option>
+                <option value="custom">กำหนดเอง...</option>
+              </select>
+            </div>
           </div>
+
+          {filterPeriod === 'custom' && (
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                <label>ตั้งแต่วันที่</label>
+                <input 
+                  type="date" 
+                  className="form-input" 
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                <label>ถึงวันที่</label>
+                <input 
+                  type="date" 
+                  className="form-input" 
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
 
           <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg, #e48600, #c55d00)', borderRadius: '20px', padding: '1.5rem', marginBottom: '2rem', color: '#fff', boxShadow: '0 10px 20px -5px rgba(217, 119, 6, 0.4)' }}>
             
@@ -233,7 +309,11 @@ function ExpenseManagement({ currentUser }) {
               </div>
               <div style={{ fontSize: '0.85rem', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontWeight: 500 }}>
                 <span style={{ border: '1px solid rgba(255,255,255,0.6)', borderRadius: '50%', width: '14px', height: '14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>i</span> 
-                รวมค่าใช้จ่ายทั้งหมดในรอบเดือนปัจจุบัน
+                {filterPeriod === 'this_month' ? 'รวมค่าใช้จ่ายทั้งหมดในรอบเดือนปัจจุบัน' :
+                 filterPeriod === 'last_month' ? 'รวมค่าใช้จ่ายทั้งหมดในเดือนที่แล้ว' :
+                 filterPeriod === 'this_year' ? 'รวมค่าใช้จ่ายทั้งหมดในปีนี้' :
+                 filterPeriod === 'all' ? 'รวมค่าใช้จ่ายทั้งหมดทุกช่วงเวลา' :
+                 'รวมค่าใช้จ่ายตามช่วงเวลาที่กำหนด'}
               </div>
             </div>
 
@@ -326,7 +406,7 @@ function ExpenseManagement({ currentUser }) {
           )}
 
           {/* Charts Section */}
-          {expenses.length > 0 && (
+          {filteredExpenses.length > 0 && (
             <div style={{ marginBottom: '2rem', display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
               {/* Category Pie Chart */}
               <div style={{ flex: '1 1 300px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem' }}>
@@ -373,12 +453,12 @@ function ExpenseManagement({ currentUser }) {
           )}
 
           <div className="record-list">
-            {expenses.length === 0 ? (
+            {filteredExpenses.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                ยังไม่มีการบันทึกรายจ่ายสำหรับแปลงนี้
+                ไม่มีการบันทึกรายจ่ายในช่วงเวลานี้
               </div>
             ) : (
-              expenses.map((expense, i) => {
+              filteredExpenses.map((expense, i) => {
                 const isMyRecord = expense.recorded_by === (currentUser?.user_id || currentUser?.id);
                 return (
                   <div key={expense.expense_id || i} className="record-item" style={{ flexWrap: 'wrap', borderLeft: '4px solid #f59e0b' }}>

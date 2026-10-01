@@ -203,7 +203,6 @@ function SellerPortal({ currentUser }) {
         </div>
         <div 
           className="nav-tab"
-          style={{ marginLeft: 'auto', background: '#fee2e2', color: '#ef4444', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '4px' }}
           onClick={() => setShowTrash(true)}
         >
           🗑️ ถังขยะ

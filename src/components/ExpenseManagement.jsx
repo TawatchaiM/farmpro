@@ -190,9 +190,10 @@ function ExpenseManagement({ currentUser }) {
               </button>
               {!isAdding && (
                 <button onClick={() => setIsAdding(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#d97706', borderColor: '#d97706' }}>
-                <Plus size={16} /> เพิ่มรายจ่าย
-              </button>
-            )}
+                  <Plus size={16} /> เพิ่มรายจ่าย
+                </button>
+              )}
+            </div>
           </div>
 
           {isAdding && (

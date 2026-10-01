@@ -9,7 +9,7 @@ function ExpenseManagement({ currentUser }) {
   const [loading, setLoading] = useState(true);
   const [selectedPlotId, setSelectedPlotId] = useState('');
   
-  const [filterPeriod, setFilterPeriod] = useState('this_month'); // 'all', 'this_month', 'last_month', 'this_year', 'custom'
+  const [filterPeriod, setFilterPeriod] = useState('all'); // 'all', 'this_month', 'last_month', 'this_year', 'custom'
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   

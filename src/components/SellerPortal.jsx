@@ -4,6 +4,7 @@ import ReviewForm from './ReviewForm';
 import Dashboard from './Dashboard';
 import FarmManagement from './FarmManagement';
 import ExpenseManagement from './ExpenseManagement';
+import TrashModal from './TrashModal';
 import { db } from '../supabase';
 
 const scriptURL = import.meta.env.VITE_GOOGLE_SCRIPT_URL;
@@ -35,6 +36,7 @@ function SellerPortal({ currentUser }) {
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0); 
+  const [showTrash, setShowTrash] = useState(false);
 
   const defaultManualData = {
     date: new Date().toISOString().split('T')[0],
@@ -199,7 +201,21 @@ function SellerPortal({ currentUser }) {
         >
           🌳 จัดการสวนของฉัน
         </div>
+        <div 
+          className="nav-tab"
+          style={{ marginLeft: 'auto', background: '#fee2e2', color: '#ef4444', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '4px' }}
+          onClick={() => setShowTrash(true)}
+        >
+          🗑️ ถังขยะ
+        </div>
       </div>
+
+      <TrashModal 
+        isOpen={showTrash} 
+        onClose={() => setShowTrash(false)} 
+        viewRole="owner" 
+        onRestored={() => setRefreshTrigger(prev => prev + 1)} 
+      />
 
       {activeTab === 'farm_management' ? (
         <FarmManagement currentUser={currentUser} />

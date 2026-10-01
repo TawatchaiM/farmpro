@@ -108,7 +108,7 @@ const sanitizeTransaction = (tx) => {
     'status', 'created_at',
     'tested_by_name', 'tested_by_phone', 'tested_by_user_id',
     'testing_by', 'price_source', 'manual_price_override', 'override_reason', 'override_by_name', 'edit_logs',
-    'plot_id', 'tapper_id', 'plot_name', 'note'
+    'plot_id', 'tapper_id', 'plot_name', 'note', 'deleted_at'
   ];
   // UUID fields that must match strict UUID v4 format in Supabase (FK constraints)
   const UUID_FIELDS = new Set(['id', 'buyer_id', 'plot_id', 'tapper_id', 'tested_by_user_id']);
@@ -1204,13 +1204,14 @@ export const db = {
     if (isMock) {
       await delay(200);
       const expenses = safeJsonParse('farmpro_plot_expenses', []);
-      return expenses.filter(e => e.plot_id === plotId);
+      return expenses.filter(e => e.plot_id === plotId && !e.deleted_at);
     }
     try {
       const { data, error } = await supabase
         .from('plot_expenses')
         .select('*, recorder:profiles!plot_expenses_recorded_by_fkey(full_name)')
         .eq('plot_id', plotId)
+        .is('deleted_at', null)
         .order('expense_date', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -1258,8 +1259,70 @@ export const db = {
     if (isMock) {
       await delay(200);
       let expenses = safeJsonParse('farmpro_plot_expenses', []);
-      expenses = expenses.filter(e => e.expense_id !== id);
+      expenses = expenses.map(e => e.expense_id === id ? { ...e, deleted_at: new Date().toISOString() } : e);
       localStorage.setItem('farmpro_plot_expenses', JSON.stringify(expenses));
+      return { success: true };
+    }
+    try {
+      const { error } = await supabase
+        .from('plot_expenses')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('expense_id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.error('Error deleting plot expense:', err);
+      throw err;
+    }
+  },
+
+  getTrashedPlotExpenses: async () => {
+    if (isMock) {
+      await delay(200);
+      const expenses = safeJsonParse('farmpro_plot_expenses', []);
+      return expenses.filter(e => e.deleted_at);
+    }
+    try {
+      const { data, error } = await supabase
+        .from('plot_expenses')
+        .select('*, recorder:profiles!plot_expenses_recorded_by_fkey(full_name)')
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching trashed expenses:', err);
+      return [];
+    }
+  },
+
+  restorePlotExpense: async (id) => {
+    if (isMock) {
+      await delay(200);
+      const expenses = safeJsonParse('farmpro_plot_expenses', []);
+      const updated = expenses.map(e => e.expense_id === id ? { ...e, deleted_at: null } : e);
+      localStorage.setItem('farmpro_plot_expenses', JSON.stringify(updated));
+      return { success: true };
+    }
+    try {
+      const { error } = await supabase
+        .from('plot_expenses')
+        .update({ deleted_at: null })
+        .eq('expense_id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.error('Error restoring plot expense:', err);
+      throw err;
+    }
+  },
+
+  hardDeletePlotExpense: async (id) => {
+    if (isMock) {
+      await delay(200);
+      const expenses = safeJsonParse('farmpro_plot_expenses', []);
+      const filtered = expenses.filter(e => e.expense_id !== id);
+      localStorage.setItem('farmpro_plot_expenses', JSON.stringify(filtered));
       return { success: true };
     }
     try {
@@ -1270,19 +1333,19 @@ export const db = {
       if (error) throw error;
       return { success: true };
     } catch (err) {
-      console.error('Error deleting plot expense:', err);
+      console.error('Error hard deleting plot expense:', err);
       throw err;
     }
   },
 
-// --- Transactions ---
+  // --- Transactions ---
   getTransactions: async (dateStr) => {
     const storeId = getCurrentStoreId();
     if (isMock) {
       await delay(300);
       const txs = safeJsonParse('farmpro_transactions', []);
       return (Array.isArray(txs) ? txs : [])
-        .filter(t => t.date === dateStr && (!storeId || !t.buyer_id || t.buyer_id === storeId))
+        .filter(t => t.date === dateStr && (!storeId || !t.buyer_id || t.buyer_id === storeId) && !t.deleted_at)
         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     }
 
@@ -1290,7 +1353,8 @@ export const db = {
       let query = supabase
         .from('rubber_transactions')
         .select('*')
-        .eq('date', dateStr);
+        .eq('date', dateStr)
+        .is('deleted_at', null);
       if (storeId) query = query.eq('buyer_id', storeId);
       const { data, error } = await query.order('created_at', { ascending: true });
 
@@ -1343,7 +1407,7 @@ export const db = {
         const inStart = !startDateStr || t.date >= startDateStr;
         const inEnd = !endDateStr || t.date <= endDateStr;
         const isOwner = !storeId || !t.buyer_id || t.buyer_id === storeId;
-        return inStart && inEnd && isOwner && (t.status === 'completed' || t.status === 'paid');
+        return inStart && inEnd && isOwner && (t.status === 'completed' || t.status === 'paid') && !t.deleted_at;
       });
     }
 
@@ -1357,6 +1421,7 @@ export const db = {
       if (storeId) query = query.eq('buyer_id', storeId);
       
       const { data, error } = await query
+        .is('deleted_at', null)
         .in('status', ['completed', 'paid'])
         .order('date', { ascending: false })
         .order('created_at', { ascending: false });
@@ -1519,6 +1584,7 @@ export const db = {
       const { data, error } = await supabase
         .from('rubber_transactions')
         .select('*')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -1532,8 +1598,8 @@ export const db = {
   deleteTransaction: async (id, isOffline = false) => {
     // Update local cache
     const cachedTxs = safeJsonParse('farmpro_transactions', []);
-    const filtered = cachedTxs.filter(t => t.id !== id);
-    localStorage.setItem('farmpro_transactions', JSON.stringify(filtered));
+    const updated = cachedTxs.map(t => t.id === id ? { ...t, deleted_at: new Date().toISOString() } : t);
+    localStorage.setItem('farmpro_transactions', JSON.stringify(updated));
 
     if (isMock || isOffline) {
       if (isOffline) {
@@ -1547,7 +1613,7 @@ export const db = {
     try {
       const { error } = await supabase
         .from('rubber_transactions')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id);
 
       if (error) throw error;
@@ -1558,6 +1624,71 @@ export const db = {
       pendingSync.push({ action: 'delete', id });
       localStorage.setItem('farmpro_pending_sync', JSON.stringify(pendingSync));
       return { success: true };
+    }
+  },
+
+  getTrashedTransactions: async () => {
+    const storeId = getCurrentStoreId();
+    if (isMock) {
+      await delay(200);
+      const txs = safeJsonParse('farmpro_transactions', []);
+      return txs.filter(t => t.deleted_at && (!storeId || !t.buyer_id || t.buyer_id === storeId));
+    }
+    try {
+      let query = supabase
+        .from('rubber_transactions')
+        .select('*')
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false });
+      if (storeId) query = query.eq('buyer_id', storeId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching trashed transactions:', err);
+      return [];
+    }
+  },
+
+  restoreTransaction: async (id) => {
+    if (isMock) {
+      await delay(200);
+      const cachedTxs = safeJsonParse('farmpro_transactions', []);
+      const updated = cachedTxs.map(t => t.id === id ? { ...t, deleted_at: null } : t);
+      localStorage.setItem('farmpro_transactions', JSON.stringify(updated));
+      return { success: true };
+    }
+    try {
+      const { error } = await supabase
+        .from('rubber_transactions')
+        .update({ deleted_at: null })
+        .eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.error('Error restoring transaction:', err);
+      throw err;
+    }
+  },
+
+  hardDeleteTransaction: async (id) => {
+    if (isMock) {
+      await delay(200);
+      const cachedTxs = safeJsonParse('farmpro_transactions', []);
+      const filtered = cachedTxs.filter(t => t.id !== id);
+      localStorage.setItem('farmpro_transactions', JSON.stringify(filtered));
+      return { success: true };
+    }
+    try {
+      const { error } = await supabase
+        .from('rubber_transactions')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.error('Error hard deleting transaction:', err);
+      throw err;
     }
   },
 
@@ -2384,7 +2515,7 @@ export const db = {
         } else if (item.action === 'delete') {
           const { error } = await supabase
             .from('rubber_transactions')
-            .delete()
+            .update({ deleted_at: new Date().toISOString() })
             .eq('id', item.id);
           if (error) throw error;
         } else if (item.action === 'save_profile') {

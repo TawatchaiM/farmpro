@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 
-function ImageUpload({ onUpload }) {
+function ImageUpload({ onUpload, onShowTrash }) {
   const [showOptions, setShowOptions] = useState(false);
   const cameraInputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -14,7 +14,15 @@ function ImageUpload({ onUpload }) {
   };
 
   return (
-    <div className="card">
+    <div className="card" style={{ position: 'relative' }}>
+      {onShowTrash && (
+        <button 
+          onClick={onShowTrash} 
+          style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(22, 163, 74, 0.05)', color: '#64748b', border: '1px solid rgba(22, 163, 74, 0.1)', borderRadius: '8px', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 600, zIndex: 10 }}
+        >
+          🗑️ ถังขยะ
+        </button>
+      )}
       <div className="header">
         <h1>FarmPro</h1>
         <p>ระบบบริหารและจัดการสวนอัจฉริยะ</p>

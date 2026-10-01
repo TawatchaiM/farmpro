@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-function ReviewForm({ initialData, onSave, onCancel, isEdit = false, isManual = false }) {
+function ReviewForm({ initialData, onSave, onCancel, isEdit = false, isManual = false, onShowTrash }) {
   const [formData, setFormData] = useState(initialData);
 
   // Revenue share options states: '55' | '50' | '60' | '100' | 'custom'
@@ -76,7 +76,15 @@ function ReviewForm({ initialData, onSave, onCancel, isEdit = false, isManual = 
   };
 
   return (
-    <div className="card">
+    <div className="card" style={{ position: 'relative' }}>
+      {onShowTrash && (
+        <button 
+          onClick={onShowTrash} 
+          style={{ position: 'absolute', top: '1rem', right: '1rem', background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 600, zIndex: 10 }}
+        >
+          🗑️ ถังขยะ
+        </button>
+      )}
       <div className="header">
         <h2 style={{ color: '#0f172a', fontWeight: 'bold' }}>
           {isEdit ? '✏️ แก้ไขข้อมูลบิล' : (isManual ? '✍️ กรอกข้อมูลบิลด้วยตนเอง' : '🔍 ตรวจสอบและแก้ไขข้อมูล (จาก AI)')}

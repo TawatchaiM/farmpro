@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../supabase';
 import { Trash2, Edit2, Plus, Check } from 'lucide-react';
 
-function FarmManagement({ currentUser }) {
+function FarmManagement({ currentUser, onShowTrash }) {
   const [plots, setPlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -119,7 +119,15 @@ function FarmManagement({ currentUser }) {
   if (loading) return <div>กำลังโหลดข้อมูลแปลงสวน...</div>;
 
   return (
-    <div className="card">
+    <div className="card" style={{ position: 'relative' }}>
+      {onShowTrash && (
+        <button 
+          onClick={onShowTrash} 
+          style={{ position: 'absolute', top: '1rem', right: '1rem', background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 600, zIndex: 10 }}
+        >
+          🗑️ ถังขยะ
+        </button>
+      )}
       <h3 className="section-title-icon">🌱 จัดการแปลงสวนยาง</h3>
       <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
         เพิ่มแปลงสวนที่คุณเป็น "เจ้าของ" หรือเป็น "คนรับจ้างกรีด" เพื่อรับบิลแบ่งสัดส่วนอัตโนมัติ

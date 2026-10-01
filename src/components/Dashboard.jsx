@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { db } from '../supabase';
 import { Check } from 'lucide-react';
 
-function Dashboard({ currentUser, onEdit, onDelete }) {
+function Dashboard({ currentUser, onEdit, onDelete, onShowTrash }) {
   const [data, setData] = useState([]);
   const [plots, setPlots] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -316,7 +316,15 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
       )}
 
       {/* Filters */}
-      <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+      <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', position: 'relative' }}>
+        {onShowTrash && (
+          <button 
+            onClick={onShowTrash} 
+            style={{ position: 'absolute', top: '1rem', right: '1rem', background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 600, zIndex: 10 }}
+          >
+            🗑️ ถังขยะ
+          </button>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.1rem' }}>ตัวกรองข้อมูล (Filters)</h3>
           <button 

@@ -201,12 +201,6 @@ function SellerPortal({ currentUser }) {
         >
           🌳 จัดการสวนของฉัน
         </div>
-        <div 
-          className="nav-tab"
-          onClick={() => setShowTrash(true)}
-        >
-          🗑️ ถังขยะ
-        </div>
       </div>
 
       <TrashModal 
@@ -217,9 +211,9 @@ function SellerPortal({ currentUser }) {
       />
 
       {activeTab === 'farm_management' ? (
-        <FarmManagement currentUser={currentUser} />
+        <FarmManagement currentUser={currentUser} onShowTrash={() => setShowTrash(true)} />
       ) : activeTab === 'expense_management' ? (
-        <ExpenseManagement currentUser={currentUser} />
+        <ExpenseManagement currentUser={currentUser} onShowTrash={() => setShowTrash(true)} />
       ) : activeTab === 'dashboard' ? (
         <Dashboard 
           key={refreshTrigger}
@@ -227,6 +221,7 @@ function SellerPortal({ currentUser }) {
           scriptURL={scriptURL} 
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onShowTrash={() => setShowTrash(true)}
         />
       ) : (
         <>
@@ -284,13 +279,14 @@ function SellerPortal({ currentUser }) {
               </div>
 
               {entryMode === 'ai' ? (
-                <ImageUpload onUpload={handleUpload} />
+                <ImageUpload onUpload={handleUpload} onShowTrash={() => setShowTrash(true)} />
               ) : (
                 <ReviewForm 
                   initialData={defaultManualData} 
                   onSave={handleSave} 
                   isManual={true}
                   onCancel={() => setEntryMode('ai')}
+                  onShowTrash={() => setShowTrash(true)}
                 />
               )}
             </div>

@@ -316,23 +316,25 @@ function Dashboard({ currentUser, onEdit, onDelete, onShowTrash }) {
       )}
 
       {/* Filters */}
-      <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', position: 'relative' }}>
-        {onShowTrash && (
-          <button 
-            onClick={onShowTrash} 
-            style={{ position: 'absolute', top: '1rem', right: '1rem', background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 600, zIndex: 10 }}
-          >
-            🗑️ ถังขยะ
-          </button>
-        )}
+      <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.1rem' }}>ตัวกรองข้อมูล (Filters)</h3>
-          <button 
-            onClick={downloadCSV}
-            style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', borderRadius: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
-          >
-            📊 ดาวน์โหลด CSV
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button 
+              onClick={downloadCSV}
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.875rem', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
+            >
+              📊 ดาวน์โหลด CSV
+            </button>
+            {onShowTrash && (
+              <button 
+                onClick={onShowTrash} 
+                style={{ background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 600 }}
+              >
+                🗑️ ถังขยะ
+              </button>
+            )}
+          </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div>

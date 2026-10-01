@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../supabase';
-import { Trash2, Plus, Calendar, DollarSign, Tag, Check, Filter } from 'lucide-react';
+import { Trash2, Plus, Calendar, DollarSign, Tag, Check, Filter, Download } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 function ExpenseManagement({ currentUser }) {
@@ -207,23 +207,55 @@ function ExpenseManagement({ currentUser }) {
             </select>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', background: '#fffbeb', padding: '1rem', borderRadius: '8px', border: '1px solid #fde68a', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
-              <span style={{ fontSize: '0.875rem', color: '#b45309' }}>ยอดรายจ่ายรวมแปลงนี้</span>
-              <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#92400e' }}>฿{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+          <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg, #e48600, #c55d00)', borderRadius: '20px', padding: '1.5rem', marginBottom: '2rem', color: '#fff', boxShadow: '0 10px 20px -5px rgba(217, 119, 6, 0.4)' }}>
+            
+            {/* Background Watermark */}
+            <div style={{ position: 'absolute', right: '5%', top: '-10%', fontSize: '10rem', color: 'rgba(255, 255, 255, 0.08)', fontWeight: 'bold', lineHeight: 1, userSelect: 'none', pointerEvents: 'none', transform: 'rotate(10deg)' }}>
+              ฿
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+
+            {/* Header row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 1 }}>
+              <div style={{ background: 'rgba(0, 0, 0, 0.15)', padding: '6px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fde68a' }}></div>
+                ยอดรายจ่ายรวมแปลงนี้
+              </div>
+              <div style={{ fontWeight: 700, opacity: 0.9, fontSize: '1rem', background: 'rgba(255, 255, 255, 0.15)', padding: '4px 12px', borderRadius: '20px' }}>
+                {new Date().toLocaleDateString('th-TH', { month: 'short', year: 'numeric' })}
+              </div>
+            </div>
+
+            {/* Amount */}
+            <div style={{ position: 'relative', zIndex: 1, marginBottom: '2rem' }}>
+              <div style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px' }}>
+                <span style={{ fontSize: '2.2rem', marginRight: '4px' }}>฿</span>
+                {totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              </div>
+              <div style={{ fontSize: '0.85rem', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontWeight: 500 }}>
+                <span style={{ border: '1px solid rgba(255,255,255,0.6)', borderRadius: '50%', width: '14px', height: '14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>i</span> 
+                รวมค่าใช้จ่ายทั้งหมดในรอบเดือนปัจจุบัน
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: '1rem', position: 'relative', zIndex: 1, flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => !isAdding && setIsAdding(true)} 
+                style={{ flex: '1 1 180px', padding: '0.8rem', borderRadius: '12px', background: '#fff', color: '#047857', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 700, fontSize: '1rem', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+              >
+                <div style={{ background: '#d1fae5', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
+                  <Plus size={16} strokeWidth={3} />
+                </div>
+                เพิ่มรายจ่าย
+              </button>
+              
               <button 
                 onClick={downloadExpensesCSV}
-                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', borderRadius: '6px', background: '#fff', border: '1px solid #d97706', color: '#d97706', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
+                style={{ flex: '1 1 180px', padding: '0.8rem', borderRadius: '12px', background: 'rgba(0, 0, 0, 0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 600, fontSize: '1rem', transition: 'all 0.2s', backdropFilter: 'blur(8px)' }}
               >
-                📊 ดาวน์โหลด CSV
+                <Download size={18} strokeWidth={2.5} style={{ color: '#fff' }} />
+                ดาวน์โหลด CSV
               </button>
-              {!isAdding && (
-                <button onClick={() => setIsAdding(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#d97706', borderColor: '#d97706' }}>
-                  <Plus size={16} /> เพิ่มรายจ่าย
-                </button>
-              )}
             </div>
           </div>
 

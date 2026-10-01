@@ -389,73 +389,78 @@ function Dashboard({ currentUser, onEdit, onDelete, onShowTrash }) {
       </div>
 
         {/* PREMIUM REVENUE CARD */}
-        <div style={{ background: 'linear-gradient(145deg, #0f172a, #1e293b)', borderRadius: '20px', padding: '1.5rem', marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)', color: 'white' }}>
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34d399' }}></div>
-              <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', fontWeight: 600, letterSpacing: '0.5px' }}>รายรับทั้งหมด (TOTAL REVENUE)</h3>
-            </div>
-            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, color: '#cbd5e1' }}>
-              รวม {totalSalesDays} วัน
-            </div>
-          </div>
+        <div style={{ background: 'linear-gradient(145deg, #ffffff, #f0fdf4)', border: '1px solid #bbf7d0', borderRadius: '20px', padding: '1.5rem', marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(22, 163, 74, 0.15), 0 8px 10px -6px rgba(22, 163, 74, 0.05)', color: '#1e293b', position: 'relative', overflow: 'hidden' }}>
+          {/* Subtle background accent */}
+          <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '150px', height: '150px', background: '#dcfce7', borderRadius: '50%', filter: 'blur(40px)', zIndex: 0 }}></div>
           
-          {/* Total Amount */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#34d399', lineHeight: 1.2, textShadow: '0 2px 10px rgba(52,211,153,0.2)' }}>
-              <span style={{ fontSize: '2rem', marginRight: '4px' }}>฿</span>
-              {totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-            </div>
-            <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-              <span>+</span> ยอดรวมสุทธิตามตัวกรองที่คุณเลือก
-            </div>
-          </div>
-
-          {/* Progress Bar Split */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 600, marginBottom: '8px' }}>
-              <div style={{ color: '#34d399' }}>● เจ้าของสวน {ownerPercent}%</div>
-              <div style={{ color: '#fbbf24' }}>● คนกรีด {tapperPercent}%</div>
-            </div>
-            <div style={{ display: 'flex', height: '6px', borderRadius: '3px', overflow: 'hidden', background: '#334155' }}>
-              <div style={{ width: `${ownerPercent}%`, background: '#34d399', transition: 'width 1s ease-in-out' }}></div>
-              <div style={{ width: `${tapperPercent}%`, background: '#fbbf24', transition: 'width 1s ease-in-out' }}></div>
-            </div>
-          </div>
-
-          {/* Sub Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
-            <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(52,211,153,0.1)', borderRadius: '12px', padding: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d399' }}></div>
-                  เจ้าของสวน
-                </div>
-                <div style={{ fontSize: '0.7rem', background: 'rgba(52,211,153,0.15)', color: '#34d399', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                  {ownerPercent}%
-                </div>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16a34a' }}></div>
+                <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#475569', fontWeight: 700, letterSpacing: '0.5px' }}>รายรับทั้งหมด (TOTAL REVENUE)</h3>
               </div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#34d399' }}>
-                ฿{ownerRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              <div style={{ background: '#dcfce7', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, color: '#15803d' }}>
+                รวม {totalSalesDays} วัน
               </div>
-              <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '4px' }}>ส่วนแบ่งรายรับสุทธิ</div>
+            </div>
+            
+            {/* Total Amount */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#16a34a', lineHeight: 1.2 }}>
+                <span style={{ fontSize: '2rem', marginRight: '4px' }}>฿</span>
+                {totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                <span style={{ color: '#16a34a' }}>+</span> ยอดรวมสุทธิตามตัวกรองที่คุณเลือก
+              </div>
             </div>
 
-            <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(251,191,36,0.1)', borderRadius: '12px', padding: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <div style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbbf24' }}></div>
-                  คนรับจ้างกรีด
-                </div>
-                <div style={{ fontSize: '0.7rem', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                  {tapperPercent}%
-                </div>
+            {/* Progress Bar Split */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700, marginBottom: '8px' }}>
+                <div style={{ color: '#15803d' }}>● เจ้าของสวน {ownerPercent}%</div>
+                <div style={{ color: '#b45309' }}>● คนกรีด {tapperPercent}%</div>
               </div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fbbf24' }}>
-                ฿{tapperRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              <div style={{ display: 'flex', height: '8px', borderRadius: '4px', overflow: 'hidden', background: '#e2e8f0' }}>
+                <div style={{ width: `${ownerPercent}%`, background: '#22c55e', transition: 'width 1s ease-in-out' }}></div>
+                <div style={{ width: `${tapperPercent}%`, background: '#f59e0b', transition: 'width 1s ease-in-out' }}></div>
               </div>
-              <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '4px' }}>ส่วนแบ่งรายรับสุทธิ</div>
+            </div>
+
+            {/* Sub Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #dcfce7', borderRadius: '12px', padding: '1rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></div>
+                    เจ้าของสวน
+                  </div>
+                  <div style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                    {ownerPercent}%
+                  </div>
+                </div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#16a34a' }}>
+                  ฿{ownerRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                </div>
+                <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '4px' }}>ส่วนแบ่งรายรับสุทธิ</div>
+              </div>
+
+              <div style={{ background: '#ffffff', border: '1px solid #fef3c7', borderRadius: '12px', padding: '1rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }}></div>
+                    คนรับจ้างกรีด
+                  </div>
+                  <div style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#b45309', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                    {tapperPercent}%
+                  </div>
+                </div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#d97706' }}>
+                  ฿{tapperRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                </div>
+                <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '4px' }}>ส่วนแบ่งรายรับสุทธิ</div>
+              </div>
             </div>
           </div>
         </div>

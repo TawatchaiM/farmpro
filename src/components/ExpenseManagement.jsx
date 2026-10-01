@@ -292,32 +292,35 @@ function ExpenseManagement({ currentUser, onShowTrash }) {
             </div>
           )}
 
-          <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg, #e48600, #c55d00)', borderRadius: '20px', padding: '1.5rem', marginBottom: '2rem', color: '#fff', boxShadow: '0 10px 20px -5px rgba(217, 119, 6, 0.4)' }}>
+          <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(145deg, #ffffff, #fff7ed)', border: '1px solid #fed7aa', borderRadius: '20px', padding: '1.5rem', marginBottom: '2rem', color: '#1e293b', boxShadow: '0 10px 25px -5px rgba(217, 119, 6, 0.15), 0 8px 10px -6px rgba(217, 119, 6, 0.05)' }}>
             
+            {/* Subtle background accent */}
+            <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '150px', height: '150px', background: '#ffedd5', borderRadius: '50%', filter: 'blur(40px)', zIndex: 0 }}></div>
+
             {/* Background Watermark */}
-            <div style={{ position: 'absolute', right: '5%', top: '-10%', fontSize: '10rem', color: 'rgba(255, 255, 255, 0.08)', fontWeight: 'bold', lineHeight: 1, userSelect: 'none', pointerEvents: 'none', transform: 'rotate(10deg)' }}>
+            <div style={{ position: 'absolute', right: '5%', top: '-10%', fontSize: '10rem', color: 'rgba(217, 119, 6, 0.05)', fontWeight: 'bold', lineHeight: 1, userSelect: 'none', pointerEvents: 'none', transform: 'rotate(10deg)', zIndex: 0 }}>
               ฿
             </div>
 
             {/* Header row */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 1 }}>
-              <div style={{ background: 'rgba(0, 0, 0, 0.15)', padding: '6px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fde68a' }}></div>
+              <div style={{ background: '#ffedd5', padding: '6px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, color: '#c2410c', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#d97706' }}></div>
                 ยอดรายจ่ายรวมแปลงนี้
               </div>
-              <div style={{ fontWeight: 700, opacity: 0.9, fontSize: '1rem', background: 'rgba(255, 255, 255, 0.15)', padding: '4px 12px', borderRadius: '20px' }}>
+              <div style={{ fontWeight: 700, color: '#9a3412', fontSize: '1rem', background: '#ffedd5', padding: '4px 12px', borderRadius: '20px' }}>
                 {new Date().toLocaleDateString('th-TH', { month: 'short', year: 'numeric' })}
               </div>
             </div>
 
             {/* Amount */}
             <div style={{ position: 'relative', zIndex: 1, marginBottom: '2rem' }}>
-              <div style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px' }}>
+              <div style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', color: '#d97706' }}>
                 <span style={{ fontSize: '2.2rem', marginRight: '4px' }}>฿</span>
                 {totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
               </div>
-              <div style={{ fontSize: '0.85rem', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontWeight: 500 }}>
-                <span style={{ border: '1px solid rgba(255,255,255,0.6)', borderRadius: '50%', width: '14px', height: '14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>i</span> 
+              <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontWeight: 600 }}>
+                <span style={{ border: '1px solid #94a3b8', borderRadius: '50%', width: '14px', height: '14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>i</span> 
                 {filterPeriod === 'this_month' ? 'รวมค่าใช้จ่ายทั้งหมดในรอบเดือนปัจจุบัน' :
                  filterPeriod === 'last_month' ? 'รวมค่าใช้จ่ายทั้งหมดในเดือนที่แล้ว' :
                  filterPeriod === 'this_year' ? 'รวมค่าใช้จ่ายทั้งหมดในปีนี้' :
@@ -330,9 +333,9 @@ function ExpenseManagement({ currentUser, onShowTrash }) {
             <div style={{ display: 'flex', gap: '1rem', position: 'relative', zIndex: 1, flexWrap: 'wrap' }}>
               <button 
                 onClick={() => !isAdding && setIsAdding(true)} 
-                style={{ flex: '1 1 180px', padding: '0.8rem', borderRadius: '12px', background: '#fff', color: '#047857', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 700, fontSize: '1rem', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                style={{ flex: '1 1 180px', padding: '0.8rem', borderRadius: '12px', background: '#d97706', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 700, fontSize: '1rem', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(217, 119, 6, 0.3)' }}
               >
-                <div style={{ background: '#d1fae5', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
+                <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
                   <Plus size={16} strokeWidth={3} />
                 </div>
                 เพิ่มรายจ่าย
@@ -340,9 +343,9 @@ function ExpenseManagement({ currentUser, onShowTrash }) {
               
               <button 
                 onClick={downloadExpensesCSV}
-                style={{ flex: '1 1 180px', padding: '0.8rem', borderRadius: '12px', background: 'rgba(0, 0, 0, 0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 600, fontSize: '1rem', transition: 'all 0.2s', backdropFilter: 'blur(8px)' }}
+                style={{ flex: '1 1 180px', padding: '0.8rem', borderRadius: '12px', background: '#ffffff', color: '#d97706', border: '1px solid #fed7aa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 700, fontSize: '1rem', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}
               >
-                <Download size={18} strokeWidth={2.5} style={{ color: '#fff' }} />
+                <Download size={18} strokeWidth={2.5} style={{ color: '#d97706' }} />
                 ดาวน์โหลด CSV
               </button>
             </div>

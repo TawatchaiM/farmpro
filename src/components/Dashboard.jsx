@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { db } from '../supabase';
+import { Check } from 'lucide-react';
 
 function Dashboard({ currentUser, onEdit, onDelete }) {
   const [data, setData] = useState([]);
@@ -576,24 +577,32 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
                     ราคาตลาด: ฿{parseFloat(record.price_per_kg || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}/กก.
                   </div>
                 </div>
-                <div style={{ width: '100%', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                  <button 
-                    onClick={() => onEdit(record)} 
-                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', borderRadius: '6px', background: '#e3f2fd', color: '#1976d2', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                  >
-                    📝 แก้ไข
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if (window.confirm('คุณต้องการลบรายการนี้ใช่หรือไม่? (การลบจะไม่สามารถกู้คืนได้)')) {
-                        onDelete(record.id);
-                      }
-                    }} 
-                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', borderRadius: '6px', background: '#ffebee', color: '#d32f2f', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                  >
-                    🗑️ ลบ
-                  </button>
-                </div>
+                {(!record.buyer_id || record.queue_number === 'E-BILL') ? (
+                  <div style={{ width: '100%', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                    <button 
+                      onClick={() => onEdit(record)} 
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', borderRadius: '6px', background: '#e3f2fd', color: '#1976d2', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      📝 แก้ไข
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if (window.confirm('คุณต้องการลบรายการนี้ใช่หรือไม่? (การลบจะไม่สามารถกู้คืนได้)')) {
+                          onDelete(record.id);
+                        }
+                      }} 
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', borderRadius: '6px', background: '#ffebee', color: '#d32f2f', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      🗑️ ลบ
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', background: '#ecfdf5', padding: '4px 8px', borderRadius: '4px', border: '1px solid #a7f3d0' }}>
+                      <Check size={12} /> ข้อมูลซิงค์จากร้านรับซื้อ (ไม่อนุญาตให้แก้ไข/ลบ)
+                    </span>
+                  </div>
+                )}
               </div>
             )) : (
               <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>ไม่พบข้อมูลการขายสำหรับมุมมองนี้</div>

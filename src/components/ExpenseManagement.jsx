@@ -412,7 +412,7 @@ function ExpenseManagement({ currentUser }) {
                 <button type="submit" className="btn btn-primary" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', background: '#d97706', borderColor: '#d97706' }}>
                   <Check size={16} /> บันทึก
                 </button>
-                <button type="button" className="btn" onClick={() => setIsAdding(false)} style={{ background: '#e2e8f0', color: '#475569', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <button type="button" className="btn" onClick={() => setIsAdding(false)} style={{ flex: 1, background: '#e2e8f0', color: '#475569', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                   ยกเลิก
                 </button>
               </div>

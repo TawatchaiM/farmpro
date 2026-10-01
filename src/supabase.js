@@ -1077,7 +1077,7 @@ export const db = {
     if (isMock || userId?.startsWith('ab-')) {
       await delay(200);
       const plots = safeJsonParse('farmpro_rubber_plots', []);
-      const userPlots = plots.filter(p => p.owner_id === userId || p.tapper_id === userId);
+      const userPlots = plots.filter(p => (p.owner_id === userId || p.tapper_id === userId) && !p.deleted_at);
       return [...userPlots, ...userManualPlots];
     }
     try {
@@ -1085,6 +1085,7 @@ export const db = {
         .from('rubber_plots')
         .select('*, owner:profiles!rubber_plots_owner_id_fkey(full_name), tapper:profiles!rubber_plots_tapper_id_fkey(full_name)')
         .or(`owner_id.eq.${userId},tapper_id.eq.${userId}`)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return [...(data || []), ...userManualPlots];
@@ -1181,14 +1182,17 @@ export const db = {
     if (isMock) {
       await delay(200);
       let plots = safeJsonParse('farmpro_rubber_plots', []);
-      plots = plots.filter(p => p.plot_id !== id);
+      const index = plots.findIndex(p => p.plot_id === id);
+      if (index !== -1) {
+        plots[index].deleted_at = new Date().toISOString();
+      }
       localStorage.setItem('farmpro_rubber_plots', JSON.stringify(plots));
       return { success: true };
     }
     try {
       const { error } = await supabase
         .from('rubber_plots')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('plot_id', id);
       if (error) throw error;
       return { success: true };
@@ -1688,6 +1692,71 @@ export const db = {
       return { success: true };
     } catch (err) {
       console.error('Error hard deleting transaction:', err);
+      throw err;
+    }
+  },
+
+  getTrashedPlots: async () => {
+    if (isMock) {
+      await delay(200);
+      const plots = safeJsonParse('farmpro_rubber_plots', []);
+      return plots.filter(p => p.deleted_at);
+    }
+    try {
+      const { data, error } = await supabase
+        .from('rubber_plots')
+        .select('*')
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching trashed plots:', err);
+      return [];
+    }
+  },
+
+  restorePlot: async (id) => {
+    if (isMock) {
+      await delay(200);
+      const plots = safeJsonParse('farmpro_rubber_plots', []);
+      const idx = plots.findIndex(p => p.plot_id === id);
+      if (idx !== -1) {
+        plots[idx].deleted_at = null;
+        localStorage.setItem('farmpro_rubber_plots', JSON.stringify(plots));
+      }
+      return { success: true };
+    }
+    try {
+      const { error } = await supabase
+        .from('rubber_plots')
+        .update({ deleted_at: null })
+        .eq('plot_id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.error('Error restoring plot:', err);
+      throw err;
+    }
+  },
+
+  hardDeletePlot: async (id) => {
+    if (isMock) {
+      await delay(200);
+      let plots = safeJsonParse('farmpro_rubber_plots', []);
+      plots = plots.filter(p => p.plot_id !== id);
+      localStorage.setItem('farmpro_rubber_plots', JSON.stringify(plots));
+      return { success: true };
+    }
+    try {
+      const { error } = await supabase
+        .from('rubber_plots')
+        .delete()
+        .eq('plot_id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.error('Error hard deleting plot:', err);
       throw err;
     }
   },

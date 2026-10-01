@@ -5,17 +5,20 @@ import { Trash2, RefreshCw, X, AlertTriangle } from 'lucide-react';
 function TrashModal({ isOpen, onClose, viewRole, onRestored }) {
   const [trashedTransactions, setTrashedTransactions] = useState([]);
   const [trashedExpenses, setTrashedExpenses] = useState([]);
+  const [trashedPlots, setTrashedPlots] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchTrash = async () => {
     setLoading(true);
     try {
-      const [txs, exps] = await Promise.all([
+      const [txs, exps, plots] = await Promise.all([
         db.getTrashedTransactions(),
-        db.getTrashedPlotExpenses()
+        db.getTrashedPlotExpenses(),
+        db.getTrashedPlots()
       ]);
       setTrashedTransactions(txs || []);
       setTrashedExpenses(exps || []);
+      setTrashedPlots(plots || []);
     } catch (error) {
       console.error('Error fetching trash:', error);
     } finally {
@@ -55,6 +58,21 @@ function TrashModal({ isOpen, onClose, viewRole, onRestored }) {
   const handleHardDeleteExpense = async (id) => {
     if (window.confirm('คุณต้องการลบรายจ่ายนี้ถาวรใช่หรือไม่? (ลบแล้วไม่สามารถกู้คืนได้)')) {
       await db.hardDeletePlotExpense(id);
+      fetchTrash();
+    }
+  };
+
+  const handleRestorePlot = async (id) => {
+    if (window.confirm('คุณต้องการกู้คืนแปลงสวนนี้ใช่หรือไม่?')) {
+      await db.restorePlot(id);
+      fetchTrash();
+      if (onRestored) onRestored();
+    }
+  };
+
+  const handleHardDeletePlot = async (id) => {
+    if (window.confirm('คุณต้องการลบแปลงสวนนี้ถาวรใช่หรือไม่? (ลบแล้วไม่สามารถกู้คืนได้)')) {
+      await db.hardDeletePlot(id);
       fetchTrash();
     }
   };
@@ -150,6 +168,35 @@ function TrashModal({ isOpen, onClose, viewRole, onRestored }) {
                     </div>
                   ) : (
                     <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>ไม่มีรายการจ่ายในถังขยะ</p>
+                  )}
+
+                  <h3 style={{ marginTop: '2rem', color: '#334155', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem' }}>แปลงสวนยาง</h3>
+                  {trashedPlots.length > 0 ? (
+                    <div style={{ display: 'grid', gap: '1rem' }}>
+                      {trashedPlots.map(plot => (
+                        <div key={plot.plot_id} style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{plot.plot_name}</div>
+                            <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                              ลบเมื่อ: {new Date(plot.deleted_at).toLocaleString('th-TH')}
+                            </div>
+                            <div style={{ fontSize: '0.875rem', color: '#ef4444', fontWeight: 600 }}>
+                              สัดส่วน: เจ้าของ {plot.default_share_ratio}% / คนกรีด {100 - plot.default_share_ratio}%
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button onClick={() => handleRestorePlot(plot.plot_id)} style={{ padding: '0.5rem 1rem', background: '#ecfdf5', color: '#10b981', border: '1px solid #a7f3d0', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                              <RefreshCw size={16} /> กู้คืน
+                            </button>
+                            <button onClick={() => handleHardDeletePlot(plot.plot_id)} style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                              <Trash2 size={16} /> ลบถาวร
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>ไม่มีแปลงสวนในถังขยะ</p>
                   )}
                 </>
               )}

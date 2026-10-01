@@ -409,10 +409,10 @@ function ExpenseManagement({ currentUser }) {
               </div>
               
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', background: '#d97706', borderColor: '#d97706' }}>
+                <button type="submit" className="btn btn-primary" style={{ margin: 0, flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', background: '#d97706', borderColor: '#d97706', padding: '0.75rem' }}>
                   <Check size={16} /> บันทึก
                 </button>
-                <button type="button" className="btn" onClick={() => setIsAdding(false)} style={{ flex: 1, background: '#e2e8f0', color: '#475569', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <button type="button" className="btn" onClick={() => setIsAdding(false)} style={{ margin: 0, flex: 1, background: '#e2e8f0', color: '#475569', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '0.75rem' }}>
                   ยกเลิก
                 </button>
               </div>

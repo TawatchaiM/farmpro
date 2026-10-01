@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../supabase';
 import { Trash2, Plus, Calendar, DollarSign, Tag, Check, Filter } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 function ExpenseManagement({ currentUser }) {
   const [plots, setPlots] = useState([]);
@@ -107,6 +108,36 @@ function ExpenseManagement({ currentUser }) {
   };
 
   const totalExpenses = expenses.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+
+  // --- CHART DATA PREPARATION ---
+  const expensesByCategory = expenses.reduce((acc, item) => {
+    const cat = item.category || 'อื่นๆ';
+    acc[cat] = (acc[cat] || 0) + (parseFloat(item.amount) || 0);
+    return acc;
+  }, {});
+
+  const pieChartData = Object.keys(expensesByCategory).map(key => ({
+    name: key,
+    value: expensesByCategory[key]
+  })).sort((a, b) => b.value - a.value);
+
+  const expensesByMonth = expenses.reduce((acc, item) => {
+    if (!item.expense_date) return acc;
+    const month = item.expense_date.substring(0, 7); // YYYY-MM
+    acc[month] = (acc[month] || 0) + (parseFloat(item.amount) || 0);
+    return acc;
+  }, {});
+
+  const barChartData = Object.keys(expensesByMonth).map(key => {
+    const parts = key.split('-');
+    return {
+      sortKey: key,
+      name: `${parts[1]}/${parts[0]}`,
+      'รายจ่าย (บาท)': expensesByMonth[key]
+    };
+  }).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+
+  const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'];
 
   const downloadExpensesCSV = () => {
     if (!expenses || expenses.length === 0) {
@@ -260,6 +291,53 @@ function ExpenseManagement({ currentUser }) {
                 </button>
               </div>
             </form>
+          )}
+
+          {/* Charts Section */}
+          {expenses.length > 0 && (
+            <div style={{ marginBottom: '2rem', display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
+              {/* Category Pie Chart */}
+              <div style={{ flex: '1 1 300px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem' }}>
+                <h4 style={{ margin: '0 0 1rem 0', color: '#334155', fontSize: '1rem' }}>สัดส่วนรายจ่ายตามหมวดหมู่</h4>
+                <div style={{ width: '100%', height: 250 }}>
+                  <ResponsiveContainer>
+                    <PieChart>
+                      <Pie
+                        data={pieChartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {pieChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => `฿${value.toLocaleString()}`} />
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Monthly Trend Bar Chart */}
+              <div style={{ flex: '2 1 400px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem' }}>
+                <h4 style={{ margin: '0 0 1rem 0', color: '#334155', fontSize: '1rem' }}>เทรนด์รายจ่ายรายเดือน</h4>
+                <div style={{ width: '100%', height: 250 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={barChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                      <Tooltip formatter={(value) => `฿${value.toLocaleString()}`} cursor={{ fill: '#f1f5f9' }} />
+                      <Bar dataKey="รายจ่าย (บาท)" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={40} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
           )}
 
           <div className="record-list">

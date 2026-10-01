@@ -108,6 +108,41 @@ function ExpenseManagement({ currentUser }) {
 
   const totalExpenses = expenses.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
 
+  const downloadExpensesCSV = () => {
+    if (!expenses || expenses.length === 0) {
+      alert('ไม่มีข้อมูลรายจ่ายสำหรับดาวน์โหลด');
+      return;
+    }
+
+    const headers = [
+      'วันที่',
+      'หมวดหมู่',
+      'รายละเอียด',
+      'จำนวนเงิน (บาท)'
+    ];
+
+    const csvRows = expenses.map(row => [
+      row.expense_date ? row.expense_date.substring(0, 10) : '-',
+      row.category || '-',
+      row.description || '-',
+      row.amount || '0'
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...csvRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `รายจ่ายสวนยาง_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) return <div>กำลังโหลดข้อมูล...</div>;
 
   return (
@@ -141,13 +176,20 @@ function ExpenseManagement({ currentUser }) {
             </select>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', background: '#fffbeb', padding: '1rem', borderRadius: '8px', border: '1px solid #fde68a' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', background: '#fffbeb', padding: '1rem', borderRadius: '8px', border: '1px solid #fde68a', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <span style={{ fontSize: '0.875rem', color: '#b45309' }}>ยอดรายจ่ายรวมแปลงนี้</span>
               <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#92400e' }}>฿{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
             </div>
-            {!isAdding && (
-              <button onClick={() => setIsAdding(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#d97706', borderColor: '#d97706' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button 
+                onClick={downloadExpensesCSV}
+                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', borderRadius: '6px', background: '#fff', border: '1px solid #d97706', color: '#d97706', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
+              >
+                📊 ดาวน์โหลด CSV
+              </button>
+              {!isAdding && (
+                <button onClick={() => setIsAdding(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#d97706', borderColor: '#d97706' }}>
                 <Plus size={16} /> เพิ่มรายจ่าย
               </button>
             )}

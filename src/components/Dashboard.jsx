@@ -162,6 +162,57 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
     });
   }, [data, filterMonth, filterBuyer, viewRole, currentUser, plots, customStartDate, customEndDate]);
 
+  const downloadCSV = () => {
+    if (!filteredData || filteredData.length === 0) {
+      alert('ไม่มีข้อมูลสำหรับดาวน์โหลด');
+      return;
+    }
+
+    const headers = [
+      'วันที่',
+      'คิว',
+      'ร้านที่ขาย',
+      'ปริมาณยางแห้ง (กก.)',
+      'ปริมาณยางสด (กก.)',
+      'DRC (%)',
+      'ราคาตลาด (บาท/กก.)',
+      'ยอดเงินรวม (บาท)',
+      'ส่วนแบ่งเจ้าของสวน (บาท)',
+      'ส่วนแบ่งคนกรีด (บาท)',
+      'สถานะ',
+      'หมายเหตุ'
+    ];
+
+    const csvRows = filteredData.map(row => [
+      formatDateDisplay(row.date),
+      row.queue_number || '-',
+      row.buyer_name || '-',
+      row.dry_weight_kg || '0',
+      row.raw_weight_kg || '0',
+      row.drc_percentage || '0',
+      row.price_per_kg || '0',
+      row.total_amount_thb || '0',
+      row.owner_share_thb || '0',
+      row.tapper_share_thb || '0',
+      row.status || '-',
+      row.note || ''
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...csvRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `รายรับสวนยาง_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const formatDateDisplay = (dateStr) => {
     if (!dateStr) return '';
     const parts = dateStr.substring(0, 10).split('-');
@@ -265,7 +316,15 @@ function Dashboard({ currentUser, onEdit, onDelete }) {
 
       {/* Filters */}
       <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-        <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>ตัวกรองข้อมูล (Filters)</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem' }}>ตัวกรองข้อมูล (Filters)</h3>
+          <button 
+            onClick={downloadCSV}
+            style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', borderRadius: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
+          >
+            📊 ดาวน์โหลด CSV
+          </button>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>ช่วงเวลา</label>

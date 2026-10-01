@@ -1577,7 +1577,7 @@ export const db = {
   getAllTransactions: async () => {
     if (isMock) {
       await delay(200);
-      return safeJsonParse('farmpro_transactions', []);
+      return safeJsonParse('farmpro_transactions', []).filter(t => !t.deleted_at);
     }
 
     try {
@@ -1591,7 +1591,7 @@ export const db = {
       return data;
     } catch (err) {
       console.error('Error fetching all transactions:', err);
-      return safeJsonParse('farmpro_transactions', []);
+      return safeJsonParse('farmpro_transactions', []).filter(t => !t.deleted_at);
     }
   },
 
@@ -2112,7 +2112,7 @@ export const db = {
   // --- Stale-While-Revalidate (SWR) Transactions Pattern ---
   getAllTransactionsSWR: async (onBackgroundUpdate) => {
     // 1. Instant Render from local cache
-    const cachedTxs = safeJsonParse('farmpro_transactions', []);
+    const cachedTxs = safeJsonParse('farmpro_transactions', []).filter(t => !t.deleted_at);
 
     // 2. Background Sync from Supabase
     const isDemo = localStorage.getItem('farmpro_is_demo') === 'true';
@@ -2122,6 +2122,7 @@ export const db = {
           const { data, error } = await supabase
             .from('rubber_transactions')
             .select('*')
+            .is('deleted_at', null)
             .order('created_at', { ascending: false });
 
           if (!error && Array.isArray(data)) {

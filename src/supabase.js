@@ -2602,7 +2602,9 @@ export const db = {
         'phone_number', 'subdistrict', 'district', 'province', 'postal_code',
         'latitude', 'longitude', 'google_maps_url', 'store_name',
         'vendor_category', 'vendor_description', 'business_hours',
-        'status', 'plan_id', 'address_details', 'created_at', 'updated_at'
+        'status', 'plan_id', 'subscription_plan', 'subscription_tier', 'plan_type',
+        'storage_limit_mb', 'bill_quota_monthly', 'billing_cycle', 'subscription_expiry_date',
+        'address_details', 'created_at', 'updated_at'
       ];
       const dbUpdatePayload = {};
       for (const key of profileSchemaKeys) {
@@ -2656,6 +2658,37 @@ export const db = {
       console.warn('Error updating profile in Supabase, updated locally:', err);
       return { success: true, data: mergedProfile };
     }
+  },
+
+  updateUserSubscription: async (userId, subData) => {
+    const {
+      subscription_tier = 'free',
+      plan_type = 'free',
+      billing_cycle = 'monthly',
+      storage_limit_mb = 200,
+      bill_quota_monthly = 150
+    } = subData;
+
+    const now = new Date();
+    if (billing_cycle === 'yearly') {
+      now.setFullYear(now.getFullYear() + 1);
+    } else {
+      now.setMonth(now.getMonth() + 1);
+    }
+    const expiryDate = now.toISOString();
+
+    const updatePayload = {
+      plan_id: subscription_tier,
+      subscription_plan: subscription_tier,
+      subscription_tier,
+      plan_type,
+      billing_cycle,
+      storage_limit_mb,
+      bill_quota_monthly,
+      subscription_expiry_date: expiryDate
+    };
+
+    return await db.updateProfile(userId, updatePayload);
   },
 
   // ---------------------------------------------------------

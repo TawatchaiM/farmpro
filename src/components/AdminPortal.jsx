@@ -244,8 +244,9 @@ function AdminPortal() {
   // --- Subscriptions & Revenue Calculations ---
   const subProfiles = profiles.map(p => {
     let plan = 'free';
-    if (p.plan_id === 'standard' || p.subscription_plan === 'standard') plan = 'standard';
-    else if (p.plan_id === 'pro' || p.subscription_plan === 'pro') plan = 'pro';
+    const tier = p.subscription_tier || p.plan_id || p.subscription_plan;
+    if (tier === 'standard' || tier === 'buyer_standard') plan = 'standard';
+    else if (tier === 'pro' || tier === 'buyer_pro' || tier === 'seller_pro') plan = 'pro';
     
     // Mock billing cycle deterministically
     let cycle = p.billing_cycle;
@@ -256,10 +257,16 @@ function AdminPortal() {
     }
 
     let mrr = 0;
-    if (plan === 'standard') {
-      mrr = cycle === 'yearly' ? (4704 / 12) : 490;
-    } else if (plan === 'pro') {
-      mrr = cycle === 'yearly' ? (12384 / 12) : 1290;
+    if (p.role === 'seller') {
+      if (plan === 'pro') {
+        mrr = cycle === 'yearly' ? (990 / 12) : 99;
+      }
+    } else {
+      if (plan === 'standard') {
+        mrr = cycle === 'yearly' ? (1990 / 12) : 199;
+      } else if (plan === 'pro') {
+        mrr = cycle === 'yearly' ? (3990 / 12) : 399;
+      }
     }
 
     return { ...p, subPlan: plan, subCycle: cycle, mrr };
@@ -296,7 +303,7 @@ function AdminPortal() {
     .filter(p => p.role === 'buyer')
     .slice(0, 5) // top 5
     .map((p, i) => {
-      const quota = p.plan_id === 'pro' || p.subscription_plan === 'pro' ? 20000 : (p.plan_id === 'standard' || p.subscription_plan === 'standard' ? 5000 : 50); // MB
+      const quota = p.storage_limit_mb || (p.plan_id === 'pro' || p.subscription_tier === 'pro' ? 10240 : (p.plan_id === 'standard' || p.subscription_tier === 'standard' ? 2048 : 200)); // MB
       
       // Use real data if available, otherwise mock it
       let used = p.used_storage_mb;

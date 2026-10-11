@@ -1588,6 +1588,7 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
 
             <PricingTable 
               selectedPlanId={selectedPlanId}
+              defaultRole={role}
               onSelectPlan={(planId, cycle) => {
                 setSelectedPlanId(planId);
                 if (cycle) setBillingCycle(cycle);

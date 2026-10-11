@@ -711,7 +711,7 @@ function App() {
             {activePortal === 'marketplace' && <MarketplacePortal />}
             {activePortal === 'ai_chat' && <AIChat />}
             {activePortal === 'admin' && <AdminPortal />}
-            {activePortal === 'pricing' && <PricingTable />}
+            {activePortal === 'pricing' && <PricingTable currentUser={currentUser} />}
             {/* Fallback: if no portal matched, show buyer portal as default */}
             {!['buyer','seller','marketplace','ai_chat','admin','pricing'].includes(activePortal) && (
               <BuyerPortal currentUser={currentUser} onUpdateProfile={(updated) => setCurrentUser(updated)} />
@@ -777,7 +777,11 @@ function App() {
             >
               ✕
             </button>
-            <PricingTable isEmbedded={true} />
+            <PricingTable 
+              currentUser={currentUser} 
+              isEmbedded={true} 
+              onClose={() => setShowPricingModal(false)} 
+            />
           </div>
         </div>
       )}

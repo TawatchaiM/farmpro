@@ -11,9 +11,11 @@ import ProfitLossDashboard from './ProfitLossDashboard';
 import OfflineStatusBar from './OfflineStatusBar';
 import { db, isMock } from '../supabase';
 import { playNotificationSound } from '../utils/audioAlert';
+import useSubscription from '../hooks/useSubscription';
 import './OperationalWorkflow.css';
 
 function BuyerPortal({ currentUser, onUpdateProfile }) {
+  const sub = useSubscription(currentUser);
   // Main 5 navigation tabs: 'buy', 'sales', 'expenses', 'pnl', 'settings'
   const [activeMainTab, setActiveMainTab] = useState('buy');
 
@@ -120,6 +122,25 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
 
   // Create transaction handler
   const handleCreateTransaction = useCallback(async (tx) => {
+    // Quota check for Starter Free (150 bills / month)
+    if (sub.isBuyer && sub.isFree) {
+      try {
+        const now = new Date();
+        const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        const todayStrLocal = now.toISOString().split('T')[0];
+        const monthlyTxs = await db.getTransactionsHistory(thisMonthStart, todayStrLocal, currentUser?.id);
+        const monthlyCount = (monthlyTxs || []).length;
+        const quotaCheck = sub.checkBillQuota(monthlyCount);
+        if (!quotaCheck.allowed) {
+          triggerToast(`⚠️ ${quotaCheck.message}`, 'error');
+          alert(`⚠️ ไม่สามารถออกบิลใหม่ได้\n\n${quotaCheck.message}`);
+          return null;
+        }
+      } catch (err) {
+        console.warn('Quota check fallback:', err);
+      }
+    }
+
     const isOffline = !window.navigator.onLine;
     const created = await db.createTransaction({
       ...tx,
@@ -131,7 +152,7 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
     setTransactions(txList);
     updatePendingCount();
     return created;
-  }, [todayStr, currentUser?.id, updatePendingCount]);
+  }, [todayStr, currentUser?.id, updatePendingCount, sub]);
 
   // Update transaction handler
   const handleUpdateTransaction = useCallback(async (id, updates) => {
@@ -423,7 +444,36 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
 
         {/* TAB 4: [📊 แดชบอร์ด & กำไร-ขาดทุน (P&L)] */}
         {activeMainTab === 'pnl' && (
-          <ProfitLossDashboard currentUser={currentUser} />
+          <div>
+            {sub.isBuyer && sub.isFree && (
+              <div style={{
+                background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                border: '1px solid #fde68a',
+                borderRadius: '16px',
+                padding: '1rem 1.25rem',
+                marginBottom: '1rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+                boxShadow: '0 4px 12px rgba(217, 119, 6, 0.08)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <span style={{ fontSize: '1.5rem' }}>🔒</span>
+                  <div>
+                    <div style={{ fontWeight: 800, color: '#92400e', fontSize: '0.95rem' }}>
+                      แดชบอร์ด P&L โหมดเริ่มต้น (Starter Free — ย้อนหลัง 30 วัน)
+                    </div>
+                    <div style={{ fontSize: '0.825rem', color: '#b45309' }}>
+                      อัปเกรดเป็นแพ็กเกจ Standard (฿199/เดือน) เพื่อปลดล็อก P&L ย้อนหลังเต็มรูปแบบ 1 ปี หรือ Pro สำหรับสถิติตลอดชีพ!
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <ProfitLossDashboard currentUser={currentUser} />
+          </div>
         )}
 
         {/* TAB 5: [⚙️ ตั้งค่าร้านค้า] */}

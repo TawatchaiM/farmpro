@@ -3,6 +3,7 @@ import { db, supabase } from '../supabase';
 import QRCode from 'qrcode';
 import { getOrCreateSeed, generateDailyToken, buildLabUrl, revokeSeed } from '../utils/labToken';
 import CollapsibleSection from './CollapsibleSection';
+import useSubscription from '../hooks/useSubscription';
 
 // Default 5-tier DRC pricing template (user can customize)
 const DEFAULT_TIERS = [
@@ -14,6 +15,7 @@ const DEFAULT_TIERS = [
 ];
 
 function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSaveSettings }) {
+  const sub = useSubscription(currentUser);
   const defaultAddress = [
     currentUser?.address_details,
     currentUser?.subdistrict ? `ต.${currentUser.subdistrict}` : '',
@@ -811,6 +813,76 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
           </div>
         </div>
       )}
+
+      {/* ===== MULTI-STAFF PIN MANAGEMENT ===== */}
+      <CollapsibleSection
+        id="multi_staff"
+        title="ระบบหลายเสมียน (Multi-staff PIN)"
+        subtitle="กำหนดรหัส PIN ประจำตัวเสมียนและพนักงานชั่งน้ำหนัก แยกอุปกรณ์การทำงาน"
+        icon="👥"
+        defaultExpanded={false}
+      >
+        {sub.hasMultiStaffPin ? (
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <h4 style={{ margin: 0, color: '#0f172a', fontSize: '1rem', fontWeight: 700 }}>
+                  พนักงานและเสมียนที่ได้รับสิทธิ์ (Pro Business)
+                </h4>
+                <p style={{ margin: '0.2rem 0 0', color: '#64748b', fontSize: '0.85rem' }}>
+                  กำหนด PIN 4-6 หลักเพื่อให้เสมียนเข้าใช้งานเครื่องชั่งได้โดยไม่ต้องแชร์รหัสผ่านเจ้าของร้าน
+                </p>
+              </div>
+              <span style={{ background: '#dcfce7', color: '#15803d', padding: '4px 10px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 800 }}>
+                ✓ ปลดล็อกแล้ว (Pro)
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+              <div style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700, color: '#334155' }}>เสมียนชั่งน้ำหนัก (Station 1)</span>
+                  <span style={{ background: '#e0f2fe', color: '#0369a1', fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Active</span>
+                </div>
+                <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#64748b' }}>
+                  รหัส PIN: <span style={{ fontWeight: 800, color: '#0f172a', letterSpacing: '2px' }}>•••• 4821</span>
+                </div>
+                <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#94a3b8' }}>สิทธิ์: บันทึก Weight In, พิมพ์บัตรคิว</div>
+              </div>
+
+              <div style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700, color: '#334155' }}>แคชเชียร์/จ่ายเงิน (Cashier)</span>
+                  <span style={{ background: '#e0f2fe', color: '#0369a1', fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Active</span>
+                </div>
+                <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#64748b' }}>
+                  รหัส PIN: <span style={{ fontWeight: 800, color: '#0f172a', letterSpacing: '2px' }}>•••• 9152</span>
+                </div>
+                <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#94a3b8' }}>สิทธิ์: ชำระเงิน, ออกใบเสร็จ E-BILL</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+            border: '1.5px dashed #c084fc',
+            borderRadius: '16px',
+            padding: '2rem 1.5rem',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🔒</div>
+            <h4 style={{ margin: '0 0 0.5rem', color: '#6b21a8', fontSize: '1.15rem', fontWeight: 800 }}>
+              ระบบหลายเสมียน (Multi-staff PIN) สงวนสิทธิ์สำหรับแพ็กเกจ Pro Business
+            </h4>
+            <p style={{ margin: '0 auto 1.25rem', color: '#7e22ce', fontSize: '0.875rem', maxWidth: '500px', lineHeight: '1.5' }}>
+              ช่วยให้ร้านรับซื้อสามารถแยกสิทธิ์เสมียนชั่งน้ำหนัก แคชเชียร์ และเจ้าหน้าที่ห้องแล็บได้หลายคนพร้อมกัน พร้อมบันทึกประวัติการทำงานของพนักงานแต่ละคนอย่างโปร่งใส
+            </p>
+            <div style={{ display: 'inline-block', background: '#9333ea', color: '#fff', padding: '0.55rem 1.2rem', borderRadius: '10px', fontWeight: 700, fontSize: '0.875rem', boxShadow: '0 4px 12px rgba(147, 51, 234, 0.3)' }}>
+              🚀 ปลดล็อกในแพ็กเกจ Pro Business (฿399/เดือน)
+            </div>
+          </div>
+        )}
+      </CollapsibleSection>
     </div>
   );
 }

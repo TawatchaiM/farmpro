@@ -22,6 +22,16 @@ function AdminPortal() {
   const [tempPassword, setTempPassword] = useState('');
   const [resetStatus, setResetStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
 
+  // Subscription Edit Modal State
+  const [editPkgUser, setEditPkgUser] = useState(null);
+  const [pkgFormData, setPkgFormData] = useState({
+    tier: 'free',
+    cycle: 'monthly',
+    expiryDate: '',
+    note: ''
+  });
+  const [pkgUpdating, setPkgUpdating] = useState(false);
+
   // Settings Tab State
   const [supportLineId, setSupportLineId] = useState('');
   const [supportPhone, setSupportPhone] = useState('');
@@ -139,6 +149,117 @@ function AdminPortal() {
     }
   };
 
+  const handleOpenEditPackage = (user) => {
+    let currentTier = user.subscription_tier || user.subPlan || 'free';
+    if (currentTier === 'seller_pro' || currentTier === 'buyer_pro') currentTier = 'pro';
+    if (currentTier === 'buyer_standard') currentTier = 'standard';
+    if (currentTier === 'seller_free' || currentTier === 'buyer_free') currentTier = 'free';
+
+    let currentCycle = user.billing_cycle;
+    if (!currentCycle || currentCycle === '-') {
+      currentCycle = currentTier === 'free' ? 'none' : (user.subCycle === 'yearly' ? 'yearly' : 'monthly');
+    }
+
+    let expiry = '';
+    if (user.subscription_expiry_date) {
+      try {
+        expiry = new Date(user.subscription_expiry_date).toISOString().split('T')[0];
+      } catch (e) {
+        expiry = '';
+      }
+    } else if (currentCycle !== 'none' && currentCycle !== 'lifetime' && currentTier !== 'free') {
+      const d = new Date();
+      if (currentCycle === 'yearly') d.setFullYear(d.getFullYear() + 1);
+      else d.setMonth(d.getMonth() + 1);
+      expiry = d.toISOString().split('T')[0];
+    }
+
+    setEditPkgUser(user);
+    setPkgFormData({
+      tier: currentTier,
+      cycle: currentCycle,
+      expiryDate: expiry,
+      note: ''
+    });
+  };
+
+  const handleSavePackage = async (e) => {
+    e.preventDefault();
+    if (!editPkgUser) return;
+    setPkgUpdating(true);
+
+    try {
+      const isSeller = editPkgUser.role === 'seller';
+      let planType = 'free';
+      let storageLimit = 100;
+      let billQuota = null;
+
+      if (isSeller) {
+        if (pkgFormData.tier === 'pro') {
+          planType = 'seller_pro';
+          storageLimit = 2000;
+        } else {
+          planType = 'seller_free';
+          storageLimit = 100;
+        }
+      } else {
+        if (pkgFormData.tier === 'pro') {
+          planType = 'buyer_pro';
+          storageLimit = 10240;
+        } else if (pkgFormData.tier === 'standard') {
+          planType = 'buyer_standard';
+          storageLimit = 2048;
+        } else {
+          planType = 'buyer_free';
+          storageLimit = 200;
+          billQuota = 150;
+        }
+      }
+
+      let expiryISO = null;
+      if (pkgFormData.cycle !== 'none' && pkgFormData.cycle !== 'lifetime' && pkgFormData.expiryDate) {
+        expiryISO = new Date(pkgFormData.expiryDate + 'T23:59:59.999Z').toISOString();
+      }
+
+      const updatePayload = {
+        subscription_tier: pkgFormData.tier,
+        plan_type: planType,
+        billing_cycle: pkgFormData.cycle,
+        subscription_status: 'active',
+        storage_limit_mb: storageLimit,
+        bill_quota_monthly: billQuota,
+        subscription_expiry_date: expiryISO
+      };
+
+      await db.adminUpdateUserSubscription(editPkgUser.id, {
+        ...updatePayload,
+        note: pkgFormData.note,
+        admin_id: 'super_admin'
+      });
+
+      // Update state locally
+      setProfiles(prev => prev.map(p => {
+        if (p.id === editPkgUser.id) {
+          return {
+            ...p,
+            ...updatePayload
+          };
+        }
+        return p;
+      }));
+
+      const planNameTh = pkgFormData.tier === 'pro' ? 'Pro' : (pkgFormData.tier === 'standard' ? 'Standard' : 'Free');
+      setNotification(`✅ อัปเดตแพ็กเกจให้ "${editPkgUser.store_name || editPkgUser.full_name}" เป็น ${planNameTh} เรียบร้อยแล้ว`);
+      setEditPkgUser(null);
+      setTimeout(() => setNotification(''), 4000);
+    } catch (err) {
+      console.error('Error saving subscription override:', err);
+      alert('เกิดข้อผิดพลาดในการบันทึกแพ็กเกจ');
+    } finally {
+      setPkgUpdating(false);
+    }
+  };
+
   // Calculations for dashboard
   const totalProfiles = profiles.length;
   const pendingCount = profiles.filter(p => p.status === 'pending').length;
@@ -252,12 +373,14 @@ function AdminPortal() {
     let cycle = p.billing_cycle;
     if (!cycle && plan !== 'free') {
       cycle = (p.id?.charCodeAt(0) || 0) % 2 === 0 ? 'yearly' : 'monthly';
-    } else if (plan === 'free') {
-      cycle = '-';
+    } else if (plan === 'free' || cycle === 'none' || cycle === '-') {
+      cycle = 'none';
     }
 
     let mrr = 0;
-    if (p.role === 'seller') {
+    if (cycle === 'lifetime' || cycle === 'none') {
+      mrr = 0;
+    } else if (p.role === 'seller') {
       if (plan === 'pro') {
         mrr = cycle === 'yearly' ? (990 / 12) : 99;
       }
@@ -364,7 +487,7 @@ function AdminPortal() {
   // 4. Subscription Alerts (Expiring < 30 days)
   const today = new Date();
   const expiringSubscriptions = subProfiles
-    .filter(p => p.subPlan !== 'free')
+    .filter(p => p.subPlan !== 'free' && p.subCycle !== 'lifetime' && p.subCycle !== 'none')
     .map(p => {
       // Use real data if available, otherwise mock expiry date
       let expiryDate;
@@ -1074,25 +1197,28 @@ function AdminPortal() {
       {activeTab === 'subscriptions' && (
         <div>
           {/* Dashboard Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
             <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-              <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>🌱 Free Plan</div>
+              <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>🌱 Free Plan (฿0)</div>
               <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#334155', marginTop: '0.2rem' }}>{countFree} <span style={{fontSize: '1rem'}}>ราย</span></div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.4rem' }}>
+                ชาวสวน 2 แปลง (100MB) | ร้านค้า 150 บิล/ด.
+              </div>
             </div>
             
             <div style={{ background: '#f0fdf4', padding: '1.25rem', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-              <div style={{ color: '#166534', fontSize: '0.85rem', fontWeight: 'bold' }}>⚡ Standard Plan</div>
+              <div style={{ color: '#166534', fontSize: '0.85rem', fontWeight: 'bold' }}>⚡ Standard Plan (฿199)</div>
               <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#16a34a', marginTop: '0.2rem' }}>{standardProfiles.length} <span style={{fontSize: '1rem'}}>ราย</span></div>
               <div style={{ fontSize: '0.75rem', color: '#15803d', marginTop: '0.4rem' }}>
-                รายเดือน: {countStandardMonthly} | รายปี: {countStandardYearly}
+                ร้านรับซื้อยาง | รายเดือน: {countStandardMonthly} | รายปี: {countStandardYearly}
               </div>
             </div>
 
             <div style={{ background: '#faf5ff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
-              <div style={{ color: '#6b21a8', fontSize: '0.85rem', fontWeight: 'bold' }}>🚀 Pro Plan</div>
+              <div style={{ color: '#6b21a8', fontSize: '0.85rem', fontWeight: 'bold' }}>🚀 Pro Plan (฿99 / ฿399)</div>
               <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#9333ea', marginTop: '0.2rem' }}>{proProfiles.length} <span style={{fontSize: '1rem'}}>ราย</span></div>
               <div style={{ fontSize: '0.75rem', color: '#7e22ce', marginTop: '0.4rem' }}>
-                รายเดือน: {countProMonthly} | รายปี: {countProYearly}
+                ชาวสวน ฿99 ({subProfiles.filter(p => p.role === 'seller' && p.subPlan === 'pro').length}) | ร้านค้า ฿399 ({subProfiles.filter(p => p.role !== 'seller' && p.subPlan === 'pro').length})
               </div>
             </div>
 
@@ -1130,6 +1256,7 @@ function AdminPortal() {
               <option value="all">ทุกรอบบิล</option>
               <option value="monthly">รายเดือน</option>
               <option value="yearly">รายปี</option>
+              <option value="lifetime">ไม่มีกำหนด (Lifetime)</option>
             </select>
 
             <input 
@@ -1147,17 +1274,19 @@ function AdminPortal() {
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                   <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>ชื่อ / ร้านค้า</th>
+                  <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>บทบาท</th>
                   <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>เบอร์โทรศัพท์</th>
                   <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>แพ็กเกจปัจจุบัน</th>
-                  <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>รอบบิล (Mock)</th>
+                  <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>รอบบิล</th>
                   <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>วันที่สมัคร</th>
                   <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem', textAlign: 'right' }}>รายรับ (MRR)</th>
+                  <th style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem', textAlign: 'center' }}>จัดการ (Actions)</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredSubProfiles.length === 0 ? (
                   <tr>
-                    <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                    <td colSpan="8" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
                       📭 ไม่พบผู้ใช้งานตามเงื่อนไขที่เลือก
                     </td>
                   </tr>
@@ -1167,20 +1296,59 @@ function AdminPortal() {
                       <td style={{ padding: '1rem', fontWeight: 'bold', color: '#1e293b' }}>
                         {p.store_name ? `${p.store_name} (${p.full_name})` : p.full_name}
                       </td>
+                      <td style={{ padding: '1rem' }}>
+                        {getRoleBadge(p.role)}
+                      </td>
                       <td style={{ padding: '1rem', color: '#64748b' }}>{p.phone_number || '-'}</td>
                       <td style={{ padding: '1rem' }}>
-                        {p.subPlan === 'pro' && <span style={{ background: '#f3e8ff', color: '#7e22ce', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>🚀 Pro</span>}
-                        {p.subPlan === 'standard' && <span style={{ background: '#dcfce7', color: '#15803d', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>⚡ Standard</span>}
-                        {p.subPlan === 'free' && <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>🌱 Free</span>}
+                        {p.subPlan === 'pro' && (
+                          <span style={{ background: '#f3e8ff', color: '#7e22ce', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                            🚀 Pro {p.role === 'seller' ? '(฿99)' : '(฿399)'}
+                          </span>
+                        )}
+                        {p.subPlan === 'standard' && (
+                          <span style={{ background: '#dcfce7', color: '#15803d', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                            ⚡ Standard (฿199)
+                          </span>
+                        )}
+                        {p.subPlan === 'free' && (
+                          <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                            🌱 Free (฿0)
+                          </span>
+                        )}
                       </td>
                       <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
-                        {p.subCycle === 'yearly' ? 'รายปี' : (p.subCycle === 'monthly' ? 'รายเดือน' : '-')}
+                        {p.subCycle === 'yearly' ? 'รายปี' : (p.subCycle === 'monthly' ? 'รายเดือน' : (p.subCycle === 'lifetime' ? 'ตลอดชีพ' : '-'))}
                       </td>
                       <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.85rem' }}>
                         {p.created_at ? new Date(p.created_at).toLocaleDateString('th-TH') : '-'}
                       </td>
                       <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold', color: p.mrr > 0 ? '#0f766e' : '#94a3b8' }}>
                         ฿{p.mrr.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditPackage(p)}
+                          style={{
+                            padding: '0.45rem 0.85rem',
+                            background: '#ecfdf5',
+                            border: '1px solid #10b981',
+                            color: '#047857',
+                            borderRadius: '8px',
+                            fontSize: '0.825rem',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#d1fae5'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = '#ecfdf5'; }}
+                        >
+                          ✏️ แก้ไขแพ็กเกจ
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -1497,6 +1665,256 @@ function AdminPortal() {
                     }}
                   >
                     {resetStatus === 'loading' ? 'กำลังดำเนินการ...' : 'ยืนยันการทำรายการ'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PACKAGE EDIT MODAL (MANUAL OVERRIDE) */}
+      {editPkgUser && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, padding: '1rem', backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '540px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden',
+            display: 'flex', flexDirection: 'column', maxHeight: '90vh'
+          }}>
+            {/* Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)',
+              padding: '1.5rem', color: '#fff', position: 'relative'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    💎 จัดการแพ็กเกจและสิทธิ์ (Manual Override)
+                  </h3>
+                  <p style={{ margin: '0.35rem 0 0 0', opacity: 0.9, fontSize: '0.85rem' }}>
+                    ปรับเปลี่ยนแพ็กเกจ รอบบิล หรือขยายวันหมดอายุให้ผู้ใช้โดยตรง
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditPkgUser(null)}
+                  style={{
+                    background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff',
+                    width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer',
+                    fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem', overflowY: 'auto' }}>
+              {/* 1) User Profile Summary */}
+              <div style={{
+                background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px',
+                padding: '1rem', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              }}>
+                <div>
+                  <div style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '1.05rem' }}>
+                    {editPkgUser.store_name ? `${editPkgUser.store_name} (${editPkgUser.full_name})` : editPkgUser.full_name}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.2rem' }}>
+                    📱 {editPkgUser.phone_number || '-'} {editPkgUser.email ? ` | ✉️ ${editPkgUser.email}` : ''}
+                  </div>
+                </div>
+                <div>
+                  {getRoleBadge(editPkgUser.role)}
+                </div>
+              </div>
+
+              <form onSubmit={handleSavePackage}>
+                {/* 2) Dropdown: Subscription Tier */}
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', color: '#334155', marginBottom: '0.5rem' }}>
+                    เลือกแพ็กเกจ (Subscription Tier) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <select
+                    value={pkgFormData.tier}
+                    onChange={(e) => {
+                      const newTier = e.target.value;
+                      setPkgFormData(prev => ({
+                        ...prev,
+                        tier: newTier,
+                        cycle: newTier === 'free' ? 'none' : (prev.cycle === 'none' ? 'monthly' : prev.cycle)
+                      }));
+                    }}
+                    style={{
+                      width: '100%', padding: '0.75rem', borderRadius: '10px',
+                      border: '1.5px solid #cbd5e1', fontSize: '0.95rem', background: '#fff',
+                      outline: 'none', fontWeight: '500'
+                    }}
+                  >
+                    {editPkgUser.role === 'seller' ? (
+                      <>
+                        <option value="free">🌱 ฟรี (Free) — ฿0/เดือน (จำกัด 2 แปลง, 100 MB, AI สลิป 15 บิล/ด.)</option>
+                        <option value="pro">🚀 Pro Farmer — ฿99/เดือน หรือ ฿990/ปี (ไม่จำกัดแปลง, 2 GB, AI ไม่จำกัด)</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="free">🌱 Starter Free — ฿0/เดือน (จำกัด 150 บิล/ด., 200 MB)</option>
+                        <option value="standard">⚡ Standard — ฿199/เดือน หรือ ฿1,990/ปี (บิลไม่จำกัด, 2 GB, P&L เต็มรูปแบบ)</option>
+                        <option value="pro">🚀 Pro Business — ฿399/เดือน หรือ ฿3,990/ปี (บิลไม่จำกัด, 10 GB, Multi-staff PIN)</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                {/* 3) Dropdown: Billing Cycle */}
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', color: '#334155', marginBottom: '0.5rem' }}>
+                    รอบการเรียกเก็บเงิน (Billing Cycle) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <select
+                    value={pkgFormData.cycle}
+                    onChange={(e) => {
+                      const newCycle = e.target.value;
+                      let newExpiry = pkgFormData.expiryDate;
+                      if (newCycle === 'monthly') {
+                        const d = new Date();
+                        d.setMonth(d.getMonth() + 1);
+                        newExpiry = d.toISOString().split('T')[0];
+                      } else if (newCycle === 'yearly') {
+                        const d = new Date();
+                        d.setFullYear(d.getFullYear() + 1);
+                        newExpiry = d.toISOString().split('T')[0];
+                      } else if (newCycle === 'lifetime' || newCycle === 'none') {
+                        newExpiry = '';
+                      }
+                      setPkgFormData(prev => ({
+                        ...prev,
+                        cycle: newCycle,
+                        expiryDate: newExpiry
+                      }));
+                    }}
+                    style={{
+                      width: '100%', padding: '0.75rem', borderRadius: '10px',
+                      border: '1.5px solid #cbd5e1', fontSize: '0.95rem', background: '#fff',
+                      outline: 'none', fontWeight: '500'
+                    }}
+                  >
+                    <option value="monthly">📅 รายเดือน (Monthly)</option>
+                    <option value="yearly">🎉 รายปี (Yearly - ประหยัด 20%)</option>
+                    <option value="lifetime">♾️ ไม่มีกำหนด (Lifetime / ตลอดชีพ)</option>
+                    <option value="none">➖ ไม่มีรอบบิล (Free Plan)</option>
+                  </select>
+                </div>
+
+                {/* 4) Expiration Date Picker */}
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <label style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#334155' }}>
+                      วันหมดอายุแพ็กเกจ (Expiration Date)
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const d = new Date();
+                          d.setMonth(d.getMonth() + 1);
+                          setPkgFormData(prev => ({ ...prev, expiryDate: d.toISOString().split('T')[0] }));
+                        }}
+                        style={{ fontSize: '0.75rem', padding: '2px 6px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        +1 เดือน
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const d = new Date();
+                          d.setFullYear(d.getFullYear() + 1);
+                          setPkgFormData(prev => ({ ...prev, expiryDate: d.toISOString().split('T')[0] }));
+                        }}
+                        style={{ fontSize: '0.75rem', padding: '2px 6px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        +1 ปี
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPkgFormData(prev => ({ ...prev, expiryDate: '' }))}
+                        style={{ fontSize: '0.75rem', padding: '2px 6px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        ไม่ระบุ
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="date"
+                    value={pkgFormData.expiryDate}
+                    onChange={(e) => setPkgFormData(prev => ({ ...prev, expiryDate: e.target.value }))}
+                    disabled={pkgFormData.cycle === 'lifetime' || pkgFormData.cycle === 'none'}
+                    style={{
+                      width: '100%', padding: '0.75rem', borderRadius: '10px',
+                      border: '1.5px solid #cbd5e1', fontSize: '0.95rem',
+                      background: (pkgFormData.cycle === 'lifetime' || pkgFormData.cycle === 'none') ? '#f8fafc' : '#fff',
+                      color: (pkgFormData.cycle === 'lifetime' || pkgFormData.cycle === 'none') ? '#94a3b8' : '#1e293b',
+                      outline: 'none'
+                    }}
+                  />
+                  {(pkgFormData.cycle === 'lifetime' || pkgFormData.cycle === 'none') && (
+                    <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                      *แพ็กเกจตลอดชีพหรือฟรี ไม่จำเป็นต้องระบุวันหมดอายุ
+                    </p>
+                  )}
+                </div>
+
+                {/* 5) Admin Note */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', color: '#334155', marginBottom: '0.5rem' }}>
+                    หมายเหตุการแก้ไข (Admin Audit Note)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={pkgFormData.note}
+                    onChange={(e) => setPkgFormData(prev => ({ ...prev, note: e.target.value }))}
+                    placeholder="เช่น ต่ออายุผ่านเงินสดหน้าร้าน, สิทธิ์ผู้ใช้งานรุ่นแรก (Early Adopter), อัปเกรดเพื่อทดสอบระบบ..."
+                    style={{
+                      width: '100%', padding: '0.75rem', borderRadius: '10px',
+                      border: '1.5px solid #cbd5e1', fontSize: '0.9rem',
+                      outline: 'none', resize: 'vertical'
+                    }}
+                  />
+                  <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                    *หมายเหตุนี้จะถูกบันทึกลงใน admin_audit_logs เพื่อความโปร่งใสและตรวจสอบย้อนหลังได้
+                  </p>
+                </div>
+
+                {/* 6) Action Buttons */}
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9' }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditPkgUser(null)}
+                    disabled={pkgUpdating}
+                    style={{
+                      padding: '0.75rem 1.25rem', background: '#fff', border: '1px solid #cbd5e1',
+                      borderRadius: '10px', color: '#475569', fontWeight: 'bold', cursor: 'pointer',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={pkgUpdating}
+                    style={{
+                      padding: '0.75rem 1.5rem', background: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)',
+                      border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 'bold', cursor: 'pointer',
+                      fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                      opacity: pkgUpdating ? 0.7 : 1, boxShadow: '0 4px 12px rgba(13,148,136,0.3)'
+                    }}
+                  >
+                    {pkgUpdating ? '⏳ กำลังบันทึก...' : '💾 บันทึกการเปลี่ยนแปลง'}
                   </button>
                 </div>
               </form>

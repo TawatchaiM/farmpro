@@ -2653,9 +2653,16 @@ export const db = {
         }
       }
 
+      try {
+        window.dispatchEvent(new CustomEvent('farmpro_profile_updated', { detail: mergedProfile }));
+      } catch (e) {}
+
       return { success: true, data: mergedProfile };
     } catch (err) {
       console.warn('Error updating profile in Supabase, updated locally:', err);
+      try {
+        window.dispatchEvent(new CustomEvent('farmpro_profile_updated', { detail: mergedProfile }));
+      } catch (e) {}
       return { success: true, data: mergedProfile };
     }
   },
@@ -2669,26 +2676,81 @@ export const db = {
       bill_quota_monthly = 150
     } = subData;
 
-    const now = new Date();
-    if (billing_cycle === 'yearly') {
-      now.setFullYear(now.getFullYear() + 1);
-    } else {
-      now.setMonth(now.getMonth() + 1);
+    let expiryDate = null;
+    if (billing_cycle !== 'none') {
+      const now = new Date();
+      if (billing_cycle === 'yearly') {
+        now.setFullYear(now.getFullYear() + 1);
+      } else {
+        now.setMonth(now.getMonth() + 1);
+      }
+      expiryDate = now.toISOString();
     }
-    const expiryDate = now.toISOString();
 
     const updatePayload = {
       plan_id: subscription_tier,
       subscription_plan: subscription_tier,
       subscription_tier,
       plan_type,
-      billing_cycle,
+      billing_cycle: billing_cycle || 'none',
       storage_limit_mb,
       bill_quota_monthly,
+      subscription_status: 'active',
       subscription_expiry_date: expiryDate
     };
 
     return await db.updateProfile(userId, updatePayload);
+  },
+
+  adminUpdateUserSubscription: async (targetUserId, subData) => {
+    const {
+      subscription_tier = 'free',
+      plan_type = 'free',
+      billing_cycle = 'monthly',
+      subscription_expiry_date = null,
+      storage_limit_mb = null,
+      bill_quota_monthly = null,
+      note = '',
+      admin_id = null
+    } = subData;
+
+    let finalStorage = storage_limit_mb;
+    let finalQuota = bill_quota_monthly;
+    if (!finalStorage) {
+      if (subscription_tier === 'pro') finalStorage = 10240;
+      else if (subscription_tier === 'standard') finalStorage = 2048;
+      else finalStorage = 200;
+    }
+    if (!finalQuota) {
+      finalQuota = subscription_tier === 'free' ? 150 : 999999;
+    }
+
+    const updatePayload = {
+      plan_id: subscription_tier,
+      subscription_plan: subscription_tier,
+      subscription_tier,
+      plan_type,
+      billing_cycle: billing_cycle || 'none',
+      storage_limit_mb: finalStorage,
+      bill_quota_monthly: finalQuota,
+      subscription_status: 'active',
+      subscription_expiry_date: subscription_expiry_date || null
+    };
+
+    const res = await db.updateProfile(targetUserId, updatePayload);
+
+    // Record audit log
+    await db.logAdminAudit({
+      admin_id: admin_id || 'admin',
+      target_user_id: targetUserId,
+      action: `MANUAL_OVERRIDE_SUBSCRIPTION: Changed to ${subscription_tier} (${billing_cycle || 'none'})${note ? ` - Note: ${note}` : ''}`
+    });
+
+    try {
+      window.dispatchEvent(new CustomEvent('farmpro_profile_updated', { detail: { id: targetUserId, ...updatePayload } }));
+    } catch (e) {}
+
+    return res;
   },
 
   // ---------------------------------------------------------

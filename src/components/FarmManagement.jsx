@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../supabase';
-import { Trash2, Edit2, Plus, Check } from 'lucide-react';
+import { Trash2, Edit2, Plus, Check, Sparkles, AlertCircle } from 'lucide-react';
+import useSubscription from '../hooks/useSubscription';
 
 function FarmManagement({ currentUser, onShowTrash }) {
   const [plots, setPlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
+  const sub = useSubscription(currentUser);
   
   const [formData, setFormData] = useState({
     plot_name: '',
@@ -63,6 +65,15 @@ function FarmManagement({ currentUser, onShowTrash }) {
       alert('เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่');
       return;
     }
+
+    if (!editingId) {
+      const plotCheck = sub.checkPlotLimit(plots.length);
+      if (!plotCheck.allowed) {
+        alert(`⚠️ ไม่สามารถเพิ่มแปลงสวนได้\n\n${plotCheck.message}`);
+        return;
+      }
+    }
+
     try {
       const userId = currentUser.user_id || currentUser.id;
       const isOwner = formData.my_role === 'owner';
@@ -129,9 +140,39 @@ function FarmManagement({ currentUser, onShowTrash }) {
         </button>
       )}
       <h3 className="section-title-icon">🌱 จัดการแปลงสวนยาง</h3>
-      <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+      <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '1rem' }}>
         เพิ่มแปลงสวนที่คุณเป็น "เจ้าของ" หรือเป็น "คนรับจ้างกรีด" เพื่อรับบิลแบ่งสัดส่วนอัตโนมัติ
       </p>
+
+      {/* Subscription Quota Banner for Seller */}
+      {sub.isSeller && (
+        <div style={{
+          background: sub.isFree ? '#fffbeb' : '#f0fdf4',
+          border: sub.isFree ? '1px solid #fde68a' : '1px solid #bbf7d0',
+          borderRadius: '12px',
+          padding: '0.75rem 1rem',
+          marginBottom: '1.25rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.75rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+            {sub.isFree ? <AlertCircle size={18} color="#d97706" /> : <Sparkles size={18} color="#16a34a" />}
+            <span style={{ color: sub.isFree ? '#92400e' : '#166534', fontWeight: 600 }}>
+              {sub.isFree 
+                ? `สถานะแพ็กเกจฟรี: บันทึกได้ ${plots.length} / 2 แปลง`
+                : `สถานะแพ็กเกจ Pro Farmer: บันทึกได้ไม่จำกัดแปลง (${plots.length} แปลง)`}
+            </span>
+          </div>
+          {sub.isFree && plots.length >= 2 && (
+            <span style={{ fontSize: '0.8rem', background: '#fef3c7', color: '#b45309', padding: '3px 8px', borderRadius: '6px', fontWeight: 700 }}>
+              ⚠️ ถึงโควตาสูงสุดของแพ็กเกจฟรีแล้ว
+            </span>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleSave} style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
         <h4 style={{ margin: '0 0 1rem 0', color: '#334155' }}>

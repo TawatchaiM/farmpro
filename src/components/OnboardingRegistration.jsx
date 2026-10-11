@@ -255,7 +255,7 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
   const [errorMsg, setErrorMsg] = useState('');
 
   // Pricing Package States
-  const [selectedPlanId, setSelectedPlanId] = useState(savedDraft?.selectedPlanId || 'standard');
+  const [selectedPlanId, setSelectedPlanId] = useState(savedDraft?.selectedPlanId || (role === 'seller' ? 'seller_free' : 'buyer_free'));
   const [billingCycle, setBillingCycle] = useState(savedDraft?.billingCycle || 'monthly');
 
   // Farm Management States (for seller onboarding step)
@@ -368,6 +368,29 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
     setSubmitting(true);
     setErrorMsg('');
 
+    // Calculate subscription specs based on role & selectedPlanId
+    let subTier = 'free';
+    let planType = role === 'seller' ? 'seller_free' : 'buyer_free';
+    let storageMb = role === 'seller' ? 100 : 200;
+    let billQuota = role === 'seller' ? 999999 : 150;
+
+    if (selectedPlanId === 'seller_pro' || (role === 'seller' && selectedPlanId === 'pro')) {
+      subTier = 'pro';
+      planType = 'seller_pro';
+      storageMb = 2000;
+      billQuota = 999999;
+    } else if (selectedPlanId === 'buyer_standard' || (role === 'buyer' && selectedPlanId === 'standard')) {
+      subTier = 'standard';
+      planType = 'buyer_standard';
+      storageMb = 2048;
+      billQuota = 999999;
+    } else if (selectedPlanId === 'buyer_pro' || (role === 'buyer' && selectedPlanId === 'pro')) {
+      subTier = 'pro';
+      planType = 'buyer_pro';
+      storageMb = 10240;
+      billQuota = 999999;
+    }
+
     const profileData = {
       role,
       full_name: fullName,
@@ -381,8 +404,14 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
       longitude: longitude ? parseFloat(longitude) : null,
       google_maps_url: googleMapsUrl || null,
       status: 'approved', // Auto-approved on registration!
-      plan_id: selectedPlanId,
-      billing_cycle: billingCycle,
+      plan_id: subTier,
+      subscription_plan: subTier,
+      subscription_tier: subTier,
+      plan_type: planType,
+      billing_cycle: subTier === 'free' ? 'none' : (billingCycle || 'monthly'),
+      subscription_status: 'active',
+      storage_limit_mb: storageMb,
+      bill_quota_monthly: billQuota,
       
       // Conditionally save store/vendor settings
       store_name: (role === 'buyer' || role === 'vendor') ? storeName : null,
@@ -677,7 +706,7 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '2rem' }}>
               {/* Role: Buyer */}
               <div 
-                onClick={() => { setRole('buyer'); setErrorMsg(''); }}
+                onClick={() => { setRole('buyer'); setSelectedPlanId('buyer_free'); setErrorMsg(''); }}
                 style={{
                   background: role === 'buyer' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.03)',
                   border: role === 'buyer' ? '2px solid var(--primary)' : '1px solid rgba(255, 255, 255, 0.12)',
@@ -696,7 +725,7 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
 
               {/* Role: Seller */}
               <div 
-                onClick={() => { setRole('seller'); setErrorMsg(''); }}
+                onClick={() => { setRole('seller'); setSelectedPlanId('seller_free'); setErrorMsg(''); }}
                 style={{
                   background: role === 'seller' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.03)',
                   border: role === 'seller' ? '2px solid var(--primary)' : '1px solid rgba(255, 255, 255, 0.12)',
@@ -715,7 +744,7 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
 
               {/* Role: Vendor (Marketplace) */}
               <div 
-                onClick={() => { setRole('vendor'); setErrorMsg(''); }}
+                onClick={() => { setRole('vendor'); setSelectedPlanId('buyer_free'); setErrorMsg(''); }}
                 style={{
                   background: role === 'vendor' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.03)',
                   border: role === 'vendor' ? '2px solid var(--primary)' : '1px solid rgba(255, 255, 255, 0.12)',

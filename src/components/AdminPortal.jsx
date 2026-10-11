@@ -476,7 +476,17 @@ function AdminPortal() {
   // ---------------------------------------------
 
   return (
-    <div className="card" style={{ borderTop: '4px solid #0f766e', boxShadow: '0 10px 25px rgba(0,0,0,0.04)' }}>
+    <div 
+      className="card" 
+      style={{ 
+        borderTop: '4px solid #0f766e', 
+        boxShadow: '0 10px 25px rgba(0,0,0,0.04)',
+        width: '100%',
+        maxWidth: '1240px',
+        margin: '0 auto',
+        boxSizing: 'border-box'
+      }}
+    >
       {/* Header */}
       <div className="header" style={{ textAlign: 'left', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
@@ -527,9 +537,9 @@ function AdminPortal() {
         </div>
       )}
 
-      {/* Tabs Header */}
+      {/* Tabs Header - Perfectly fits all 5 buttons on a single row without slide bar */}
       <div 
-        className="nav-tabs" 
+        className="nav-tabs no-scrollbar" 
         style={{ 
           marginBottom: '1.5rem', 
           borderBottom: '1px solid var(--border-color)', 
@@ -539,43 +549,43 @@ function AdminPortal() {
           display: 'flex',
           alignItems: 'center',
           gap: '0.5rem',
-          flexWrap: 'nowrap',
-          overflowX: 'auto',
-          WebkitOverflowScrolling: 'touch'
+          flexWrap: 'wrap',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
         }}
       >
         <button 
           className={`nav-tab ${activeTab === 'users' ? 'active' : ''}`}
           onClick={() => setActiveTab('users')}
-          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.9rem', flexShrink: 0, cursor: 'pointer' }}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.875rem', cursor: 'pointer' }}
         >
           👥 จัดการผู้ใช้งาน
         </button>
         <button 
           className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
           onClick={() => setActiveTab('dashboard')}
-          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.9rem', flexShrink: 0, cursor: 'pointer' }}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.875rem', cursor: 'pointer' }}
         >
           📊 ภาพรวมและสถิติ
         </button>
         <button 
           className={`nav-tab ${activeTab === 'subscriptions' ? 'active' : ''}`}
           onClick={() => setActiveTab('subscriptions')}
-          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.9rem', flexShrink: 0, cursor: 'pointer' }}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.875rem', cursor: 'pointer' }}
         >
           💎 แพ็กเกจ & รายได้
         </button>
         <button 
           className={`nav-tab ${activeTab === 'demo_login' ? 'active' : ''}`}
           onClick={() => setActiveTab('demo_login')}
-          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.9rem', flexShrink: 0, cursor: 'pointer' }}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.875rem', cursor: 'pointer' }}
         >
           ⚡ ทดสอบระบบ (Demo)
         </button>
         <button 
           className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
           onClick={() => setActiveTab('settings')}
-          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.9rem', flexShrink: 0, cursor: 'pointer' }}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.875rem', cursor: 'pointer' }}
         >
           ⚙️ ตั้งค่าระบบ
         </button>

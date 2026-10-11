@@ -537,6 +537,20 @@ body {
   gap: 0.5rem;
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.nav-tabs::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .nav-tab {

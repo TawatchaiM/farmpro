@@ -32,6 +32,10 @@ function AdminPortal() {
   });
   const [pkgUpdating, setPkgUpdating] = useState(false);
 
+  // Delete User Modal State
+  const [deleteTargetUser, setDeleteTargetUser] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Settings Tab State
   const [supportLineId, setSupportLineId] = useState('');
   const [supportPhone, setSupportPhone] = useState('');
@@ -85,6 +89,23 @@ function AdminPortal() {
     } catch (err) {
       console.error('Error updating status:', err);
       alert('เกิดข้อผิดพลาดในการอัปเดตสถานะ');
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteTargetUser) return;
+    setIsDeleting(true);
+    try {
+      await db.deleteProfile(deleteTargetUser.id);
+      setProfiles(prev => prev.filter(p => p.id !== deleteTargetUser.id));
+      setNotification(`🗑️ ลบข้อมูลผู้ใช้งาน "${deleteTargetUser.store_name || deleteTargetUser.full_name}" สำเร็จ`);
+      setDeleteTargetUser(null);
+      setTimeout(() => setNotification(''), 4000);
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      alert('เกิดข้อผิดพลาดในการลบข้อมูลผู้ใช้งาน');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -404,7 +425,10 @@ function AdminPortal() {
   };
 
   // --- Subscriptions & Revenue Calculations ---
-  const subProfiles = profiles.map(p => {
+  // แสดงและคำนวณเฉพาะผู้ใช้งานที่มีสถานะ "อนุมัติแล้ว (approved)" เท่านั้น
+  const subProfiles = profiles
+    .filter(p => (p.status || 'pending') === 'approved')
+    .map(p => {
     let plan = 'free';
     const tier = p.subscription_tier || p.plan_id || p.subscription_plan;
     if (tier === 'standard' || tier === 'buyer_standard') plan = 'standard';
@@ -1030,6 +1054,31 @@ function AdminPortal() {
                       >
                         🔑 รีเซ็ตรหัสผ่าน
                       </button>
+
+                      {/* Delete User Button */}
+                      <button 
+                        onClick={() => setDeleteTargetUser(store)} 
+                        style={{
+                          margin: 0,
+                          padding: '0.45rem 0.85rem',
+                          background: '#fff',
+                          border: '1px solid #fca5a5',
+                          color: '#dc2626',
+                          borderRadius: '8px',
+                          fontSize: '0.825rem',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+                        title="ลบข้อมูลผู้ใช้งานนี้ออกจากระบบ"
+                      >
+                        🗑️ ลบข้อมูล (Delete)
+                      </button>
                     </div>
                   </div>
                 );
@@ -1371,28 +1420,54 @@ function AdminPortal() {
                         ฿{p.mrr.toLocaleString(undefined, {maximumFractionDigits: 0})}
                       </td>
                       <td style={{ padding: '1rem', textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditPackage(p)}
-                          style={{
-                            padding: '0.45rem 0.85rem',
-                            background: '#ecfdf5',
-                            border: '1px solid #10b981',
-                            color: '#047857',
-                            borderRadius: '8px',
-                            fontSize: '0.825rem',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.35rem',
-                            transition: 'all 0.15s ease'
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = '#d1fae5'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = '#ecfdf5'; }}
-                        >
-                          ✏️ แก้ไขแพ็กเกจ
-                        </button>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditPackage(p)}
+                            style={{
+                              padding: '0.45rem 0.8rem',
+                              background: '#ecfdf5',
+                              border: '1px solid #10b981',
+                              color: '#047857',
+                              borderRadius: '8px',
+                              fontSize: '0.825rem',
+                              fontWeight: 'bold',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#d1fae5'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = '#ecfdf5'; }}
+                            title="แก้ไขแพ็กเกจและรอบบิล"
+                          >
+                            ✏️ แก้ไขแพ็กเกจ
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTargetUser(p)}
+                            style={{
+                              padding: '0.45rem 0.75rem',
+                              background: '#fff',
+                              border: '1px solid #fca5a5',
+                              color: '#dc2626',
+                              borderRadius: '8px',
+                              fontSize: '0.825rem',
+                              fontWeight: 'bold',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+                            title="ลบข้อมูลผู้ใช้งานนี้ออกจากระบบ"
+                          >
+                            🗑️ ลบ
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -1962,6 +2037,93 @@ function AdminPortal() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {deleteTargetUser && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 99999, padding: '1rem', backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '440px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)', overflow: 'hidden'
+          }}>
+            {/* Red warning header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              padding: '1.5rem', color: '#fff', textAlign: 'center'
+            }}>
+              <div style={{
+                width: '54px', height: '54px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem',
+                fontSize: '1.75rem'
+              }}>
+                🗑️
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>
+                ยืนยันการลบข้อมูลผู้ใช้งาน
+              </h3>
+              <p style={{ margin: '0.35rem 0 0 0', opacity: 0.9, fontSize: '0.85rem' }}>
+                การดำเนินการนี้เป็นการลบข้อมูลอย่างถาวรและไม่สามารถกู้คืนได้
+              </p>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ fontSize: '0.95rem', color: '#1e293b', fontWeight: 600, textAlign: 'center', margin: '0 0 1rem' }}>
+                คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลผู้ใช้งานนี้ออกจากระบบอย่างถาวร?
+              </p>
+
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem' }}>
+                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '1rem', marginBottom: '0.25rem' }}>
+                  {deleteTargetUser.store_name ? `${deleteTargetUser.store_name} (${deleteTargetUser.full_name})` : deleteTargetUser.full_name}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span>📞 {deleteTargetUser.phone_number || '-'}</span>
+                  {getRoleBadge(deleteTargetUser.role)}
+                </div>
+              </div>
+
+              <div style={{
+                background: '#fef2f2', border: '1px dashed #f87171', borderRadius: '10px',
+                padding: '0.75rem 1rem', fontSize: '0.8rem', color: '#991b1b', marginBottom: '1.5rem'
+              }}>
+                ⚠️ ข้อมูลประวัติบิล แปลงยาง และการตั้งค่าที่เกี่ยวข้องทั้งหมดจะถูกลบออกจากฐานข้อมูล
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setDeleteTargetUser(null)}
+                  style={{
+                    flex: 1, padding: '0.75rem', background: '#fff', border: '1px solid #cbd5e1',
+                    borderRadius: '10px', color: '#475569', fontWeight: 700, cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleDeleteUser}
+                  style={{
+                    flex: 1, padding: '0.75rem', background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                    border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer',
+                    fontSize: '0.9rem', opacity: isDeleting ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem',
+                    boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
+                  }}
+                >
+                  {isDeleting ? '⏳ กำลังลบ...' : '🗑️ ยืนยันลบข้อมูล'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

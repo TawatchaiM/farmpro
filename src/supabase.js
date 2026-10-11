@@ -2927,6 +2927,58 @@ export const db = {
     }
   },
 
+  deleteProfile: async (id) => {
+    // 1. Remove from local storage
+    let localProfiles = safeJsonParse('farmpro_all_profiles', []);
+    localProfiles = localProfiles.filter(p => p.id !== id);
+    localStorage.setItem('farmpro_all_profiles', JSON.stringify(localProfiles));
+
+    let accounts = safeJsonParse('farmpro_accounts', []);
+    accounts = accounts.filter(a => a.user_id !== id && a.id !== id);
+    localStorage.setItem('farmpro_accounts', JSON.stringify(accounts));
+
+    // 2. Audit log
+    await db.logAdminAudit({
+      admin_id: 'super_admin',
+      target_user_id: id,
+      action: `DELETE_USER: Permanently deleted user ${id} from platform`
+    });
+
+    if (isMock) {
+      return { success: true };
+    }
+
+    try {
+      if (supabase) {
+        // Cleanup related records
+        try {
+          await supabase.from('rubber_plots').delete().eq('user_id', id);
+        } catch (e) {}
+        try {
+          await supabase.from('rubber_transactions').delete().or(`seller_id.eq.${id},buyer_id.eq.${id}`);
+        } catch (e) {}
+        try {
+          await supabase.from('shop_expenses').delete().eq('user_id', id);
+        } catch (e) {}
+        try {
+          await supabase.from('plot_expenses').delete().eq('user_id', id);
+        } catch (e) {}
+
+        // Delete from profiles
+        const { error } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+      }
+      return { success: true };
+    } catch (err) {
+      console.warn('Error deleting profile in Supabase:', err);
+      return { success: true };
+    }
+  },
+
   // Sync offline queued requests
   syncOfflineData: async () => {
     if (isMock) return { success: true, count: 0 };

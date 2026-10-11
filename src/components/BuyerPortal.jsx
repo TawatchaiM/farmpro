@@ -1,18 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Home, Beaker, FileText, Settings } from 'lucide-react';
+import { Scale, Truck, DollarSign, TrendingUp, Settings, Beaker, FileText, BarChart3, Home } from 'lucide-react';
 import StoreRegistration from './StoreRegistration';
 import ManualBillForm from './ManualBillForm';
 import ClerkPortal from './ClerkPortal';
 import DrcPortal from './DrcPortal';
 import DashboardPortal from './DashboardPortal';
+import RubberSalesManagement from './RubberSalesManagement';
+import ShopExpensesManagement from './ShopExpensesManagement';
+import ProfitLossDashboard from './ProfitLossDashboard';
 import OfflineStatusBar from './OfflineStatusBar';
 import { db, isMock } from '../supabase';
 import { playNotificationSound } from '../utils/audioAlert';
 import './OperationalWorkflow.css';
 
 function BuyerPortal({ currentUser, onUpdateProfile }) {
-  const initialTab = currentUser?.role === 'DRC_LAB' ? 'drc' : 'clerk';
-  const [activeSubTab, setActiveSubTab] = useState(initialTab); // 'clerk', 'drc', 'registration', 'manual'
+  // Main 5 navigation tabs: 'buy', 'sales', 'expenses', 'pnl', 'settings'
+  const [activeMainTab, setActiveMainTab] = useState('buy');
+
+  // Sub-tab inside [⚖️ รับซื้อยาง]: 'clerk', 'drc', 'manual', 'history'
+  const initialBuySubTab = currentUser?.role === 'DRC_LAB' ? 'drc' : 'clerk';
+  const [buySubTab, setBuySubTab] = useState(initialBuySubTab);
+
   const [dailySettings, setDailySettings] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
@@ -43,9 +51,11 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
   // Sync active tab if role changes
   useEffect(() => {
     if (currentUser?.role === 'DRC_LAB') {
-      setActiveSubTab('drc');
+      setActiveMainTab('buy');
+      setBuySubTab('drc');
     } else if (currentUser?.role === 'CLERK') {
-      setActiveSubTab('clerk');
+      setActiveMainTab('buy');
+      setBuySubTab('clerk');
     }
   }, [currentUser?.role]);
 
@@ -104,7 +114,6 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
   const handleSaveSettings = useCallback(async (settings) => {
     const saved = await db.saveDailySettings(settings);
     setDailySettings(saved);
-    // Reload transactions to apply any updated prices if needed (usually done at insert, but good to refresh)
     const txList = await db.getTransactions(todayStr);
     setTransactions(txList);
   }, [todayStr]);
@@ -165,6 +174,8 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
     );
   }
 
+  const isSubAccount = currentUser && (currentUser.role === 'CLERK' || currentUser.role === 'DRC_LAB');
+
   return (
     <div>
       {/* Real-time Toast Alert Notification */}
@@ -200,72 +211,220 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
       {/* Offline Status and Sync Bar */}
       <OfflineStatusBar pendingCount={pendingCount} onSync={handleSync} />
 
-      {/* Navigation tabs - Hidden for Sub-Accounts */}
-      {(!currentUser || (currentUser.role !== 'CLERK' && currentUser.role !== 'DRC_LAB')) && (
-        <div className="nav-tabs" style={{ marginBottom: '0.75rem' }}>
+      {/* 5 Main Navigation Tabs - Hidden for Sub-Accounts */}
+      {!isSubAccount && (
+        <div className="nav-tabs" style={{ marginBottom: '1.25rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <div 
-            className={`nav-tab ${activeSubTab === 'clerk' ? 'active' : ''}`}
-            onClick={() => setActiveSubTab('clerk')}
+            className={`nav-tab ${activeMainTab === 'buy' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('buy')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}
           >
-            ⚙️ ระบบเสมียน (Weight In)
+            <Scale size={18} />
+            <span>รับซื้อยาง</span>
           </div>
+
           <div 
-            className={`nav-tab ${activeSubTab === 'drc' ? 'active' : ''}`}
-            onClick={() => setActiveSubTab('drc')}
+            className={`nav-tab ${activeMainTab === 'sales' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('sales')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}
           >
-            🔬 ห้องตรวจ DRC (แล็บ)
+            <Truck size={18} />
+            <span>บันทึกการขาย (ส่งโรงงาน)</span>
           </div>
+
           <div 
-            className={`nav-tab ${activeSubTab === 'manual' ? 'active' : ''}`}
-            onClick={() => setActiveSubTab('manual')}
+            className={`nav-tab ${activeMainTab === 'expenses' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('expenses')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}
           >
-            🧾 ออกบิล (ดึงข้อมูล / กรอกเอง)
+            <DollarSign size={18} />
+            <span>บันทึกรายจ่ายลาน</span>
           </div>
+
           <div 
-            className={`nav-tab ${activeSubTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveSubTab('dashboard')}
+            className={`nav-tab ${activeMainTab === 'pnl' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('pnl')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}
           >
-            📊 แดชบอร์ด & ประวัติ
+            <TrendingUp size={18} />
+            <span>แดชบอร์ด & กำไร-ขาดทุน (P&L)</span>
           </div>
+
           <div 
-            className={`nav-tab ${activeSubTab === 'registration' ? 'active' : ''}`}
-            onClick={() => setActiveSubTab('registration')}
+            className={`nav-tab ${activeMainTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('settings')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}
           >
-            🏪 ตั้งค่าร้านค้า
+            <Settings size={18} />
+            <span>ตั้งค่าร้านค้า</span>
           </div>
         </div>
       )}
 
+      {/* Sub-Tabs specifically for [⚖️ รับซื้อยาง] */}
+      {activeMainTab === 'buy' && !isSubAccount && (
+        <div style={{
+          display: 'flex',
+          gap: '0.4rem',
+          background: '#f1f5f9',
+          padding: '0.35rem',
+          borderRadius: '12px',
+          marginBottom: '1.25rem',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          border: '1px solid #e2e8f0'
+        }}>
+          <button
+            onClick={() => setBuySubTab('clerk')}
+            style={{
+              flex: 1,
+              minWidth: '150px',
+              padding: '0.55rem 0.9rem',
+              border: 'none',
+              borderRadius: '8px',
+              background: buySubTab === 'clerk' ? '#fff' : 'transparent',
+              color: buySubTab === 'clerk' ? '#166534' : '#64748b',
+              fontWeight: buySubTab === 'clerk' ? 700 : 500,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              boxShadow: buySubTab === 'clerk' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.4rem',
+              transition: 'all 0.15s'
+            }}
+          >
+            <span>⚖️ ชั่งน้ำหนัก & ออกบิล (Weight In)</span>
+          </button>
+
+          <button
+            onClick={() => setBuySubTab('drc')}
+            style={{
+              flex: 1,
+              minWidth: '150px',
+              padding: '0.55rem 0.9rem',
+              border: 'none',
+              borderRadius: '8px',
+              background: buySubTab === 'drc' ? '#fff' : 'transparent',
+              color: buySubTab === 'drc' ? '#166534' : '#64748b',
+              fontWeight: buySubTab === 'drc' ? 700 : 500,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              boxShadow: buySubTab === 'drc' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.4rem',
+              transition: 'all 0.15s'
+            }}
+          >
+            <span>🔬 ห้องตรวจ DRC (แล็บ)</span>
+          </button>
+
+          <button
+            onClick={() => setBuySubTab('manual')}
+            style={{
+              flex: 1,
+              minWidth: '150px',
+              padding: '0.55rem 0.9rem',
+              border: 'none',
+              borderRadius: '8px',
+              background: buySubTab === 'manual' ? '#fff' : 'transparent',
+              color: buySubTab === 'manual' ? '#166534' : '#64748b',
+              fontWeight: buySubTab === 'manual' ? 700 : 500,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              boxShadow: buySubTab === 'manual' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.4rem',
+              transition: 'all 0.15s'
+            }}
+          >
+            <span>🧾 ออกบิล (ดึงข้อมูล/กรอกเอง)</span>
+          </button>
+
+          <button
+            onClick={() => setBuySubTab('history')}
+            style={{
+              flex: 1,
+              minWidth: '130px',
+              padding: '0.55rem 0.9rem',
+              border: 'none',
+              borderRadius: '8px',
+              background: buySubTab === 'history' ? '#fff' : 'transparent',
+              color: buySubTab === 'history' ? '#166534' : '#64748b',
+              fontWeight: buySubTab === 'history' ? 700 : 500,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              boxShadow: buySubTab === 'history' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.4rem',
+              transition: 'all 0.15s'
+            }}
+          >
+            <span>📋 ประวัติรับซื้อ</span>
+          </button>
+        </div>
+      )}
+
+      {/* Main Tab Content */}
       <div className="portal-content">
-        {activeSubTab === 'clerk' && (
-          <ClerkPortal 
-            currentUser={currentUser}
-            dailySettings={dailySettings}
-            transactions={transactions}
-            onCreateTransaction={handleCreateTransaction}
-            onUpdateTransaction={handleUpdateTransaction}
-            onSaveSettings={handleSaveSettings}
-          />
+        {/* TAB 1: [⚖️ รับซื้อยาง] */}
+        {activeMainTab === 'buy' && (
+          <div>
+            {buySubTab === 'clerk' && (
+              <ClerkPortal 
+                currentUser={currentUser}
+                dailySettings={dailySettings}
+                transactions={transactions}
+                onCreateTransaction={handleCreateTransaction}
+                onUpdateTransaction={handleUpdateTransaction}
+                onSaveSettings={handleSaveSettings}
+              />
+            )}
+            {buySubTab === 'drc' && (
+              <DrcPortal 
+                currentUser={currentUser}
+                dailySettings={dailySettings}
+                transactions={transactions}
+                onUpdateTransaction={handleUpdateTransaction}
+              />
+            )}
+            {buySubTab === 'manual' && (
+              <ManualBillForm 
+                transactions={transactions} 
+                currentUser={currentUser}
+                onUpdateTransaction={handleUpdateTransaction}
+              />
+            )}
+            {buySubTab === 'history' && (
+              <DashboardPortal currentUser={currentUser} />
+            )}
+          </div>
         )}
-        {activeSubTab === 'drc' && (
-          <DrcPortal 
-            currentUser={currentUser}
-            dailySettings={dailySettings}
-            transactions={transactions}
-            onUpdateTransaction={handleUpdateTransaction}
-          />
+
+        {/* TAB 2: [🚚 บันทึกการขาย (ส่งโรงงาน)] */}
+        {activeMainTab === 'sales' && (
+          <RubberSalesManagement currentUser={currentUser} />
         )}
-        {activeSubTab === 'manual' && (
-          <ManualBillForm 
-            transactions={transactions} 
-            currentUser={currentUser}
-            onUpdateTransaction={handleUpdateTransaction}
-          />
+
+        {/* TAB 3: [💸 บันทึกรายจ่ายลาน] */}
+        {activeMainTab === 'expenses' && (
+          <ShopExpensesManagement currentUser={currentUser} />
         )}
-        {activeSubTab === 'dashboard' && (
-          <DashboardPortal currentUser={currentUser} />
+
+        {/* TAB 4: [📊 แดชบอร์ด & กำไร-ขาดทุน (P&L)] */}
+        {activeMainTab === 'pnl' && (
+          <ProfitLossDashboard currentUser={currentUser} />
         )}
-        {activeSubTab === 'registration' && (
+
+        {/* TAB 5: [⚙️ ตั้งค่าร้านค้า] */}
+        {activeMainTab === 'settings' && (
           <StoreRegistration 
             currentUser={currentUser} 
             onUpdateProfile={onUpdateProfile} 
@@ -276,35 +435,42 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
       </div>
 
       {/* Mobile Bottom Navigation */}
-      {(!currentUser || (currentUser.role !== 'CLERK' && currentUser.role !== 'DRC_LAB')) && (
+      {!isSubAccount && (
         <div className="mobile-bottom-nav">
           <div 
-            className={`bottom-nav-item ${activeSubTab === 'clerk' ? 'active' : ''}`}
-            onClick={() => setActiveSubTab('clerk')}
+            className={`bottom-nav-item ${activeMainTab === 'buy' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('buy')}
           >
-            <Home />
-            <span>หน้าร้าน/รับซื้อ</span>
+            <Scale />
+            <span>รับซื้อยาง</span>
           </div>
           <div 
-            className={`bottom-nav-item ${activeSubTab === 'drc' ? 'active' : ''}`}
-            onClick={() => setActiveSubTab('drc')}
+            className={`bottom-nav-item ${activeMainTab === 'sales' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('sales')}
           >
-            <Beaker />
-            <span>คิว/สถานะ</span>
+            <Truck />
+            <span>ส่งโรงงาน</span>
           </div>
           <div 
-            className={`bottom-nav-item ${activeSubTab === 'manual' ? 'active' : ''}`}
-            onClick={() => setActiveSubTab('manual')}
+            className={`bottom-nav-item ${activeMainTab === 'expenses' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('expenses')}
           >
-            <FileText />
-            <span>ออกบิล</span>
+            <DollarSign />
+            <span>รายจ่าย</span>
           </div>
           <div 
-            className={`bottom-nav-item ${(activeSubTab === 'registration' || activeSubTab === 'dashboard') ? 'active' : ''}`}
-            onClick={() => setActiveSubTab('registration')}
+            className={`bottom-nav-item ${activeMainTab === 'pnl' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('pnl')}
+          >
+            <TrendingUp />
+            <span>กำไร-ขาดทุน</span>
+          </div>
+          <div 
+            className={`bottom-nav-item ${activeMainTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveMainTab('settings')}
           >
             <Settings />
-            <span>โปรไฟล์/ตั้งค่า</span>
+            <span>ตั้งค่า</span>
           </div>
         </div>
       )}
@@ -313,4 +479,3 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
 }
 
 export default BuyerPortal;
-

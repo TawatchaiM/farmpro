@@ -687,6 +687,81 @@ const seedMockData = () => {
     ];
     localStorage.setItem(profilesKey, JSON.stringify([...existingProfiles, ...newProfiles]));
   }
+
+  // Seed sample Rubber Sales (ส่งขายโรงงาน) for demo/testing
+  const salesKey = 'farmpro_rubber_sales';
+  const existingSales = safeJsonParse(salesKey, []);
+  if (existingSales.length === 0) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const defaultSales = [
+      {
+        id: 'sale-001',
+        shop_id: 'mock-buyer-id',
+        factory_name: 'ศรีตรังแอโกรอินดัสทรี',
+        net_weight: 1250.00,
+        drc_percent: 34.80,
+        price_per_kg: 82.50,
+        total_amount: 103125.00,
+        sale_date: new Date().toISOString(),
+        receipt_url: '',
+        note: 'รถกระบะรอบเช้า ส่งโรงงานศรีตรัง',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'sale-002',
+        shop_id: 'mock-buyer-id',
+        factory_name: 'วงศ์บัณฑิต',
+        net_weight: 980.00,
+        drc_percent: 33.50,
+        price_per_kg: 81.00,
+        total_amount: 79380.00,
+        sale_date: new Date(Date.now() - 86400000).toISOString(),
+        receipt_url: '',
+        note: 'ส่งเมื่อวาน ค่า DRC ตามมาตรฐานโรงงาน',
+        created_at: new Date(Date.now() - 86400000).toISOString()
+      }
+    ];
+    localStorage.setItem(salesKey, JSON.stringify(defaultSales));
+  }
+
+  // Seed sample Shop Expenses (ค่าใช้จ่ายลาน) for demo/testing
+  const shopExpKey = 'farmpro_shop_expenses';
+  const existingShopExp = safeJsonParse(shopExpKey, []);
+  if (existingShopExp.length === 0) {
+    const defaultShopExp = [
+      {
+        id: 'exp-001',
+        shop_id: 'mock-buyer-id',
+        category: 'ค่าน้ำมันขนส่ง',
+        amount: 1200.00,
+        expense_date: new Date().toISOString(),
+        note: 'เติมน้ำมันรถกระบะส่งยางเข้าโรงงาน',
+        created_by: 'สมหวัง รับซื้อยาง',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'exp-002',
+        shop_id: 'mock-buyer-id',
+        category: 'ค่าสารเคมี/แอมโมเนีย',
+        amount: 850.00,
+        expense_date: new Date().toISOString(),
+        note: 'ซื้อน้ำแอมโมเนียกันยางบูด 2 แกลลอน',
+        created_by: 'สมหวัง รับซื้อยาง',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'exp-003',
+        shop_id: 'mock-buyer-id',
+        category: 'ค่าแรงงาน',
+        amount: 2500.00,
+        expense_date: new Date(Date.now() - 86400000).toISOString(),
+        note: 'ค่าแรงคนงานยกถังและขับรถส่งยาง',
+        created_by: 'สมหวัง รับซื้อยาง',
+        created_at: new Date(Date.now() - 86400000).toISOString()
+      }
+    ];
+    localStorage.setItem(shopExpKey, JSON.stringify(defaultShopExp));
+  }
 };
 
 // Helper to convert phone number to virtual auth email
@@ -2716,6 +2791,326 @@ export const db = {
 
     localStorage.setItem('farmpro_pending_sync', JSON.stringify(remainingSync));
     return { success: remainingSync.length === 0, count: successCount, remaining: remainingSync.length };
+  },
+
+  // ------------------------------------------------------------------
+  // RUBBER SALES MANAGEMENT (บันทึกการส่งขายโรงงาน)
+  // ------------------------------------------------------------------
+  getRubberSales: async (startDateStr, endDateStr, shopId = null) => {
+    const storeId = shopId || getCurrentStoreId();
+    if (isMock) {
+      await delay(200);
+      const sales = safeJsonParse('farmpro_rubber_sales', []);
+      return sales.filter(s => {
+        if (storeId && s.shop_id && s.shop_id !== storeId) return false;
+        const d = (s.sale_date || '').split('T')[0];
+        if (startDateStr && d < startDateStr) return false;
+        if (endDateStr && d > endDateStr) return false;
+        return true;
+      }).sort((a, b) => new Date(b.sale_date) - new Date(a.sale_date));
+    }
+
+    try {
+      let query = supabase.from('rubber_sales').select('*');
+      if (storeId) query = query.eq('shop_id', storeId);
+      if (startDateStr) query = query.gte('sale_date', `${startDateStr}T00:00:00.000Z`);
+      if (endDateStr) query = query.lte('sale_date', `${endDateStr}T23:59:59.999Z`);
+      const { data, error } = await query.order('sale_date', { ascending: false });
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    } catch (err) {
+      console.warn('Error fetching rubber sales from Supabase (falling back to local):', err);
+      const sales = safeJsonParse('farmpro_rubber_sales', []);
+      return sales.filter(s => {
+        if (storeId && s.shop_id && s.shop_id !== storeId) return false;
+        const d = (s.sale_date || '').split('T')[0];
+        if (startDateStr && d < startDateStr) return false;
+        if (endDateStr && d > endDateStr) return false;
+        return true;
+      }).sort((a, b) => new Date(b.sale_date) - new Date(a.sale_date));
+    }
+  },
+
+  addRubberSale: async (saleData) => {
+    const storeId = saleData.shop_id || getCurrentStoreId();
+    const newSale = {
+      id: uuidv4(),
+      ...saleData,
+      shop_id: storeId,
+      created_at: new Date().toISOString()
+    };
+
+    const sales = safeJsonParse('farmpro_rubber_sales', []);
+    sales.unshift(newSale);
+    localStorage.setItem('farmpro_rubber_sales', JSON.stringify(sales));
+
+    if (isMock) {
+      await delay(200);
+      return newSale;
+    }
+
+    try {
+      const payload = {
+        shop_id: storeId,
+        factory_name: saleData.factory_name,
+        net_weight: parseFloat(saleData.net_weight) || 0,
+        drc_percent: parseFloat(saleData.drc_percent) || 0,
+        price_per_kg: parseFloat(saleData.price_per_kg) || 0,
+        total_amount: parseFloat(saleData.total_amount) || (parseFloat(saleData.net_weight) * parseFloat(saleData.price_per_kg)) || 0,
+        sale_date: saleData.sale_date || new Date().toISOString(),
+        receipt_url: saleData.receipt_url || null,
+        note: saleData.note || null
+      };
+      const { data, error } = await supabase
+        .from('rubber_sales')
+        .insert([payload])
+        .select()
+        .single();
+      if (error) throw error;
+
+      const updated = sales.map(s => s.id === newSale.id ? data : s);
+      localStorage.setItem('farmpro_rubber_sales', JSON.stringify(updated));
+      return data;
+    } catch (err) {
+      console.warn('Error adding rubber sale to Supabase (saved to local):', err);
+      return newSale;
+    }
+  },
+
+  updateRubberSale: async (id, updates) => {
+    let sales = safeJsonParse('farmpro_rubber_sales', []);
+    const idx = sales.findIndex(s => s.id === id);
+    if (idx >= 0) {
+      sales[idx] = { ...sales[idx], ...updates, updated_at: new Date().toISOString() };
+      localStorage.setItem('farmpro_rubber_sales', JSON.stringify(sales));
+    }
+
+    if (isMock) {
+      await delay(200);
+      return sales[idx] || null;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('rubber_sales')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      if (idx >= 0) {
+        sales[idx] = data;
+        localStorage.setItem('farmpro_rubber_sales', JSON.stringify(sales));
+      }
+      return data;
+    } catch (err) {
+      console.warn('Error updating rubber sale in Supabase (saved to local):', err);
+      return sales[idx] || null;
+    }
+  },
+
+  deleteRubberSale: async (id) => {
+    let sales = safeJsonParse('farmpro_rubber_sales', []);
+    sales = sales.filter(s => s.id !== id);
+    localStorage.setItem('farmpro_rubber_sales', JSON.stringify(sales));
+
+    if (isMock) {
+      await delay(200);
+      return { success: true };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('rubber_sales')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.warn('Error deleting rubber sale from Supabase:', err);
+      return { success: true };
+    }
+  },
+
+  subscribeToRubberSales: (callback) => {
+    if (isMock) {
+      const handleStorage = (e) => {
+        if (e.key === 'farmpro_rubber_sales') {
+          callback();
+        }
+      };
+      window.addEventListener('storage', handleStorage);
+      return () => window.removeEventListener('storage', handleStorage);
+    }
+
+    if (!supabase) return () => {};
+    const channel = supabase.channel('public:rubber_sales')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rubber_sales' }, payload => {
+        callback(payload);
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  // ------------------------------------------------------------------
+  // SHOP EXPENSES MANAGEMENT (บันทึกค่าใช้จ่ายประจำลานรับซื้อ)
+  // ------------------------------------------------------------------
+  getShopExpenses: async (startDateStr, endDateStr, shopId = null) => {
+    const storeId = shopId || getCurrentStoreId();
+    if (isMock) {
+      await delay(200);
+      const expenses = safeJsonParse('farmpro_shop_expenses', []);
+      return expenses.filter(e => {
+        if (storeId && e.shop_id && e.shop_id !== storeId) return false;
+        const d = (e.expense_date || '').split('T')[0];
+        if (startDateStr && d < startDateStr) return false;
+        if (endDateStr && d > endDateStr) return false;
+        return true;
+      }).sort((a, b) => new Date(b.expense_date) - new Date(a.expense_date));
+    }
+
+    try {
+      let query = supabase.from('shop_expenses').select('*');
+      if (storeId) query = query.eq('shop_id', storeId);
+      if (startDateStr) query = query.gte('expense_date', `${startDateStr}T00:00:00.000Z`);
+      if (endDateStr) query = query.lte('expense_date', `${endDateStr}T23:59:59.999Z`);
+      const { data, error } = await query.order('expense_date', { ascending: false });
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    } catch (err) {
+      console.warn('Error fetching shop expenses from Supabase (falling back to local):', err);
+      const expenses = safeJsonParse('farmpro_shop_expenses', []);
+      return expenses.filter(e => {
+        if (storeId && e.shop_id && e.shop_id !== storeId) return false;
+        const d = (e.expense_date || '').split('T')[0];
+        if (startDateStr && d < startDateStr) return false;
+        if (endDateStr && d > endDateStr) return false;
+        return true;
+      }).sort((a, b) => new Date(b.expense_date) - new Date(a.expense_date));
+    }
+  },
+
+  addShopExpense: async (expenseData) => {
+    const storeId = expenseData.shop_id || getCurrentStoreId();
+    const newExpense = {
+      id: uuidv4(),
+      ...expenseData,
+      shop_id: storeId,
+      created_at: new Date().toISOString()
+    };
+
+    const expenses = safeJsonParse('farmpro_shop_expenses', []);
+    expenses.unshift(newExpense);
+    localStorage.setItem('farmpro_shop_expenses', JSON.stringify(expenses));
+
+    if (isMock) {
+      await delay(200);
+      return newExpense;
+    }
+
+    try {
+      const payload = {
+        shop_id: storeId,
+        category: expenseData.category,
+        amount: parseFloat(expenseData.amount) || 0,
+        expense_date: expenseData.expense_date || new Date().toISOString(),
+        note: expenseData.note || null,
+        receipt_url: expenseData.receipt_url || null,
+        created_by: expenseData.created_by || null
+      };
+      const { data, error } = await supabase
+        .from('shop_expenses')
+        .insert([payload])
+        .select()
+        .single();
+      if (error) throw error;
+
+      const updated = expenses.map(e => e.id === newExpense.id ? data : e);
+      localStorage.setItem('farmpro_shop_expenses', JSON.stringify(updated));
+      return data;
+    } catch (err) {
+      console.warn('Error adding shop expense to Supabase (saved to local):', err);
+      return newExpense;
+    }
+  },
+
+  updateShopExpense: async (id, updates) => {
+    let expenses = safeJsonParse('farmpro_shop_expenses', []);
+    const idx = expenses.findIndex(e => e.id === id);
+    if (idx >= 0) {
+      expenses[idx] = { ...expenses[idx], ...updates, updated_at: new Date().toISOString() };
+      localStorage.setItem('farmpro_shop_expenses', JSON.stringify(expenses));
+    }
+
+    if (isMock) {
+      await delay(200);
+      return expenses[idx] || null;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('shop_expenses')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      if (idx >= 0) {
+        expenses[idx] = data;
+        localStorage.setItem('farmpro_shop_expenses', JSON.stringify(expenses));
+      }
+      return data;
+    } catch (err) {
+      console.warn('Error updating shop expense in Supabase (saved to local):', err);
+      return expenses[idx] || null;
+    }
+  },
+
+  deleteShopExpense: async (id) => {
+    let expenses = safeJsonParse('farmpro_shop_expenses', []);
+    expenses = expenses.filter(e => e.id !== id);
+    localStorage.setItem('farmpro_shop_expenses', JSON.stringify(expenses));
+
+    if (isMock) {
+      await delay(200);
+      return { success: true };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('shop_expenses')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.warn('Error deleting shop expense from Supabase:', err);
+      return { success: true };
+    }
+  },
+
+  subscribeToShopExpenses: (callback) => {
+    if (isMock) {
+      const handleStorage = (e) => {
+        if (e.key === 'farmpro_shop_expenses') {
+          callback();
+        }
+      };
+      window.addEventListener('storage', handleStorage);
+      return () => window.removeEventListener('storage', handleStorage);
+    }
+
+    if (!supabase) return () => {};
+    const channel = supabase.channel('public:shop_expenses')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_expenses' }, payload => {
+        callback(payload);
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 
   // ------------------------------------------------------------------

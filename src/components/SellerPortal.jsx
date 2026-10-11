@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from 'react';
-import { Package, DollarSign, TrendingUp, Trees } from 'lucide-react';
 import ImageUpload from './ImageUpload';
 import ReviewForm from './ReviewForm';
 import FarmerProfitLoss from './FarmerProfitLoss';
@@ -170,7 +169,17 @@ function SellerPortal({ currentUser }) {
 
   return (
     <div>
-      <div className="nav-tabs" style={{ marginBottom: '1.25rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div 
+        className="nav-tabs" 
+        style={{ 
+          marginBottom: '1.25rem', 
+          display: 'flex', 
+          gap: '0.5rem', 
+          flexWrap: 'nowrap',
+          overflowX: 'auto',
+          paddingBottom: '0.25rem'
+        }}
+      >
         <div 
           className={`nav-tab ${activeTab === 'upload' ? 'active' : ''}`}
           onClick={() => {
@@ -185,37 +194,33 @@ function SellerPortal({ currentUser }) {
             }
             setActiveTab('upload');
           }}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700 }}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700 }}
         >
-          <Package size={18} />
-          <span>{editMode ? '📝 แก้ไขข้อมูลบิล' : '📦 บันทึกการขาย'}</span>
+          {editMode ? '📝 แก้ไขข้อมูลบิล' : '📦 บันทึกการขาย'}
         </div>
 
         <div 
           className={`nav-tab ${activeTab === 'expense_management' ? 'active' : ''}`}
           onClick={() => setActiveTab('expense_management')}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700 }}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700 }}
         >
-          <DollarSign size={18} />
-          <span>💸 บันทึกรายจ่าย</span>
+          💸 บันทึกรายจ่าย
         </div>
 
         <div 
           className={`nav-tab ${activeTab === 'pnl' ? 'active' : ''}`}
           onClick={() => setActiveTab('pnl')}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700 }}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700 }}
         >
-          <TrendingUp size={18} />
-          <span>📈 แดชบอร์ด & กำไร-ขาดทุน (P&L)</span>
+          📈 แดชบอร์ด & กำไร-ขาดทุน (P&L)
         </div>
 
         <div 
           className={`nav-tab ${activeTab === 'farm_management' ? 'active' : ''}`}
           onClick={() => setActiveTab('farm_management')}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700 }}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700 }}
         >
-          <Trees size={18} />
-          <span>🌳 จัดการสวนของฉัน</span>
+          🌳 จัดการสวนของฉัน
         </div>
       </div>
 

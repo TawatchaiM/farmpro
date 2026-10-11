@@ -189,7 +189,7 @@ function AdminPortal() {
     setPkgUpdating(true);
 
     try {
-      const isSeller = editPkgUser.role === 'seller';
+      const isSeller = (editPkgUser.role || '').toLowerCase() === 'seller';
       let planType = 'free';
       let storageLimit = 100;
       let billQuota = null;
@@ -266,9 +266,9 @@ function AdminPortal() {
   const approvedCount = profiles.filter(p => p.status === 'approved').length;
   const rejectedCount = profiles.filter(p => p.status === 'rejected').length;
 
-  const buyersCount = profiles.filter(p => p.role === 'buyer').length;
-  const sellersCount = profiles.filter(p => p.role === 'seller').length;
-  const vendorsCount = profiles.filter(p => p.role === 'vendor').length;
+  const buyersCount = profiles.filter(p => (p.role || '').toLowerCase() === 'buyer').length;
+  const sellersCount = profiles.filter(p => (p.role || '').toLowerCase() === 'seller').length;
+  const vendorsCount = profiles.filter(p => (p.role || '').toLowerCase() === 'vendor').length;
 
   const totalTxCount = transactions.length;
   const totalVolumeAmount = transactions.reduce((sum, t) => sum + (parseFloat(t.total_amount) || 0), 0);
@@ -290,15 +290,56 @@ function AdminPortal() {
   });
 
   const getRoleBadge = (role) => {
-    switch (role) {
+    const r = (role || '').toLowerCase();
+    switch (r) {
+      case 'super_admin':
+        return (
+          <span style={{
+            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+            color: '#b45309',
+            padding: '4px 10px',
+            borderRadius: '8px',
+            fontSize: '0.75rem',
+            fontWeight: 'bold',
+            border: '1px solid #fcd34d',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+            boxShadow: '0 1px 3px rgba(245, 158, 11, 0.15)'
+          }}>
+            👑 ผู้ดูแลระบบสูงสุด
+          </span>
+        );
+      case 'admin':
+      case 'basic_admin':
+        return (
+          <span style={{
+            background: '#ecfdf5',
+            color: '#047857',
+            padding: '4px 10px',
+            borderRadius: '8px',
+            fontSize: '0.75rem',
+            fontWeight: 'bold',
+            border: '1px solid #6ee7b7',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.25rem'
+          }}>
+            🛡️ ผู้ดูแลระบบ
+          </span>
+        );
       case 'buyer':
-        return <span style={{ background: '#dcfce7', color: '#166534', padding: '3px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>🏢 ลานรับซื้อยาง</span>;
+        return <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>🏢 ลานรับซื้อยาง</span>;
       case 'vendor':
-        return <span style={{ background: '#fef3c7', color: '#92400e', padding: '3px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>🚜 ร้านค้า / บริการ</span>;
+        return <span style={{ background: '#fef3c7', color: '#92400e', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>🚜 ร้านค้า / บริการ</span>;
       case 'seller':
-        return <span style={{ background: '#e0f2fe', color: '#075985', padding: '3px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>🧑‍🌾 ชาวสวนยาง</span>;
+        return <span style={{ background: '#e0f2fe', color: '#075985', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>🧑‍🌾 ชาวสวนยาง</span>;
+      case 'clerk':
+        return <span style={{ background: '#f0fdf4', color: '#15803d', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>💼 เสมียนชั่งน้ำหนัก</span>;
+      case 'drc_lab':
+        return <span style={{ background: '#ede9fe', color: '#6d28d9', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>🔬 จนท. ห้องตรวจ DRC</span>;
       default:
-        return <span style={{ background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: '6px', fontSize: '0.75rem' }}>ผู้ลงทะเบียน</span>;
+        return <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '500' }}>👤 ผู้ลงทะเบียน</span>;
     }
   };
 
@@ -378,9 +419,12 @@ function AdminPortal() {
     }
 
     let mrr = 0;
-    if (cycle === 'lifetime' || cycle === 'none') {
+    const r = (p.role || '').toLowerCase();
+    if (r === 'super_admin' || r === 'admin' || r === 'basic_admin') {
       mrr = 0;
-    } else if (p.role === 'seller') {
+    } else if (cycle === 'lifetime' || cycle === 'none') {
+      mrr = 0;
+    } else if (r === 'seller') {
       if (plan === 'pro') {
         mrr = cycle === 'yearly' ? (990 / 12) : 99;
       }
@@ -1756,7 +1800,7 @@ function AdminPortal() {
                       outline: 'none', fontWeight: '500'
                     }}
                   >
-                    {editPkgUser.role === 'seller' ? (
+                    {(editPkgUser.role || '').toLowerCase() === 'seller' ? (
                       <>
                         <option value="free">🌱 ฟรี (Free) — ฿0/เดือน (จำกัด 2 แปลง, 100 MB, AI สลิป 15 บิล/ด.)</option>
                         <option value="pro">🚀 Pro Farmer — ฿99/เดือน หรือ ฿990/ปี (ไม่จำกัดแปลง, 2 GB, AI ไม่จำกัด)</option>

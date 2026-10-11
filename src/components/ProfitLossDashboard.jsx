@@ -12,9 +12,9 @@ import {
 const PIE_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#6366f1', '#ec4899', '#64748b'];
 
 function ProfitLossDashboard({ currentUser }) {
-  const [filterType, setFilterType] = useState('today'); // 'today', 'yesterday', '7days', 'this_month', 'custom'
+  const [filterType, setFilterType] = useState('this_year'); // 'today', 'yesterday', '7days', 'this_month', 'this_year', 'custom'
   const [customRange, setCustomRange] = useState({
-    start: new Date().toISOString().split('T')[0],
+    start: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
 
@@ -45,6 +45,10 @@ function ProfitLossDashboard({ currentUser }) {
     if (filterType === 'this_month') {
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
       return { start: firstDay, end: todayStr, label: 'เดือนนี้' };
+    }
+    if (filterType === 'this_year') {
+      const firstDay = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
+      return { start: firstDay, end: todayStr, label: 'ปีนี้' };
     }
     return {
       start: customRange.start,
@@ -295,6 +299,7 @@ function ProfitLossDashboard({ currentUser }) {
             { id: 'yesterday', label: 'เมื่อวาน' },
             { id: '7days', label: '7 วันล่าสุด' },
             { id: 'this_month', label: 'เดือนนี้' },
+            { id: 'this_year', label: 'ปีนี้' },
             { id: 'custom', label: 'กำหนดเอง' }
           ].map(tab => (
             <button

@@ -59,15 +59,16 @@ function ProfitLossDashboard({ currentUser }) {
       const storeId = currentUser?.id;
       const [salesData, txData, expData] = await Promise.all([
         db.getRubberSales(dateRange.start, dateRange.end, storeId),
-        db.getTransactionsHistory(dateRange.start, dateRange.end),
+        db.getTransactionsHistory(dateRange.start, dateRange.end, storeId),
         db.getShopExpenses(dateRange.start, dateRange.end, storeId)
       ]);
 
       setSales(Array.isArray(salesData) ? salesData : []);
-      // Filter transactions to paid/completed
+      // Filter transactions to paid/completed strictly for this store (exclude manual seller E-BILLs)
       const validTxs = (Array.isArray(txData) ? txData : []).filter(t => 
         (t.status === 'paid' || t.status === 'completed' || t.status === 'ready_to_pay') &&
-        (!storeId || !t.buyer_id || t.buyer_id === storeId)
+        t.queue_number !== 'E-BILL' &&
+        (!storeId || t.buyer_id === storeId)
       );
       setTransactions(validTxs);
       setExpenses(Array.isArray(expData) ? expData : []);

@@ -762,6 +762,26 @@ const seedMockData = () => {
     ];
     localStorage.setItem(shopExpKey, JSON.stringify(defaultShopExp));
   }
+
+  // Auto-clean any legacy cached E-BILLs in farmpro_transactions to decouple them from buyer_id
+  try {
+    const cachedTxs = safeJsonParse(txsKey, []);
+    if (Array.isArray(cachedTxs)) {
+      let changed = false;
+      const sanitized = cachedTxs.map(t => {
+        if (t.queue_number === 'E-BILL' && t.buyer_id) {
+          changed = true;
+          return { ...t, buyer_id: null };
+        }
+        return t;
+      });
+      if (changed) {
+        localStorage.setItem(txsKey, JSON.stringify(sanitized));
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to sanitize legacy cached transactions:', e);
+  }
 };
 
 // Helper to convert phone number to virtual auth email
@@ -1490,23 +1510,28 @@ export const db = {
   },
 
   // --- Transactions ---
-  getTransactions: async (dateStr) => {
-    const storeId = getCurrentStoreId();
+  getTransactions: async (dateStr, storeId = null) => {
+    const activeStoreId = storeId || getCurrentStoreId();
     if (isMock) {
       await delay(300);
       const txs = safeJsonParse('farmpro_transactions', []);
       return (Array.isArray(txs) ? txs : [])
-        .filter(t => t.date === dateStr && (!storeId || !t.buyer_id || t.buyer_id === storeId) && !t.deleted_at)
+        .filter(t => (!dateStr || t.date === dateStr) && (!activeStoreId || t.buyer_id === activeStoreId) && t.queue_number !== 'E-BILL' && !t.deleted_at)
         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    }
+
+    if (!activeStoreId && dateStr) {
+      return [];
     }
 
     try {
       let query = supabase
         .from('rubber_transactions')
         .select('*')
-        .eq('date', dateStr)
         .is('deleted_at', null);
-      if (storeId) query = query.eq('buyer_id', storeId);
+      if (dateStr) query = query.eq('date', dateStr);
+      if (activeStoreId) query = query.eq('buyer_id', activeStoreId);
+      query = query.neq('queue_number', 'E-BILL');
       const { data, error } = await query.order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -1515,7 +1540,7 @@ export const db = {
 
       // Merge pending offline creates to prevent them from disappearing
       const pendingSync = safeJsonParse('farmpro_pending_sync', []);
-      const pendingCreates = pendingSync.filter(p => p.action === 'create' && p.data && p.data.date === dateStr).map(p => p.data);
+      const pendingCreates = pendingSync.filter(p => p.action === 'create' && p.data && (!dateStr || p.data.date === dateStr) && (!activeStoreId || p.data.buyer_id === activeStoreId) && p.data.queue_number !== 'E-BILL').map(p => p.data);
       
       const serverIds = new Set(safeData.map(t => t.id));
       for (const pTx of pendingCreates) {
@@ -1535,7 +1560,7 @@ export const db = {
 
       // Update local cache
       const cachedTxs = safeJsonParse('farmpro_transactions', []);
-      const filtered = (Array.isArray(cachedTxs) ? cachedTxs : []).filter(t => t.date !== dateStr);
+      const filtered = (Array.isArray(cachedTxs) ? cachedTxs : []).filter(t => (dateStr && t.date !== dateStr) || (activeStoreId && t.buyer_id !== activeStoreId));
       const updatedCache = [...filtered, ...safeData];
       localStorage.setItem('farmpro_transactions', JSON.stringify(updatedCache));
 
@@ -1544,12 +1569,12 @@ export const db = {
       console.error('Error fetching transactions:', err);
       // Return from local storage cache if database is unreachable
       const txs = safeJsonParse('farmpro_transactions', []);
-      return (Array.isArray(txs) ? txs : []).filter(t => t.date === dateStr);
+      return (Array.isArray(txs) ? txs : []).filter(t => (!dateStr || t.date === dateStr) && (!activeStoreId || t.buyer_id === activeStoreId) && t.queue_number !== 'E-BILL' && !t.deleted_at);
     }
   },
 
-  getTransactionsHistory: async (startDateStr, endDateStr) => {
-    const storeId = getCurrentStoreId();
+  getTransactionsHistory: async (startDateStr, endDateStr, storeId = null) => {
+    const activeStoreId = storeId || getCurrentStoreId();
     if (isMock) {
       // Return from local cache, simulating mock DB
       const txs = safeJsonParse('farmpro_transactions', []);
@@ -1557,19 +1582,25 @@ export const db = {
         if (!t.date) return false;
         const inStart = !startDateStr || t.date >= startDateStr;
         const inEnd = !endDateStr || t.date <= endDateStr;
-        const isOwner = !storeId || !t.buyer_id || t.buyer_id === storeId;
-        return inStart && inEnd && isOwner && (t.status === 'completed' || t.status === 'paid') && !t.deleted_at;
+        const isOwner = Boolean(activeStoreId && t.buyer_id === activeStoreId);
+        const notSellerBill = t.queue_number !== 'E-BILL';
+        return inStart && inEnd && isOwner && notSellerBill && (t.status === 'completed' || t.status === 'paid') && !t.deleted_at;
       });
+    }
+
+    if (!activeStoreId) {
+      return [];
     }
 
     try {
       let query = supabase
         .from('rubber_transactions')
-        .select('*');
+        .select('*')
+        .eq('buyer_id', activeStoreId)
+        .neq('queue_number', 'E-BILL');
         
       if (startDateStr) query = query.gte('date', startDateStr);
       if (endDateStr) query = query.lte('date', endDateStr);
-      if (storeId) query = query.eq('buyer_id', storeId);
       
       const { data, error } = await query
         .is('deleted_at', null)
@@ -1581,7 +1612,15 @@ export const db = {
       return Array.isArray(data) ? data : [];
     } catch (err) {
       console.error('Error fetching historical transactions:', err);
-      return [];
+      const txs = safeJsonParse('farmpro_transactions', []);
+      return (Array.isArray(txs) ? txs : []).filter(t => {
+        if (!t.date) return false;
+        const inStart = !startDateStr || t.date >= startDateStr;
+        const inEnd = !endDateStr || t.date <= endDateStr;
+        const isOwner = Boolean(activeStoreId && t.buyer_id === activeStoreId);
+        const notSellerBill = t.queue_number !== 'E-BILL';
+        return inStart && inEnd && isOwner && notSellerBill && (t.status === 'completed' || t.status === 'paid') && !t.deleted_at;
+      });
     }
   },
 
@@ -1597,10 +1636,16 @@ export const db = {
       : allCachedTxs;
     const queueNo = tx.queue_number || generateQueueNumber(storeCachedTxs, dateStr);
 
+    // If tx explicitly specifies buyer_id (including null) or is a seller manual bill (E-BILL), do NOT assign storeId!
+    const isSellerBill = tx.queue_number === 'E-BILL' || tx.source === 'seller' || tx.buyer_id === null;
+    const assignedBuyerId = isSellerBill 
+      ? (tx.buyer_id || null) 
+      : (tx.buyer_id !== undefined ? tx.buyer_id : (storeId || null));
+
     const newTx = {
       id: tx.id || uuidv4(),
       ...tx,
-      buyer_id: storeId || tx.buyer_id || null,
+      buyer_id: assignedBuyerId,
       queue_number: queueNo,
       date: dateStr,
       status: tx.status || 'waiting_drc',

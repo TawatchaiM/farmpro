@@ -80,6 +80,7 @@ function SellerPortal({ currentUser }) {
       if (editMode) {
         await db.updateTransaction(editId, {
           buyer_name: finalData.buyer_name || 'ร้านรับซื้อยาง FarmPro',
+          buyer_id: null,
           date: finalData.date,
           raw_weight_kg: parseFloat(finalData.raw_weight_kg) || 0,
           drc_percentage: parseFloat(finalData.drc_percentage) || 0,
@@ -94,7 +95,10 @@ function SellerPortal({ currentUser }) {
       } else {
         await db.createTransaction({
           queue_number: 'E-BILL',
-          seller_name: 'ชาวสวนยาง',
+          source: 'seller',
+          buyer_id: null,
+          seller_name: currentUser?.full_name || 'ชาวสวนยาง',
+          phone_number: currentUser?.phone_number || '',
           buyer_name: finalData.buyer_name || 'ร้านรับซื้อยาง FarmPro',
           date: finalData.date,
           raw_weight_kg: parseFloat(finalData.raw_weight_kg) || 0,

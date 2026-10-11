@@ -70,7 +70,7 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
       setDailySettings(settings);
 
       // 2. Fetch transactions for today
-      const txList = await db.getTransactions(todayStr);
+      const txList = await db.getTransactions(todayStr, currentUser?.id);
       setTransactions(Array.isArray(txList) ? txList : []);
     } catch (err) {
       console.error('Failed to load portal data:', err);
@@ -78,14 +78,14 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
     } finally {
       setLoading(false);
     }
-  }, [todayStr, updatePendingCount]);
+  }, [todayStr, currentUser?.id, updatePendingCount]);
 
   useEffect(() => {
     loadData();
     
     // Supabase Realtime & Multi-Device Subscription
     const unsubscribe = db.subscribeToTransactions(async (payload) => {
-      const txList = await db.getTransactions(todayStr);
+      const txList = await db.getTransactions(todayStr, currentUser?.id);
       setTransactions(txList);
       updatePendingCount();
 
@@ -108,27 +108,30 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
       unsubscribe();
       clearInterval(interval);
     };
-  }, [loadData, todayStr, updatePendingCount, triggerToast]);
+  }, [loadData, todayStr, currentUser?.id, updatePendingCount, triggerToast]);
 
   // Save Settings handler
   const handleSaveSettings = useCallback(async (settings) => {
     const saved = await db.saveDailySettings(settings);
     setDailySettings(saved);
-    const txList = await db.getTransactions(todayStr);
+    const txList = await db.getTransactions(todayStr, currentUser?.id);
     setTransactions(txList);
-  }, [todayStr]);
+  }, [todayStr, currentUser?.id]);
 
   // Create transaction handler
   const handleCreateTransaction = useCallback(async (tx) => {
     const isOffline = !window.navigator.onLine;
-    const created = await db.createTransaction(tx, isOffline);
+    const created = await db.createTransaction({
+      ...tx,
+      buyer_id: currentUser?.id || tx.buyer_id
+    }, isOffline);
     
     // Refresh list from cache
-    const txList = await db.getTransactions(todayStr);
+    const txList = await db.getTransactions(todayStr, currentUser?.id);
     setTransactions(txList);
     updatePendingCount();
     return created;
-  }, [todayStr, updatePendingCount]);
+  }, [todayStr, currentUser?.id, updatePendingCount]);
 
   // Update transaction handler
   const handleUpdateTransaction = useCallback(async (id, updates) => {
@@ -136,11 +139,11 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
     const updated = await db.updateTransaction(id, updates, isOffline);
 
     // Refresh list from cache
-    const txList = await db.getTransactions(todayStr);
+    const txList = await db.getTransactions(todayStr, currentUser?.id);
     setTransactions(txList);
     updatePendingCount();
     return updated;
-  }, [todayStr, updatePendingCount]);
+  }, [todayStr, currentUser?.id, updatePendingCount]);
 
   // Sync Offline Queue handler
   const handleSync = useCallback(async () => {
@@ -156,14 +159,14 @@ function BuyerPortal({ currentUser, onUpdateProfile }) {
       // Reload fresh data from database
       const settings = await db.getDailySettings(todayStr);
       setDailySettings(settings);
-      const txList = await db.getTransactions(todayStr);
+      const txList = await db.getTransactions(todayStr, currentUser?.id);
       setTransactions(txList);
       
       updatePendingCount();
     } catch (err) {
       console.error('Offline sync failed:', err);
     }
-  }, [todayStr, updatePendingCount]);
+  }, [todayStr, currentUser?.id, updatePendingCount]);
 
   if (loading) {
     return (

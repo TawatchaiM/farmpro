@@ -27,14 +27,19 @@ function DashboardPortal({ currentUser }) {
 
   useEffect(() => {
     fetchHistory();
-  }, [dateRange]);
+  }, [dateRange, currentUser?.id]);
 
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const data = await db.getTransactionsHistory(dateRange.start, dateRange.end);
-      setHistory(data);
-      calculateMetrics(data);
+      const storeId = currentUser?.id;
+      const data = await db.getTransactionsHistory(dateRange.start, dateRange.end, storeId);
+      // Double guarantee: strictly keep only this buyer's purchases and exclude seller manual E-BILLs
+      const storeOnly = (Array.isArray(data) ? data : []).filter(tx => 
+        tx.queue_number !== 'E-BILL' && (!storeId || tx.buyer_id === storeId)
+      );
+      setHistory(storeOnly);
+      calculateMetrics(storeOnly);
     } catch (err) {
       console.error('Error loading history:', err);
     } finally {

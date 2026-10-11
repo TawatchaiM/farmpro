@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
+import { Package, DollarSign, TrendingUp, Trees } from 'lucide-react';
 import ImageUpload from './ImageUpload';
 import ReviewForm from './ReviewForm';
-import Dashboard from './Dashboard';
+import FarmerProfitLoss from './FarmerProfitLoss';
 import FarmManagement from './FarmManagement';
 import ExpenseManagement from './ExpenseManagement';
 import TrashModal from './TrashModal';
@@ -155,7 +156,7 @@ function SellerPortal({ currentUser }) {
       
       setTimeout(() => {
         setAppState('upload');
-        setActiveTab('dashboard');
+        setActiveTab('pnl');
         setRefreshTrigger(prev => prev + 1); 
       }, 1500);
       
@@ -163,13 +164,13 @@ function SellerPortal({ currentUser }) {
       console.error('Error deleting transaction:', error);
       alert('เกิดข้อผิดพลาดในการลบ');
       setAppState('upload');
-      setActiveTab('dashboard');
+      setActiveTab('pnl');
     }
   }, []);
 
   return (
     <div>
-      <div className="nav-tabs" style={{ marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+      <div className="nav-tabs" style={{ marginBottom: '1.25rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <div 
           className={`nav-tab ${activeTab === 'upload' ? 'active' : ''}`}
           onClick={() => {
@@ -184,26 +185,37 @@ function SellerPortal({ currentUser }) {
             }
             setActiveTab('upload');
           }}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700 }}
         >
-          {editMode ? '📝 แก้ไขข้อมูลบิล' : '📥 บันทึกบิลยาง/เพิ่มรายรับ'}
+          <Package size={18} />
+          <span>{editMode ? '📝 แก้ไขข้อมูลบิล' : '📦 บันทึกการขาย'}</span>
         </div>
-        <div 
-          className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
-          onClick={() => setActiveTab('dashboard')}
-        >
-          📊 แดชบอร์ดสรุปรายรับ
-        </div>
+
         <div 
           className={`nav-tab ${activeTab === 'expense_management' ? 'active' : ''}`}
           onClick={() => setActiveTab('expense_management')}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700 }}
         >
-          💸 บันทึกรายจ่าย
+          <DollarSign size={18} />
+          <span>💸 บันทึกรายจ่าย</span>
         </div>
+
+        <div 
+          className={`nav-tab ${activeTab === 'pnl' ? 'active' : ''}`}
+          onClick={() => setActiveTab('pnl')}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700 }}
+        >
+          <TrendingUp size={18} />
+          <span>📈 แดชบอร์ด & กำไร-ขาดทุน (P&L)</span>
+        </div>
+
         <div 
           className={`nav-tab ${activeTab === 'farm_management' ? 'active' : ''}`}
           onClick={() => setActiveTab('farm_management')}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 700 }}
         >
-          🌳 จัดการสวนของฉัน
+          <Trees size={18} />
+          <span>🌳 จัดการสวนของฉัน</span>
         </div>
       </div>
 
@@ -218,11 +230,10 @@ function SellerPortal({ currentUser }) {
         <FarmManagement currentUser={currentUser} onShowTrash={() => setShowTrash(true)} />
       ) : activeTab === 'expense_management' ? (
         <ExpenseManagement currentUser={currentUser} onShowTrash={() => setShowTrash(true)} />
-      ) : activeTab === 'dashboard' ? (
-        <Dashboard 
+      ) : activeTab === 'pnl' ? (
+        <FarmerProfitLoss 
           key={refreshTrigger}
           currentUser={currentUser}
-          scriptURL={scriptURL} 
           onEdit={handleEdit}
           onDelete={handleDelete}
           onShowTrash={() => setShowTrash(true)}
@@ -311,7 +322,7 @@ function SellerPortal({ currentUser }) {
               isEdit={editMode}
               onCancel={() => {
                 setAppState('upload');
-                if (editMode) setActiveTab('dashboard');
+                if (editMode) setActiveTab('pnl');
                 setEditMode(false);
                 setEditId(null);
               }}

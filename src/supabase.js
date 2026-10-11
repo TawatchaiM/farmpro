@@ -1371,19 +1371,22 @@ export const db = {
 
   // --- Plot Expenses Management ---
 
-  getPlotExpenses: async (plotId) => {
+  getPlotExpenses: async (plotId = null) => {
     if (isMock) {
       await delay(200);
       const expenses = safeJsonParse('farmpro_plot_expenses', []);
-      return expenses.filter(e => e.plot_id === plotId && !e.deleted_at);
+      return expenses.filter(e => (!plotId || plotId === 'all' || e.plot_id === plotId) && !e.deleted_at);
     }
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('plot_expenses')
         .select('*, recorder:profiles!plot_expenses_recorded_by_fkey(full_name)')
-        .eq('plot_id', plotId)
         .is('deleted_at', null)
         .order('expense_date', { ascending: false });
+      if (plotId && plotId !== 'all') {
+        query = query.eq('plot_id', plotId);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     } catch (err) {
@@ -1403,6 +1406,7 @@ export const db = {
       };
       expenses.push(newExpense);
       localStorage.setItem('farmpro_plot_expenses', JSON.stringify(expenses));
+      try { localStorage.setItem('farmpro_plot_expenses_event', JSON.stringify({ eventType: 'INSERT', new: newExpense, timestamp: Date.now() })); } catch (e) {}
       return newExpense;
     }
     try {
@@ -1432,6 +1436,7 @@ export const db = {
       let expenses = safeJsonParse('farmpro_plot_expenses', []);
       expenses = expenses.map(e => e.expense_id === id ? { ...e, deleted_at: new Date().toISOString() } : e);
       localStorage.setItem('farmpro_plot_expenses', JSON.stringify(expenses));
+      try { localStorage.setItem('farmpro_plot_expenses_event', JSON.stringify({ eventType: 'DELETE', id, timestamp: Date.now() })); } catch (e) {}
       return { success: true };
     }
     try {
@@ -2702,6 +2707,35 @@ export const db = {
 
     const channel = supabase.channel('public:rubber_transactions')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rubber_transactions' }, payload => {
+        callback(payload);
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  subscribeToPlotExpenses: (callback) => {
+    if (isMock) {
+      const handleStorage = (e) => {
+        if (e.key === 'farmpro_plot_expenses_event' && e.newValue) {
+          try {
+            const payload = JSON.parse(e.newValue);
+            callback(payload);
+          } catch (err) {}
+        }
+      };
+      window.addEventListener('storage', handleStorage);
+      return () => {
+        window.removeEventListener('storage', handleStorage);
+      };
+    }
+
+    if (!supabase) return () => {};
+
+    const channel = supabase.channel('public:plot_expenses')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'plot_expenses' }, payload => {
         callback(payload);
       })
       .subscribe();

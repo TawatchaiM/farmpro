@@ -66,7 +66,7 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete }) {
     }
     if (filterPeriod === 'this_year') {
       const firstDay = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
-      return { start: firstDay, end: todayStr, label: 'ปีนี้ (YTD)' };
+      return { start: firstDay, end: todayStr, label: 'ปีนี้' };
     }
     return {
       start: customRange.start,
@@ -406,7 +406,7 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete }) {
             { id: 'today', label: 'วันนี้' },
             { id: 'this_week', label: 'สัปดาห์นี้' },
             { id: 'this_month', label: 'เดือนนี้' },
-            { id: 'this_year', label: 'ปีนี้ (YTD)' },
+            { id: 'this_year', label: 'ปีนี้' },
             { id: 'custom', label: 'กำหนดเอง' }
           ].map(tab => (
             <button

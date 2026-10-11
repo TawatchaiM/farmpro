@@ -551,7 +551,7 @@ function App() {
                         className={`sidebar-item ${activePortal === 'admin' ? 'active' : ''}`}
                         onClick={() => setActivePortal('admin')}
                       >
-                        🛡️ แดชบอร์ดผู้ดูแล
+                        🛡️ แดชบอร์ดผู้ดูแลระบบ
                       </div>
                       <div style={{ height: '1px', background: 'var(--border-color)', margin: '0.75rem 0' }}></div>
                     </>

@@ -528,34 +528,54 @@ function AdminPortal() {
       )}
 
       {/* Tabs Header */}
-      <div className="nav-tabs" style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', background: 'transparent', boxShadow: 'none' }}>
+      <div 
+        className="nav-tabs" 
+        style={{ 
+          marginBottom: '1.5rem', 
+          borderBottom: '1px solid var(--border-color)', 
+          paddingBottom: '0.85rem', 
+          background: 'transparent', 
+          boxShadow: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          flexWrap: 'nowrap',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
         <button 
           className={`nav-tab ${activeTab === 'users' ? 'active' : ''}`}
           onClick={() => setActiveTab('users')}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.9rem', flexShrink: 0, cursor: 'pointer' }}
         >
           👥 จัดการผู้ใช้งาน
         </button>
         <button 
           className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
           onClick={() => setActiveTab('dashboard')}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.9rem', flexShrink: 0, cursor: 'pointer' }}
         >
           📊 ภาพรวมและสถิติ
         </button>
         <button 
           className={`nav-tab ${activeTab === 'subscriptions' ? 'active' : ''}`}
           onClick={() => setActiveTab('subscriptions')}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.9rem', flexShrink: 0, cursor: 'pointer' }}
         >
           💎 แพ็กเกจ & รายได้
         </button>
         <button 
           className={`nav-tab ${activeTab === 'demo_login' ? 'active' : ''}`}
           onClick={() => setActiveTab('demo_login')}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.9rem', flexShrink: 0, cursor: 'pointer' }}
         >
           ⚡ ทดสอบระบบ (Demo)
         </button>
         <button 
           className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
           onClick={() => setActiveTab('settings')}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700, padding: '0.55rem 1rem', fontSize: '0.9rem', flexShrink: 0, cursor: 'pointer' }}
         >
           ⚙️ ตั้งค่าระบบ
         </button>

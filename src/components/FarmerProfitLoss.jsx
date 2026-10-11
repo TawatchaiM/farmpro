@@ -3,23 +3,40 @@ import { db } from '../supabase';
 import {
   TrendingUp, TrendingDown, DollarSign, Scale, Percent, Calendar, Download, RefreshCw,
   AlertTriangle, CheckCircle2, Award, PieChart as PieIcon, BarChart3, ArrowUpRight, ArrowDownRight,
-  Layers, Filter, Trees, Trash2, Edit, Check, Eye
+  Layers, Filter, Trees, Trash2, Edit2, Check, Eye, Search, Clock
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line
+  PieChart, Pie, Cell
 } from 'recharts';
 
-const EXPENSE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b'];
+const EXPENSE_COLORS = ['#16a34a', '#d97706', '#0ea5e9', '#8b5cf6', '#64748b', '#ec4899'];
 
-function FarmerProfitLoss({ currentUser, onEdit, onDelete, onShowTrash }) {
-  const [filterPeriod, setFilterPeriod] = useState('this_month'); // 'today', 'this_week', 'this_month', 'this_year', 'custom'
+const EXPENSE_CATEGORIES = [
+  { id: 'fertilizer', name: 'ปุ๋ย', color: '#16a34a' },
+  { id: 'tools', name: 'อุปกรณ์/มีดกรีด', color: '#d97706' },
+  { id: 'chemicals', name: 'ยา/สารเคมีกำจัดวัชพืช', color: '#0ea5e9' },
+  { id: 'labor', name: 'ค่าแรงงาน/ตัดหญ้า', color: '#8b5cf6' },
+  { id: 'misc', name: 'เบ็ดเตล็ด/อื่นๆ', color: '#64748b' }
+];
+
+function normalizeCategoryName(rawCat) {
+  if (!rawCat) return 'เบ็ดเตล็ด/อื่นๆ';
+  if (rawCat.includes('ปุ๋ย')) return 'ปุ๋ย';
+  if (rawCat.includes('อุปกรณ์') || rawCat.includes('มีด')) return 'อุปกรณ์/มีดกรีด';
+  if (rawCat.includes('ยา') || rawCat.includes('เคมี')) return 'ยา/สารเคมีกำจัดวัชพืช';
+  if (rawCat.includes('แรงงาน') || rawCat.includes('ถาง') || rawCat.includes('หญ้า')) return 'ค่าแรงงาน/ตัดหญ้า';
+  return 'เบ็ดเตล็ด/อื่นๆ';
+}
+
+function FarmerProfitLoss({ currentUser, onEdit, onDelete }) {
+  // 1. Default Filter: Year-to-Date (this_year)
+  const [filterPeriod, setFilterPeriod] = useState('this_year'); // 'today', 'this_week', 'this_month', 'this_year', 'custom'
   const [customRange, setCustomRange] = useState({
-    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    start: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
   const [selectedPlotId, setSelectedPlotId] = useState('all');
-  const [viewRole, setViewRole] = useState('owner'); // 'owner' or 'tapper'
 
   const [loading, setLoading] = useState(true);
   const [plots, setPlots] = useState([]);
@@ -28,7 +45,7 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete, onShowTrash }) {
   const [activeDetailTab, setActiveDetailTab] = useState('sales'); // 'sales' | 'expenses'
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 1. Calculate Date Range strings
+  // 1. Calculate Date Range strings (Default YTD from Jan 1 to today)
   const dateRange = useMemo(() => {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
@@ -37,7 +54,6 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete, onShowTrash }) {
       return { start: todayStr, end: todayStr, label: 'วันนี้' };
     }
     if (filterPeriod === 'this_week') {
-      // Monday of current week
       const d = new Date(today);
       const day = d.getDay();
       const diff = d.getDate() - day + (day === 0 ? -6 : 1);
@@ -50,7 +66,7 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete, onShowTrash }) {
     }
     if (filterPeriod === 'this_year') {
       const firstDay = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
-      return { start: firstDay, end: todayStr, label: 'ปีนี้' };
+      return { start: firstDay, end: todayStr, label: 'ปีนี้ (YTD)' };
     }
     return {
       start: customRange.start,
@@ -73,7 +89,7 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete, onShowTrash }) {
     }
   }, [currentUser]);
 
-  // 3. Load all Transactions & Expenses
+  // 3. Load all Transactions & Expenses (YTD by default)
   const loadData = useCallback(async () => {
     setLoading(true);
     const userId = currentUser?.user_id || currentUser?.id;
@@ -135,7 +151,7 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete, onShowTrash }) {
   useEffect(() => {
     loadData();
 
-    // Realtime Subscriptions for Transactions and Plot Expenses
+    // Realtime Subscriptions
     const unsubTx = db.subscribeToTransactions(() => {
       loadData();
     });
@@ -158,24 +174,27 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete, onShowTrash }) {
   // Tapper Share: sum of tapper_share_amount (0 if owner taps themselves)
   const totalTapperShare = useMemo(() => {
     return transactions.reduce((sum, t) => {
-      // If owner taps themselves or share ratio is 100% to owner
       if (parseFloat(t.owner_share_percentage) === 100) return sum;
       return sum + (parseFloat(t.tapper_share_amount) || 0);
     }, 0);
   }, [transactions]);
 
+  const tapperSharePercent = totalRevenue > 0 ? (totalTapperShare / totalRevenue) * 100 : 0;
+
   // Gross Income: Total Revenue - Tapper Share
   const grossIncome = totalRevenue - totalTapperShare;
+  const grossMargin = totalRevenue > 0 ? (grossIncome / totalRevenue) * 100 : 0;
 
   // Total Plot Expenses: sum of amount from plot_expenses
   const totalExpenses = useMemo(() => {
     return expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
   }, [expenses]);
 
+  const expensesPercent = totalRevenue > 0 ? (totalExpenses / totalRevenue) * 100 : 0;
+
   // Net Profit: Gross Income - Total Plot Expenses
   const netProfit = grossIncome - totalExpenses;
   const netMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
-  const isProfitable = netProfit >= 0;
 
   // Productivity Analytics
   const totalRawWeight = useMemo(() => {
@@ -185,6 +204,9 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete, onShowTrash }) {
   const totalDryWeight = useMemo(() => {
     return transactions.reduce((sum, t) => sum + (parseFloat(t.dry_weight_kg) || 0), 0);
   }, [transactions]);
+
+  const avgRawWeightPerTap = transactions.length > 0 ? totalRawWeight / transactions.length : 0;
+  const avgDryWeightPerTap = transactions.length > 0 ? totalDryWeight / transactions.length : 0;
 
   const avgDrc = useMemo(() => {
     const valid = transactions.filter(t => parseFloat(t.drc_percentage) > 0);
@@ -199,694 +221,960 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete, onShowTrash }) {
     return valid.reduce((sum, t) => sum + parseFloat(t.price_per_kg), 0) / valid.length;
   }, [transactions, totalRevenue, totalDryWeight]);
 
-  const costPerKg = useMemo(() => {
-    return totalDryWeight > 0 ? (totalExpenses / totalDryWeight) : 0;
-  }, [totalExpenses, totalDryWeight]);
+  const costPerKg = totalRawWeight > 0 ? totalExpenses / totalRawWeight : 0;
 
-  // Donut Chart: Expenses by Category
+  // Expenses Breakdown by Category for Donut Chart
   const expenseByCategoryData = useMemo(() => {
     const map = {};
     expenses.forEach(e => {
-      const cat = e.category || 'อื่นๆ';
+      const cat = normalizeCategoryName(e.category);
       map[cat] = (map[cat] || 0) + (parseFloat(e.amount) || 0);
     });
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [expenses]);
 
-  // Financial Breakdown Bar Chart Data
-  const financialFlowData = useMemo(() => {
+  // Financial Chart Data (5 Bars comparing Financial Structure)
+  const financialChartData = useMemo(() => {
     return [
-      { name: 'ยอดขายรวม', amount: totalRevenue, fill: '#15803d' },
-      { name: 'ส่วนแบ่งคนกรีด', amount: totalTapperShare, fill: '#d97706' },
-      { name: 'รายได้สุทธิสวน', amount: grossIncome, fill: '#0284c7' },
-      { name: 'ค่าใช้จ่ายสวน', amount: totalExpenses, fill: '#e11d48' },
-      { name: 'กำไรสุทธิ', amount: netProfit, fill: isProfitable ? '#16a34a' : '#dc2626' }
+      { name: 'ยอดขายยาง', amount: totalRevenue, fill: '#16a34a' },
+      { name: 'ส่วนแบ่งคนกรีด', amount: totalTapperShare, fill: '#f59e0b' },
+      { name: 'รายได้สุทธิ', amount: Math.max(0, grossIncome), fill: '#0284c7' },
+      { name: 'ค่าใช้จ่ายสวน', amount: totalExpenses, fill: '#dc2626' },
+      { name: 'กำไรสุทธิ', amount: netProfit, fill: netProfit >= 0 ? '#10b981' : '#f43f5e' }
     ];
-  }, [totalRevenue, totalTapperShare, grossIncome, totalExpenses, netProfit, isProfitable]);
+  }, [totalRevenue, totalTapperShare, grossIncome, totalExpenses, netProfit]);
 
-  // Filtered Detail Transactions for Table
-  const filteredTableTxs = useMemo(() => {
-    if (!searchQuery) return transactions;
-    const q = searchQuery.toLowerCase();
-    return transactions.filter(t => 
-      (t.buyer_name && t.buyer_name.toLowerCase().includes(q)) ||
-      (t.queue_number && t.queue_number.toLowerCase().includes(q)) ||
-      (t.date && t.date.includes(q)) ||
-      (t.seller_name && t.seller_name.toLowerCase().includes(q))
-    );
-  }, [transactions, searchQuery]);
+  // Export P&L Report CSV
+  const handleExportPnL = () => {
+    const rows = [
+      ['รายงานสรุปกำไร-ขาดทุนของสวนยาง (Farmer P&L Summary)', `ช่วงเวลา: ${dateRange.label}`],
+      ['วันที่พิมพ์', new Date().toLocaleString('th-TH')],
+      ['', ''],
+      ['หมวดรายการทางการเงิน', 'จำนวนเงิน (บาท)', 'สัดส่วนเทียบยอดขาย (%)'],
+      ['1. ยอดขายยางพารารวม (Total Revenue)', totalRevenue.toFixed(2), '100.00%'],
+      ['2. ค่าจ้าง/ส่วนแบ่งคนกรีด (Tapper Share)', totalTapperShare.toFixed(2), `${tapperSharePercent.toFixed(2)}%`],
+      ['3. รายได้สุทธิจากยาง (Gross Income)', grossIncome.toFixed(2), `${grossMargin.toFixed(2)}%`],
+      ['4. ค่าใช้จ่ายดูแลสวนรวม (Plot Expenses)', totalExpenses.toFixed(2), `${expensesPercent.toFixed(2)}%`],
+      ...expenseByCategoryData.map(e => [`   - ${e.name}`, e.value.toFixed(2), totalRevenue > 0 ? `${((e.value / totalRevenue) * 100).toFixed(2)}%` : '0%']),
+      ['5. กำไรสุทธิของสวน (Net Profit)', netProfit.toFixed(2), `${netMargin.toFixed(2)}%`],
+      ['', ''],
+      ['สถิติผลผลิตและต้นทุน (Production & Cost Benchmark)', ''],
+      ['น้ำหนักยางสดรวม (กก.)', totalRawWeight.toFixed(2)],
+      ['น้ำหนักเนื้อยางแห้งรวม (DRC กก.)', totalDryWeight.toFixed(2)],
+      ['%DRC เฉลี่ย', `${avgDrc.toFixed(2)}%`],
+      ['ราคาขายเฉลี่ย (บาท/กก.)', `฿${avgPricePerKg.toFixed(2)}`],
+      ['ต้นทุนดูแลสวนเฉลี่ยต่อ กก. ยาง', `฿${costPerKg.toFixed(2)} บาท/กก.`]
+    ];
 
-  // CSV Export (with UTF-8 BOM)
-  const handleExportCSV = () => {
-    if (transactions.length === 0 && expenses.length === 0) {
-      alert('ไม่มีข้อมูลสำหรับส่งออก');
-      return;
-    }
-
-    let csvContent = '\ufeff'; // BOM
-    csvContent += 'สรุปรายงานกำไร-ขาดทุนชาวสวนยาง FarmPro\n';
-    csvContent += `ช่วงเวลา:,${dateRange.label}\n`;
-    csvContent += `แปลงสวน:,${selectedPlotId === 'all' ? 'ทุกแปลงสวน' : (plots.find(p => p.plot_id === selectedPlotId)?.plot_name || selectedPlotId)}\n`;
-    csvContent += `ยอดขายยางรวม (บาท):,${totalRevenue.toFixed(2)}\n`;
-    csvContent += `ส่วนแบ่งคนกรีด (บาท):,${totalTapperShare.toFixed(2)}\n`;
-    csvContent += `รายได้สุทธิจากยาง (บาท):,${grossIncome.toFixed(2)}\n`;
-    csvContent += `ค่าใช้จ่ายดูแลสวน (บาท):,${totalExpenses.toFixed(2)}\n`;
-    csvContent += `กำไรสุทธิ (บาท):,${netProfit.toFixed(2)}\n`;
-    csvContent += `อัตรากำไรสุทธิ (%):,${netMargin.toFixed(2)}%\n\n`;
-
-    csvContent += '--- รายการบิลขายยาง ---\n';
-    csvContent += 'วันที่,คิว/เลขบิล,ร้านรับซื้อ,น้ำหนักสด (กก.),%DRC,น้ำหนักแห้ง (กก.),ราคา/กก.,ยอดรวม (บาท),ส่วนแบ่งคนกรีด (บาท),รายได้สุทธิ (บาท)\n';
-    transactions.forEach(t => {
-      csvContent += `"${t.date || ''}","${t.queue_number || ''}","${t.buyer_name || ''}",${t.raw_weight_kg || 0},${t.drc_percentage || 0},${t.dry_weight_kg || 0},${t.price_per_kg || 0},${t.total_amount || 0},${t.tapper_share_amount || 0},${(parseFloat(t.total_amount || 0) - parseFloat(t.tapper_share_amount || 0)).toFixed(2)}\n`;
-    });
-
-    csvContent += '\n--- รายการค่าใช้จ่ายดูแลสวน ---\n';
-    csvContent += 'วันที่,แปลงสวน,หมวดหมู่,รายละเอียด,จำนวนเงิน (บาท)\n';
-    expenses.forEach(e => {
-      const pName = plots.find(p => p.plot_id === e.plot_id)?.plot_name || 'ไม่ระบุแปลง';
-      csvContent += `"${e.expense_date || ''}","${pName}","${e.category || ''}","${e.description || ''}",${e.amount || 0}\n`;
-    });
-
+    const csvContent = '\uFEFF' + rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Farmer_PnL_Report_${dateRange.start}_${dateRange.end}.csv`;
-    document.body.appendChild(link);
+    link.download = `งบกำไรขาดทุนสวนยาง_${dateRange.start}_${dateRange.end}.csv`;
     link.click();
-    document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 
+  // Filtered detail lists for bottom tables
+  const filteredSales = useMemo(() => {
+    if (!searchQuery) return transactions;
+    const q = searchQuery.toLowerCase();
+    return transactions.filter(t => 
+      (t.buyer_name || '').toLowerCase().includes(q) ||
+      (t.note || '').toLowerCase().includes(q)
+    );
+  }, [transactions, searchQuery]);
+
+  const filteredExpensesList = useMemo(() => {
+    if (!searchQuery) return expenses;
+    const q = searchQuery.toLowerCase();
+    return expenses.filter(e => 
+      (e.category || '').toLowerCase().includes(q) ||
+      (e.description || '').toLowerCase().includes(q)
+    );
+  }, [expenses, searchQuery]);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* 1. Header & Quick Action Bar */}
-      <div className="card" style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <span style={{ fontSize: '1.5rem' }}>📈</span>
-            <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#0f172a' }}>
-              แดชบอร์ด & กำไร-ขาดทุนของสวนยาง (Farmer P&L)
-            </h2>
+    <div style={{ maxWidth: '1240px', margin: '0 auto', paddingBottom: '3.5rem' }}>
+      {/* 2. Header Banner (Dark Forest Green matching Buyer P&L Unified Pattern) */}
+      <div style={{
+        background: 'linear-gradient(135deg, #064e3b 0%, #065f46 60%, #047857 100%)',
+        color: '#fff',
+        borderRadius: '16px',
+        padding: '1.5rem 1.75rem',
+        marginBottom: '1.5rem',
+        boxShadow: '0 8px 24px rgba(6, 78, 59, 0.25)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '1rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.15)',
+            borderRadius: '12px',
+            width: '52px',
+            height: '52px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(6px)'
+          }}>
+            <BarChart3 size={28} color="#fff" />
           </div>
-          <p style={{ margin: '0.35rem 0 0 0', color: '#64748b', fontSize: '0.875rem' }}>
-            วิเคราะห์รายรับ-รายจ่าย สัดส่วนผลประโยชน์คนกรีด และผลกำไรสุทธิตามแปลงสวนแบบเรียลไทม์
-          </p>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
+              📈 แดชบอร์ด & กำไร-ขาดทุนของสวนยาง (Farmer P&L Real-time)
+            </h2>
+            <p style={{ margin: '0.25rem 0 0', opacity: 0.9, fontSize: '0.9rem', color: '#dcfce7' }}>
+              วิเคราะห์รายรับ-รายจ่าย สัดส่วนผลประโยชน์คนกรีด และผลกำไรสุทธิตามแปลงสวนแบบเรียลไทม์
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        {/* Right Action Buttons */}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <button
             onClick={loadData}
-            className="btn btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.55rem 0.9rem', fontSize: '0.85rem' }}
+            style={{
+              background: 'rgba(255, 255, 255, 0.15)',
+              color: '#fff',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '10px',
+              padding: '0.55rem 0.95rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              transition: 'all 0.15s'
+            }}
+            title="รีเฟรชข้อมูล"
           >
             <RefreshCw size={15} className={loading ? 'spin' : ''} />
             <span>รีเฟรช</span>
           </button>
 
           <button
-            onClick={handleExportCSV}
-            className="btn btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.55rem 0.9rem', fontSize: '0.85rem', color: '#166534', borderColor: '#bbf7d0', background: '#f0fdf4' }}
+            onClick={handleExportPnL}
+            style={{
+              background: '#22c55e',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '0.55rem 1.15rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              transition: 'all 0.15s'
+            }}
           >
             <Download size={15} />
-            <span>ส่งออก CSV</span>
+            <span>Export P&L</span>
           </button>
-
-          {onShowTrash && (
-            <button
-              onClick={onShowTrash}
-              className="btn btn-secondary"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.55rem 0.9rem', fontSize: '0.85rem', color: '#64748b' }}
-            >
-              <Trash2 size={15} />
-              <span>ถังขยะ</span>
-            </button>
-          )}
         </div>
       </div>
 
-      {/* 2. Filters & Selector Control Bar */}
-      <div className="card" style={{ padding: '1rem 1.25rem', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
-          
-          {/* Time Period Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <Calendar size={15} /> ช่วงเวลา:
-            </span>
-            <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: '3px', borderRadius: '10px', gap: '2px' }}>
-              {[
-                { id: 'today', label: 'วันนี้' },
-                { id: 'this_week', label: 'สัปดาห์นี้' },
-                { id: 'this_month', label: 'เดือนนี้' },
-                { id: 'this_year', label: 'ปีนี้' },
-                { id: 'custom', label: 'กำหนดเอง' }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setFilterPeriod(tab.id)}
-                  style={{
-                    padding: '0.4rem 0.85rem',
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontSize: '0.825rem',
-                    fontWeight: filterPeriod === tab.id ? 700 : 500,
-                    background: filterPeriod === tab.id ? '#15803d' : 'transparent',
-                    color: filterPeriod === tab.id ? '#ffffff' : '#475569',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* 3. Filter Toolbar (Pills on Left, Plot Selector on Right) */}
+      <div style={{
+        background: '#fff',
+        borderRadius: '14px',
+        padding: '0.85rem 1.25rem',
+        marginBottom: '1.5rem',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '0.75rem'
+      }}>
+        {/* Left: Period Pills */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569', display: 'flex', alignItems: 'center', gap: '0.3rem', marginRight: '0.25rem' }}>
+            <Calendar size={16} /> ช่วงเวลา:
+          </span>
 
-          {/* Plot Dropdown Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: '220px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <Trees size={16} /> แปลงสวน:
+          {[
+            { id: 'today', label: 'วันนี้' },
+            { id: 'this_week', label: 'สัปดาห์นี้' },
+            { id: 'this_month', label: 'เดือนนี้' },
+            { id: 'this_year', label: 'ปีนี้ (YTD)' },
+            { id: 'custom', label: 'กำหนดเอง' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setFilterPeriod(tab.id)}
+              style={{
+                padding: '0.45rem 0.95rem',
+                borderRadius: '8px',
+                border: filterPeriod === tab.id ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                background: filterPeriod === tab.id ? '#f0fdf4' : '#f8fafc',
+                color: filterPeriod === tab.id ? '#15803d' : '#475569',
+                fontWeight: filterPeriod === tab.id ? 700 : 500,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Right: Plot Selector & Custom Date Range */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {filterPeriod === 'custom' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <input
+                type="date"
+                value={customRange.start}
+                onChange={(e) => setCustomRange(prev => ({ ...prev, start: e.target.value }))}
+                style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+              />
+              <span style={{ color: '#94a3b8' }}>ถึง</span>
+              <input
+                type="date"
+                value={customRange.end}
+                onChange={(e) => setCustomRange(prev => ({ ...prev, end: e.target.value }))}
+                style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+              />
+            </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <Trees size={16} color="#16a34a" /> แปลงสวน:
             </span>
             <select
               value={selectedPlotId}
               onChange={(e) => setSelectedPlotId(e.target.value)}
-              className="form-input"
               style={{
                 padding: '0.45rem 0.85rem',
-                fontSize: '0.85rem',
                 borderRadius: '8px',
-                border: '1.5px solid #cbd5e1',
-                flex: 1,
+                border: '1px solid #cbd5e1',
+                fontSize: '0.85rem',
+                background: '#fff',
                 fontWeight: 600,
-                color: '#1e293b'
+                color: '#166534',
+                cursor: 'pointer'
               }}
             >
               <option value="all">🌳 ทุกแปลงสวน (รวมทั้งหมด)</option>
               {plots.map(p => (
                 <option key={p.plot_id} value={p.plot_id}>
-                  {p.plot_name} {p.total_area_rai ? `(${p.total_area_rai} ไร่)` : ''}
+                  🌳 {p.plot_name}
                 </option>
               ))}
             </select>
           </div>
         </div>
-
-        {/* Custom Date Inputs if Custom selected */}
-        {filterPeriod === 'custom' && (
-          <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px dashed #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>เลือกช่วงวันที่:</span>
-            <input
-              type="date"
-              value={customRange.start}
-              onChange={(e) => setCustomRange(prev => ({ ...prev, start: e.target.value }))}
-              className="form-input"
-              style={{ padding: '0.4rem 0.65rem', fontSize: '0.85rem', width: 'auto' }}
-            />
-            <span style={{ color: '#94a3b8' }}>ถึง</span>
-            <input
-              type="date"
-              value={customRange.end}
-              onChange={(e) => setCustomRange(prev => ({ ...prev, end: e.target.value }))}
-              className="form-input"
-              style={{ padding: '0.4rem 0.65rem', fontSize: '0.85rem', width: 'auto' }}
-            />
-          </div>
-        )}
       </div>
 
-      {/* 3. 5 KPI Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem' }}>
-        
-        {/* KPI 1: ยอดขายยางรวม */}
-        <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #15803d', position: 'relative' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.825rem', fontWeight: 600, color: '#64748b' }}>ยอดขายยางรวม (Total Revenue)</span>
-            <div style={{ background: '#f0fdf4', padding: '6px', borderRadius: '8px', color: '#15803d' }}>
-              <TrendingUp size={18} />
-            </div>
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a', margin: '0.4rem 0 0.2rem 0' }}>
-            ฿{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div style={{ fontSize: '0.775rem', color: '#15803d', fontWeight: 500 }}>
-            📦 รวม {transactions.length} บิลขาย
-          </div>
-        </div>
-
-        {/* KPI 2: ส่วนแบ่งคนกรีด */}
-        <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #d97706', position: 'relative' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.825rem', fontWeight: 600, color: '#64748b' }}>ส่วนแบ่งคนกรีด (Tapper Share)</span>
-            <div style={{ background: '#fffbeb', padding: '6px', borderRadius: '8px', color: '#d97706' }}>
-              <DollarSign size={18} />
-            </div>
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#d97706', margin: '0.4rem 0 0.2rem 0' }}>
-            ฿{totalTapperShare.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div style={{ fontSize: '0.775rem', color: '#78350f', fontWeight: 500 }}>
-            🤝 {totalRevenue > 0 ? ((totalTapperShare / totalRevenue) * 100).toFixed(1) : 0}% ของยอดขาย
-          </div>
-        </div>
-
-        {/* KPI 3: รายได้สุทธิจากยาง */}
-        <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #0284c7', position: 'relative' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.825rem', fontWeight: 600, color: '#64748b' }}>รายได้สุทธิจากยาง (Gross Income)</span>
-            <div style={{ background: '#f0f9ff', padding: '6px', borderRadius: '8px', color: '#0284c7' }}>
-              <Award size={18} />
-            </div>
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0369a1', margin: '0.4rem 0 0.2rem 0' }}>
-            ฿{grossIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div style={{ fontSize: '0.775rem', color: '#0284c7', fontWeight: 500 }}>
-            🌱 ยอดขายหักส่วนแบ่งคนกรีด
-          </div>
-        </div>
-
-        {/* KPI 4: ค่าใช้จ่ายดูแลสวนรวม */}
-        <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #e11d48', position: 'relative' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.825rem', fontWeight: 600, color: '#64748b' }}>ค่าใช้จ่ายดูแลสวน (Expenses)</span>
-            <div style={{ background: '#fff1f2', padding: '6px', borderRadius: '8px', color: '#e11d48' }}>
-              <TrendingDown size={18} />
-            </div>
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#be123c', margin: '0.4rem 0 0.2rem 0' }}>
-            ฿{totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div style={{ fontSize: '0.775rem', color: '#9f1239', fontWeight: 500 }}>
-            💸 รวม {expenses.length} รายการค่าใช้จ่าย
-          </div>
-        </div>
-
-        {/* KPI 5: กำไรสุทธิของสวน (Highlight Card) */}
-        <div 
-          className="card" 
-          style={{ 
-            padding: '1.25rem', 
-            background: isProfitable 
-              ? 'linear-gradient(145deg, #f0fdf4 0%, #dcfce7 100%)' 
-              : 'linear-gradient(145deg, #fef2f2 0%, #fee2e2 100%)',
-            border: isProfitable ? '2px solid #86efac' : '2px solid #fca5a5',
-            boxShadow: isProfitable ? '0 4px 14px rgba(22, 163, 74, 0.12)' : '0 4px 14px rgba(239, 68, 68, 0.12)'
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.825rem', fontWeight: 700, color: isProfitable ? '#166534' : '#991b1b' }}>
-              กำไรสุทธิของสวน (Net Profit)
+      {/* 4. 5 KPI Summary Cards (Clean Single 5-Column Row on Desktop) */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+        gap: '0.85rem',
+        marginBottom: '1.5rem'
+      }}>
+        {/* 1. Total Revenue */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '14px',
+          padding: '1.15rem 1.25rem',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          position: 'relative'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>1. ยอดขายยางรวม</span>
+            <span style={{ background: '#dcfce7', color: '#16a34a', padding: '0.2rem 0.45rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700 }}>
+              Revenue
             </span>
-            <div style={{ 
-              background: isProfitable ? '#22c55e' : '#ef4444', 
-              color: '#fff', 
-              padding: '4px 8px', 
-              borderRadius: '6px', 
-              fontSize: '0.725rem', 
-              fontWeight: 800 
-            }}>
-              {isProfitable ? '🎉 กำไร' : '⚠️ ขาดทุน'}
-            </div>
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 900, color: isProfitable ? '#15803d' : '#b91c1c', margin: '0.4rem 0 0.2rem 0' }}>
-            {netProfit < 0 ? '-' : '+'}฿{Math.abs(netProfit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div style={{ fontSize: '1.55rem', fontWeight: 800, color: '#15803d', marginTop: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            ฿{totalRevenue.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
           </div>
-          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: isProfitable ? '#166534' : '#991b1b' }}>
-            {isProfitable ? '📈' : '📉'} อัตรากำไร: {netMargin.toFixed(1)}%
+          <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.25rem' }}>
+            จาก {transactions.length} บิลขายยาง
           </div>
         </div>
 
+        {/* 2. Tapper Share */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '14px',
+          padding: '1.15rem 1.25rem',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>2. ส่วนแบ่งคนกรีด</span>
+            <span style={{ background: '#ffedd5', color: '#ea580c', padding: '0.2rem 0.45rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700 }}>
+              {tapperSharePercent.toFixed(1)}% Share
+            </span>
+          </div>
+          <div style={{ fontSize: '1.55rem', fontWeight: 800, color: '#ea580c', marginTop: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            ฿{totalTapperShare.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+          </div>
+          <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.25rem' }}>
+            ค่าจ้างคนกรีดสะสม
+          </div>
+        </div>
+
+        {/* 3. Gross Income */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '14px',
+          padding: '1.15rem 1.25rem',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>3. รายได้สุทธิจากยาง</span>
+            <span style={{
+              background: '#e0f2fe',
+              color: '#0369a1',
+              padding: '0.2rem 0.45rem',
+              borderRadius: '6px',
+              fontSize: '0.72rem',
+              fontWeight: 700
+            }}>
+              {grossMargin.toFixed(1)}% Margin
+            </span>
+          </div>
+          <div style={{ fontSize: '1.55rem', fontWeight: 800, color: '#0284c7', marginTop: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            ฿{grossIncome.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+          </div>
+          <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.25rem' }}>
+            ยอดขาย - ส่วนแบ่งคนกรีด
+          </div>
+        </div>
+
+        {/* 4. Plot Expenses */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '14px',
+          padding: '1.15rem 1.25rem',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>4. ค่าใช้จ่ายดูแลสวน</span>
+            <span style={{ background: '#fee2e2', color: '#dc2626', padding: '0.2rem 0.45rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700 }}>
+              Expenses
+            </span>
+          </div>
+          <div style={{ fontSize: '1.55rem', fontWeight: 800, color: '#dc2626', marginTop: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            ฿{totalExpenses.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+          </div>
+          <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.25rem' }}>
+            รวม {expenses.length} รายการค่าใช้จ่าย
+          </div>
+        </div>
+
+        {/* 5. Net Profit (Aligned in Same Row) */}
+        <div style={{
+          background: netProfit >= 0 ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' : 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
+          borderRadius: '14px',
+          padding: '1.15rem 1.25rem',
+          border: netProfit >= 0 ? '2px solid #86efac' : '2px solid #fca5a5',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.82rem', color: netProfit >= 0 ? '#166534' : '#991b1b', fontWeight: 700 }}>
+              5. กำไรสุทธิของสวน
+            </span>
+            <span style={{
+              background: netProfit >= 0 ? '#16a34a' : '#dc2626',
+              color: '#fff',
+              padding: '0.2rem 0.5rem',
+              borderRadius: '6px',
+              fontSize: '0.72rem',
+              fontWeight: 800
+            }}>
+              {netMargin.toFixed(1)}% Net
+            </span>
+          </div>
+          <div style={{
+            fontSize: '1.65rem',
+            fontWeight: 900,
+            color: netProfit >= 0 ? '#14532d' : '#b91c1c',
+            marginTop: '0.4rem',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
+            ฿{netProfit.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+          </div>
+          <div style={{ fontSize: '0.78rem', color: netProfit >= 0 ? '#166534' : '#991b1b', marginTop: '0.25rem' }}>
+            รายได้สุทธิ - ค่าใช้จ่ายดูแลสวน
+          </div>
+        </div>
       </div>
 
-      {/* 4. Analytics & Productivity Section */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
-        
-        {/* Analytics 1: สัดส่วนค่าใช้จ่ายดูแลสวน (Donut Chart) */}
-        <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-            <span style={{ fontSize: '1.2rem' }}>🍩</span>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
-              สัดส่วนค่าใช้จ่ายดูแลสวนแยกตามหมวดหมู่
-            </h3>
+      {/* 5. Twin Performance Cards (Yield & Price/Cost Benchmark) */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        gap: '1.25rem',
+        marginBottom: '1.75rem'
+      }}>
+        {/* Left: Yield Summary Card */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          padding: '1.35rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Scale size={18} color="#16a34a" />
+              ประสิทธิภาพผลผลิต (Yield Summary)
+            </h4>
+            <span style={{
+              fontSize: '0.75rem',
+              padding: '0.2rem 0.5rem',
+              borderRadius: '6px',
+              fontWeight: 700,
+              background: '#dcfce7',
+              color: '#15803d'
+            }}>
+              {transactions.length} รอบกรีดสะสม
+            </span>
           </div>
 
-          {expenseByCategoryData.length === 0 ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '220px', color: '#94a3b8' }}>
-              <Layers size={36} strokeWidth={1.5} style={{ marginBottom: '0.5rem' }} />
-              <p style={{ margin: 0, fontSize: '0.875rem' }}>ยังไม่มีรายการบันทึกค่าใช้จ่ายในช่วงเวลานี้</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ height: '200px', width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={expenseByCategoryData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      paddingAngle={3}
-                    >
-                      {expenseByCategoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={EXPENSE_COLORS[index % EXPENSE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(val) => `฿${parseFloat(val).toLocaleString(undefined, { minimumFractionDigits: 2 })}`} 
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '10px' }}>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>น้ำหนักยางสดรวม (กก.)</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
+                {totalRawWeight.toLocaleString('th-TH', { minimumFractionDigits: 1 })} กก.
               </div>
+              <div style={{ fontSize: '0.72rem', color: '#16a34a', marginTop: '2px', fontWeight: 600 }}>
+                เนื้อยางแห้ง: {totalDryWeight.toLocaleString('th-TH', { minimumFractionDigits: 1 })} กก.
+              </div>
+            </div>
 
-              {/* Expense Legend List */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem', maxHeight: '120px', overflowY: 'auto' }}>
-                {expenseByCategoryData.map((item, idx) => (
-                  <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
-                    <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: EXPENSE_COLORS[idx % EXPENSE_COLORS.length] }}></div>
-                    <span style={{ color: '#475569', flex: 1, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{item.name}</span>
-                    <strong style={{ color: '#0f172a' }}>฿{item.value.toLocaleString()}</strong>
-                  </div>
-                ))}
+            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '10px' }}>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>ผลผลิตเฉลี่ยต่อรอบกรีด</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
+                {avgRawWeightPerTap.toFixed(1)} กก./รอบ
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#0284c7', marginTop: '2px', fontWeight: 600 }}>
+                ยางแห้งเฉลี่ย: {avgDryWeightPerTap.toFixed(1)} กก./รอบ
               </div>
             </div>
-          )}
+          </div>
+
+          <div style={{
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '10px',
+            padding: '0.75rem 1rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <div style={{ fontSize: '0.8rem', color: '#166534', fontWeight: 600 }}>
+                น้ำหนักยางสดสะสมตลอดช่วงเวลา
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                ผลผลิตยางสะสมของสวนในรอบ {dateRange.label}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#15803d' }}>
+                {totalRawWeight.toLocaleString('th-TH', { minimumFractionDigits: 0 })} กก.
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Analytics 2: ประสิทธิภาพผลผลิต & ต้นทุนต่อหน่วย */}
-        <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-            <span style={{ fontSize: '1.2rem' }}>⚖️</span>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
-              ประสิทธิภาพผลผลิต & ต้นทุนต่อกิโลกรัม
-            </h3>
+        {/* Right: Price & Cost Benchmark Card */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          padding: '1.35rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Percent size={18} color="#7c3aed" />
+              ข้อมูลราคาและต้นทุน (Price & Cost Benchmark)
+            </h4>
+            <span style={{
+              fontSize: '0.75rem',
+              padding: '0.2rem 0.5rem',
+              borderRadius: '6px',
+              fontWeight: 700,
+              background: '#e0f2fe',
+              color: '#0369a1'
+            }}>
+              Benchmark
+            </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', flex: 1 }}>
-            
-            <div style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>น้ำหนักยางรวม (กก.)</div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', marginTop: '0.2rem' }}>
-                {totalRawWeight.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} กก.
-              </div>
-              <div style={{ fontSize: '0.725rem', color: '#166534', fontWeight: 600, marginTop: '0.2rem' }}>
-                ยางแห้ง DRC: {totalDryWeight.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} กก.
-              </div>
-            </div>
-
-            <div style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>%DRC เฉลี่ย</div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', marginTop: '0.2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '10px' }}>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>%DRC เฉลี่ยสะสม</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
                 {avgDrc.toFixed(2)}%
               </div>
-              <div style={{ fontSize: '0.725rem', color: '#0284c7', fontWeight: 600, marginTop: '0.2rem' }}>
-                คุณภาพเนื้อยางสด
+              <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                คุณภาพน้ำยางพารา
               </div>
             </div>
 
-            <div style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>ราคาขายเฉลี่ย</div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#15803d', marginTop: '0.2rem' }}>
+            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '10px' }}>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>ราคาขายเฉลี่ย (บาท/กก.)</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#15803d' }}>
                 ฿{avgPricePerKg.toFixed(2)}
               </div>
-              <div style={{ fontSize: '0.725rem', color: '#64748b', marginTop: '0.2rem' }}>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
                 บาท / กก. ยางแห้ง
               </div>
             </div>
+          </div>
 
-            <div style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>ต้นทุนค่าใช้จ่ายเฉลี่ย</div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#e11d48', marginTop: '0.2rem' }}>
+          <div style={{
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '10px',
+            padding: '0.75rem 1rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <div style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 600 }}>
+                ต้นทุนดูแลสวนเฉลี่ยต่อ กก. ยาง
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                ส่วนต่างกำไรจากการผลิต: ฿{(avgPricePerKg - costPerKg).toFixed(2)} บาท/กก.
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ea580c' }}>
                 ฿{costPerKg.toFixed(2)}
               </div>
-              <div style={{ fontSize: '0.725rem', color: '#64748b', marginTop: '0.2rem' }}>
-                บาท / กก. ยางแห้ง
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                บาท / กก. ยางสด
               </div>
             </div>
-
           </div>
-
-          <div style={{ marginTop: '0.85rem', padding: '0.65rem 0.85rem', background: '#ecfdf5', borderRadius: '8px', border: '1px solid #a7f3d0', fontSize: '0.775rem', color: '#065f46', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <CheckCircle2 size={15} color="#059669" />
-            <span>
-              ส่วนต่างกำไรสุทธิต่อ กก. ยาง: <strong>฿{(avgPricePerKg - costPerKg).toFixed(2)} บาท/กก.</strong>
-            </span>
-          </div>
-        </div>
-
-      </div>
-
-      {/* 5. Financial Flow Bar Chart */}
-      <div className="card" style={{ padding: '1.25rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <BarChart3 size={18} color="#15803d" />
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
-              ภาพรวมกระแสการเงินของสวนยาง (Financial Breakdown)
-            </h3>
-          </div>
-          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-            ยอดรวมตามช่วงเวลาที่เลือก
-          </span>
-        </div>
-
-        <div style={{ height: '240px', width: '100%' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={financialFlowData} margin={{ top: 10, right: 20, left: 10, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} interval={0} />
-              <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `฿${(val/1000).toFixed(0)}k`} />
-              <Tooltip 
-                formatter={(val) => [`฿${parseFloat(val).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 'จำนวนเงิน']}
-                contentStyle={{ borderRadius: '8px', border: '1px solid #cbd5e1' }}
-              />
-              <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
-                {financialFlowData.map((entry, index) => (
-                  <Cell key={`bar-${index}`} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
         </div>
       </div>
 
-      {/* 6. Detailed Records Table Section */}
-      <div className="card" style={{ padding: '1.25rem' }}>
-        {/* Table Selector Tabs */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+      {/* 6. Visual Analytics Grid (Side-by-Side Dual Charts) */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+        gap: '1.25rem',
+        marginBottom: '1.75rem'
+      }}>
+        {/* Left: Financial Structure Bar Chart */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          padding: '1.5rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+        }}>
+          <h4 style={{ margin: '0 0 1rem', fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <BarChart3 size={18} color="#16a34a" />
+            โครงสร้างการเงิน (Financial Overview)
+          </h4>
+          <div style={{ height: '280px', width: '100%' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={financialChartData} margin={{ top: 10, right: 10, left: 10, bottom: 25 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} interval={0} angle={-15} textAnchor="end" />
+                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(val) => `฿${(val / 1000).toFixed(0)}k`} />
+                <Tooltip
+                  formatter={(val) => [`฿${Number(val).toLocaleString('th-TH', { minimumFractionDigits: 2 })}`, 'จำนวนเงิน']}
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                />
+                <Bar dataKey="amount" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Right: Donut Chart for Plot Expenses Breakdown */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          padding: '1.5rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+        }}>
+          <h4 style={{ margin: '0 0 1rem', fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <PieIcon size={18} color="#0284c7" />
+            สัดส่วนค่าใช้จ่ายดูแลสวน ({totalExpenses > 0 ? `฿${totalExpenses.toLocaleString('th-TH')}` : '฿0'})
+          </h4>
+          <div style={{ height: '280px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {expenseByCategoryData.length === 0 ? (
+              <div style={{ color: '#94a3b8', fontSize: '0.9rem', textAlign: 'center' }}>
+                ไม่มีข้อมูลค่าใช้จ่ายดูแลสวนในช่วงเวลานี้
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={expenseByCategoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={95}
+                    paddingAngle={3}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}
+                  >
+                    {expenseByCategoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={EXPENSE_COLORS[index % EXPENSE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(val) => [`฿${Number(val).toLocaleString('th-TH', { minimumFractionDigits: 2 })}`, 'จำนวนเงิน']}
+                    contentStyle={{ borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 7. Detailed Financial Statement Table */}
+      <div style={{
+        background: '#fff',
+        borderRadius: '16px',
+        border: '1px solid #e2e8f0',
+        padding: '1.5rem',
+        marginBottom: '1.75rem',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+      }}>
+        <h4 style={{ margin: '0 0 1.25rem', fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Layers size={20} color="#15803d" />
+          📑 งบกำไร-ขาดทุนเบื้องต้น (Statement of Profit or Loss)
+        </h4>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.925rem' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
+                <th style={{ padding: '0.85rem 1rem' }}>รายการทางการเงิน</th>
+                <th style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>จำนวนเงิน (บาท)</th>
+                <th style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>สัดส่วนเทียบยอดขาย (%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* 1. Revenue */}
+              <tr style={{ borderBottom: '1px solid #f1f5f9', fontWeight: 700 }}>
+                <td style={{ padding: '0.85rem 1rem', color: '#15803d' }}>
+                  (+) ยอดขายยางพารารวม (Total Sales Revenue)
+                </td>
+                <td style={{ padding: '0.85rem 1rem', textAlign: 'right', color: '#15803d' }}>
+                  ฿{totalRevenue.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                </td>
+                <td style={{ padding: '0.85rem 1rem', textAlign: 'right', color: '#64748b' }}>
+                  100.00%
+                </td>
+              </tr>
+
+              {/* 2. Tapper Share */}
+              <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '0.85rem 1rem', color: '#ea580c' }}>
+                  (-) ค่าจ้าง/ส่วนแบ่งคนกรีด (Tapper Share)
+                </td>
+                <td style={{ padding: '0.85rem 1rem', textAlign: 'right', color: '#ea580c', fontWeight: 600 }}>
+                  (฿{totalTapperShare.toLocaleString('th-TH', { minimumFractionDigits: 2 })})
+                </td>
+                <td style={{ padding: '0.85rem 1rem', textAlign: 'right', color: '#64748b' }}>
+                  {tapperSharePercent.toFixed(2)}%
+                </td>
+              </tr>
+
+              {/* 3. Gross Income */}
+              <tr style={{ borderBottom: '2px solid #cbd5e1', background: '#f8fafc', fontWeight: 800 }}>
+                <td style={{ padding: '0.85rem 1rem', color: '#0369a1' }}>
+                  (=) รายได้สุทธิจากยาง (Gross Income)
+                </td>
+                <td style={{ padding: '0.85rem 1rem', textAlign: 'right', color: '#0369a1' }}>
+                  ฿{grossIncome.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                </td>
+                <td style={{ padding: '0.85rem 1rem', textAlign: 'right', color: '#0369a1' }}>
+                  {grossMargin.toFixed(2)}%
+                </td>
+              </tr>
+
+              {/* 4. Plot Expenses */}
+              <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '0.85rem 1rem', color: '#dc2626', fontWeight: 600 }}>
+                  (-) ค่าใช้จ่ายดูแลสวนรวม (Plot Expenses)
+                </td>
+                <td style={{ padding: '0.85rem 1rem', textAlign: 'right', color: '#dc2626', fontWeight: 600 }}>
+                  (฿{totalExpenses.toLocaleString('th-TH', { minimumFractionDigits: 2 })})
+                </td>
+                <td style={{ padding: '0.85rem 1rem', textAlign: 'right', color: '#64748b' }}>
+                  {expensesPercent.toFixed(2)}%
+                </td>
+              </tr>
+
+              {/* Category Breakdown */}
+              {expenseByCategoryData.map((cat, idx) => (
+                <tr key={idx} style={{ borderBottom: '1px solid #f8fafc', color: '#64748b', fontSize: '0.85rem' }}>
+                  <td style={{ padding: '0.5rem 1rem 0.5rem 2.5rem' }}>
+                    • {cat.name}
+                  </td>
+                  <td style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>
+                    ฿{cat.value.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                  </td>
+                  <td style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>
+                    {totalRevenue > 0 ? `${((cat.value / totalRevenue) * 100).toFixed(2)}%` : '0.00%'}
+                  </td>
+                </tr>
+              ))}
+
+              {/* 5. Net Profit */}
+              <tr style={{
+                background: netProfit >= 0 ? '#f0fdf4' : '#fef2f2',
+                borderTop: '2px solid #0f172a',
+                borderBottom: '3px double #0f172a',
+                fontWeight: 900,
+                fontSize: '1.05rem'
+              }}>
+                <td style={{ padding: '1rem', color: netProfit >= 0 ? '#14532d' : '#991b1b' }}>
+                  (=) กำไรสุทธิประจำงวด (Net Profit)
+                </td>
+                <td style={{ padding: '1rem', textAlign: 'right', color: netProfit >= 0 ? '#14532d' : '#991b1b' }}>
+                  ฿{netProfit.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                </td>
+                <td style={{ padding: '1rem', textAlign: 'right', color: netProfit >= 0 ? '#14532d' : '#991b1b' }}>
+                  {netMargin.toFixed(2)}%
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 8. Tabbed Detailed History Section */}
+      <div style={{
+        background: '#fff',
+        borderRadius: '16px',
+        border: '1px solid #e2e8f0',
+        padding: '1.5rem',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          marginBottom: '1.25rem'
+        }}>
+          {/* Sub Tabs */}
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
               onClick={() => setActiveDetailTab('sales')}
               style={{
-                padding: '0.5rem 1rem',
+                padding: '0.55rem 1rem',
                 borderRadius: '8px',
-                border: 'none',
-                fontSize: '0.875rem',
+                border: activeDetailTab === 'sales' ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                background: activeDetailTab === 'sales' ? '#f0fdf4' : '#fff',
+                color: activeDetailTab === 'sales' ? '#166534' : '#475569',
                 fontWeight: activeDetailTab === 'sales' ? 700 : 500,
-                background: activeDetailTab === 'sales' ? '#f0fdf4' : 'transparent',
-                color: activeDetailTab === 'sales' ? '#15803d' : '#64748b',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                borderBottom: activeDetailTab === 'sales' ? '2px solid #15803d' : 'none'
+                fontSize: '0.85rem',
+                cursor: 'pointer'
               }}
             >
-              <span>📋 รายการบิลขายยาง ({transactions.length})</span>
+              📦 ประวัติบิลขายยาง ({transactions.length})
             </button>
 
             <button
               onClick={() => setActiveDetailTab('expenses')}
               style={{
-                padding: '0.5rem 1rem',
+                padding: '0.55rem 1rem',
                 borderRadius: '8px',
-                border: 'none',
-                fontSize: '0.875rem',
+                border: activeDetailTab === 'expenses' ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                background: activeDetailTab === 'expenses' ? '#f0fdf4' : '#fff',
+                color: activeDetailTab === 'expenses' ? '#166534' : '#475569',
                 fontWeight: activeDetailTab === 'expenses' ? 700 : 500,
-                background: activeDetailTab === 'expenses' ? '#fff1f2' : 'transparent',
-                color: activeDetailTab === 'expenses' ? '#be123c' : '#64748b',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                borderBottom: activeDetailTab === 'expenses' ? '2px solid #e11d48' : 'none'
+                fontSize: '0.85rem',
+                cursor: 'pointer'
               }}
             >
-              <span>💸 รายการค่าใช้จ่ายสวน ({expenses.length})</span>
+              💸 รายการค่าใช้จ่ายสวน ({expenses.length})
             </button>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {/* Search */}
+          <div style={{ position: 'relative' }}>
+            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
               placeholder="ค้นหารายการ..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="form-input"
-              style={{ padding: '0.35rem 0.65rem', fontSize: '0.825rem', width: '180px' }}
+              style={{
+                padding: '0.45rem 0.75rem 0.45rem 2.2rem',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                fontSize: '0.85rem',
+                width: '180px'
+              }}
             />
           </div>
         </div>
 
-        {/* Tab 1: Sales Transactions Table */}
-        {activeDetailTab === 'sales' && (
-          <div style={{ overflowX: 'auto' }}>
-            {filteredTableTxs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
-                <p style={{ margin: 0 }}>ไม่มีรายการขายยางในช่วงเวลานี้</p>
-              </div>
-            ) : (
-              <table className="table" style={{ width: '100%', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc', color: '#475569', textAlign: 'left' }}>
-                    <th style={{ padding: '0.65rem 0.75rem' }}>วันที่</th>
-                    <th style={{ padding: '0.65rem 0.75rem' }}>คิว / เลขบิล</th>
-                    <th style={{ padding: '0.65rem 0.75rem' }}>ร้านที่ขาย</th>
-                    <th style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>น้ำหนักสด (กก.)</th>
-                    <th style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>%DRC</th>
-                    <th style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>ยางแห้ง (กก.)</th>
-                    <th style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>ราคา (บาท)</th>
-                    <th style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>ยอดรวม (บาท)</th>
-                    <th style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>ส่วนแบ่งคนกรีด</th>
-                    <th style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>รายได้สุทธิ</th>
-                    <th style={{ padding: '0.65rem 0.75rem', textAlign: 'center' }}>จัดการ</th>
+        {/* Detailed Table */}
+        <div style={{ overflowX: 'auto' }}>
+          {activeDetailTab === 'sales' ? (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
+                  <th style={{ padding: '0.75rem 0.85rem' }}>วันที่</th>
+                  <th style={{ padding: '0.75rem 0.85rem' }}>ร้านที่รับซื้อ</th>
+                  <th style={{ padding: '0.75rem 0.85rem', textAlign: 'right' }}>น้ำหนักสด (กก.)</th>
+                  <th style={{ padding: '0.75rem 0.85rem', textAlign: 'right' }}>%DRC</th>
+                  <th style={{ padding: '0.75rem 0.85rem', textAlign: 'right' }}>ราคา (บาท/กก.)</th>
+                  <th style={{ padding: '0.75rem 0.85rem', textAlign: 'right' }}>ยอดรวม (บาท)</th>
+                  <th style={{ padding: '0.75rem 0.85rem', textAlign: 'right' }}>ส่วนแบ่งคนกรีด</th>
+                  <th style={{ padding: '0.75rem 0.85rem', textAlign: 'right' }}>รายได้เจ้าของสวน</th>
+                  <th style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>จัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSales.length === 0 ? (
+                  <tr>
+                    <td colSpan="9" style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
+                      ไม่มีข้อมูลบิลขายยางในช่วงเวลานี้
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredTableTxs.map(tx => {
-                    const amt = parseFloat(tx.total_amount) || parseFloat(tx.total_amount_thb) || 0;
-                    const tapperShare = parseFloat(tx.tapper_share_amount) || 0;
-                    const netIncome = amt - tapperShare;
-                    const isManualBill = !tx.buyer_id || tx.queue_number === 'E-BILL';
-
-                    return (
-                      <tr key={tx.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '0.65rem 0.75rem' }}>{tx.date || '-'}</td>
-                        <td style={{ padding: '0.65rem 0.75rem', fontWeight: 600 }}>
-                          <span style={{ 
-                            background: isManualBill ? '#f1f5f9' : '#ecfdf5', 
-                            color: isManualBill ? '#475569' : '#15803d',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            fontSize: '0.75rem'
-                          }}>
-                            {tx.queue_number || 'E-BILL'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '0.65rem 0.75rem', fontWeight: 500 }}>
-                          {tx.buyer_name || 'ร้านรับซื้อทั่วไป'}
-                        </td>
-                        <td style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>
-                          {parseFloat(tx.raw_weight_kg || 0).toFixed(2)}
-                        </td>
-                        <td style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>
-                          {parseFloat(tx.drc_percentage || 0).toFixed(2)}%
-                        </td>
-                        <td style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>
-                          {parseFloat(tx.dry_weight_kg || 0).toFixed(2)}
-                        </td>
-                        <td style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>
-                          ฿{parseFloat(tx.price_per_kg || 0).toFixed(2)}
-                        </td>
-                        <td style={{ padding: '0.65rem 0.75rem', textAlign: 'right', fontWeight: 700 }}>
-                          ฿{amt.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </td>
-                        <td style={{ padding: '0.65rem 0.75rem', textAlign: 'right', color: '#d97706' }}>
-                          ฿{tapperShare.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </td>
-                        <td style={{ padding: '0.65rem 0.75rem', textAlign: 'right', fontWeight: 700, color: '#15803d' }}>
-                          ฿{netIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </td>
-                        <td style={{ padding: '0.65rem 0.75rem', textAlign: 'center' }}>
-                          {isManualBill ? (
-                            <div style={{ display: 'inline-flex', gap: '4px' }}>
-                              {onEdit && (
-                                <button
-                                  onClick={() => onEdit(tx)}
-                                  className="btn-sm"
-                                  style={{ padding: '2px 6px', fontSize: '0.75rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '4px' }}
-                                  title="แก้ไข"
-                                >
-                                  ✏️
-                                </button>
-                              )}
-                              {onDelete && (
-                                <button
-                                  onClick={() => {
-                                    if (window.confirm('คุณต้องการลบรายการนี้ใช่หรือไม่?')) {
-                                      onDelete(tx.id);
-                                    }
-                                  }}
-                                  className="btn-sm"
-                                  style={{ padding: '2px 6px', fontSize: '0.75rem', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: '4px' }}
-                                  title="ลบ"
-                                >
-                                  🗑️
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            <span style={{ fontSize: '0.7rem', color: '#059669', background: '#ecfdf5', padding: '2px 5px', borderRadius: '4px' }}>
-                              ซิงค์แล้ว
-                            </span>
+                ) : (
+                  filteredSales.map((t) => (
+                    <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '0.75rem 0.85rem', fontWeight: 600, color: '#334155' }}>
+                        {t.date ? new Date(t.date).toLocaleDateString('th-TH') : '-'}
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem', color: '#334155' }}>
+                        {t.buyer_name || 'ร้านรับซื้อยาง'}
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: 600 }}>
+                        {parseFloat(t.raw_weight_kg || 0).toFixed(2)}
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', color: '#0284c7', fontWeight: 600 }}>
+                        {parseFloat(t.drc_percentage || 0).toFixed(2)}%
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right' }}>
+                        ฿{parseFloat(t.price_per_kg || 0).toFixed(2)}
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: 700, color: '#16a34a' }}>
+                        ฿{parseFloat(t.total_amount || t.total_amount_thb || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', color: '#ea580c' }}>
+                        ฿{parseFloat(t.tapper_share_amount || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: 700, color: '#15803d' }}>
+                        ฿{parseFloat(t.owner_share_amount || (parseFloat(t.total_amount || 0) - parseFloat(t.tapper_share_amount || 0))).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                          {onEdit && (
+                            <button
+                              onClick={() => onEdit(t)}
+                              style={{ background: '#f8fafc', border: '1px solid #cbd5e1', padding: '0.25rem 0.45rem', borderRadius: '4px', cursor: 'pointer' }}
+                              title="แก้ไข"
+                            >
+                              <Edit2 size={13} />
+                            </button>
                           )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
-
-        {/* Tab 2: Expenses Table */}
-        {activeDetailTab === 'expenses' && (
-          <div style={{ overflowX: 'auto' }}>
-            {expenses.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
-                <p style={{ margin: 0 }}>ไม่มีรายการค่าใช้จ่ายในช่วงเวลานี้</p>
-              </div>
-            ) : (
-              <table className="table" style={{ width: '100%', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc', color: '#475569', textAlign: 'left' }}>
-                    <th style={{ padding: '0.65rem 0.75rem' }}>วันที่</th>
-                    <th style={{ padding: '0.65rem 0.75rem' }}>แปลงสวน</th>
-                    <th style={{ padding: '0.65rem 0.75rem' }}>หมวดหมู่</th>
-                    <th style={{ padding: '0.65rem 0.75rem' }}>รายละเอียด</th>
-                    <th style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>จำนวนเงิน (บาท)</th>
+                          {onDelete && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm('ยืนยันการลบบิลขายยางนี้หรือไม่?')) {
+                                  onDelete(t.id);
+                                }
+                              }}
+                              style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '0.25rem 0.45rem', borderRadius: '4px', color: '#ef4444', cursor: 'pointer' }}
+                              title="ลบ"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
+                  <th style={{ padding: '0.75rem 0.85rem' }}>วันที่</th>
+                  <th style={{ padding: '0.75rem 0.85rem' }}>หมวดหมู่</th>
+                  <th style={{ padding: '0.75rem 0.85rem' }}>รายละเอียด / หมายเหตุ</th>
+                  <th style={{ padding: '0.75rem 0.85rem' }}>ผู้บันทึก</th>
+                  <th style={{ padding: '0.75rem 0.85rem', textAlign: 'right' }}>จำนวนเงิน (บาท)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredExpensesList.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
+                      ไม่มีข้อมูลรายการค่าใช้จ่ายในช่วงเวลานี้
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {expenses.map(e => {
-                    const plotName = plots.find(p => p.plot_id === e.plot_id)?.plot_name || 'สวนทั่วไป';
-                    return (
-                      <tr key={e.expense_id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '0.65rem 0.75rem' }}>{e.expense_date || '-'}</td>
-                        <td style={{ padding: '0.65rem 0.75rem', fontWeight: 600 }}>{plotName}</td>
-                        <td style={{ padding: '0.65rem 0.75rem' }}>
-                          <span style={{ background: '#f1f5f9', padding: '3px 7px', borderRadius: '4px', fontSize: '0.75rem', color: '#475569' }}>
-                            {e.category || 'อื่นๆ'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '0.65rem 0.75rem', color: '#64748b' }}>{e.description || '-'}</td>
-                        <td style={{ padding: '0.65rem 0.75rem', textAlign: 'right', fontWeight: 700, color: '#be123c' }}>
-                          ฿{parseFloat(e.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
-
+                ) : (
+                  filteredExpensesList.map((e) => (
+                    <tr key={e.expense_id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '0.75rem 0.85rem', fontWeight: 600, color: '#334155' }}>
+                        {e.expense_date ? new Date(e.expense_date).toLocaleDateString('th-TH') : '-'}
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem' }}>
+                        <span style={{
+                          background: '#f1f5f9',
+                          color: '#334155',
+                          padding: '0.2rem 0.5rem',
+                          borderRadius: '6px',
+                          fontWeight: 600,
+                          fontSize: '0.8rem'
+                        }}>
+                          {e.category}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem', color: '#334155' }}>
+                        {e.description || '-'}
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem', color: '#64748b' }}>
+                        {e.recorder?.full_name || 'ชาวสวนยาง'}
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>
+                        -฿{parseFloat(e.amount || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </div>
   );

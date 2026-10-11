@@ -253,35 +253,33 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
     });
   };
 
-  const handleLoadYesterdaySettings = async () => {
+  const handleLoadLatestSettings = async () => {
     setSavingSettings(true);
     try {
-      const d = new Date();
-      d.setDate(d.getDate() - 1);
-      const yesterdayStr = d.toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+      const latestSettings = await db.getLatestDailySettings(todayStr);
       
-      const yesterdaySettings = await db.getDailySettings(yesterdayStr);
-      
-      if (yesterdaySettings) {
-        setBasePrice(yesterdaySettings.base_price || '');
-        setFormulaType(yesterdaySettings.formula_type || 'standard');
-        setWetWeightG(yesterdaySettings.wet_sample_weight_g || 10);
-        setPricingMode(yesterdaySettings.pricing_mode || 'flat');
-        if (yesterdaySettings.price_tiers?.length > 0) {
-          setPriceTiers(yesterdaySettings.price_tiers);
+      if (latestSettings) {
+        setBasePrice(latestSettings.base_price || '');
+        setFormulaType(latestSettings.formula_type || 'standard');
+        setWetWeightG(latestSettings.wet_sample_weight_g || 10);
+        setPricingMode(latestSettings.pricing_mode || 'flat');
+        if (latestSettings.price_tiers?.length > 0) {
+          setPriceTiers(latestSettings.price_tiers);
         }
-        setSuccessMsg(`คัดลอกตั้งค่าของเมื่อวาน (${yesterdayStr}) มาแล้ว (กรุณาตรวจสอบและกดบันทึก)`);
+        setSuccessMsg(`คัดลอกราคาและสูตรจากครั้งล่าสุด (${latestSettings.date}) มาแล้ว (กรุณาตรวจสอบและกดบันทึก)`);
         setTimeout(() => setSuccessMsg(''), 5000);
       } else {
-        alert(`ไม่พบประวัติการตั้งค่าของเมื่อวาน (${yesterdayStr})`);
+        alert('ไม่พบประวัติการตั้งค่าราคาครั้งล่าสุด');
       }
     } catch (err) {
-      console.error('Failed to load yesterday settings', err);
-      alert('เกิดข้อผิดพลาดในการดึงข้อมูลของวันก่อนหน้า');
+      console.error('Failed to load latest settings', err);
+      alert('เกิดข้อผิดพลาดในการดึงข้อมูลราคาครั้งล่าสุด');
     } finally {
       setSavingSettings(false);
     }
   };
+  const handleLoadYesterdaySettings = handleLoadLatestSettings;
 
   const handleExportData = async (tableName) => {
     try {
@@ -447,15 +445,16 @@ function StoreRegistration({ currentUser, onUpdateProfile, dailySettings, onSave
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button 
                     type="button" 
-                    onClick={handleLoadYesterdaySettings}
+                    onClick={handleLoadLatestSettings}
                     disabled={savingSettings}
                     style={{
                       background: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1',
                       borderRadius: '8px', padding: '0.4rem 0.75rem', fontSize: '0.85rem',
                       display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontWeight: '600'
                     }}
+                    title="ดึงราคาและสูตรจากการตั้งค่าครั้งล่าสุด"
                   >
-                    <span style={{ fontSize: '1rem' }}>🔄</span> ดึงราคาของเมื่อวาน
+                    <span style={{ fontSize: '1rem' }}>🔄</span> ดึงราคาครั้งล่าสุด
                   </button>
                   <button
                     type="button"

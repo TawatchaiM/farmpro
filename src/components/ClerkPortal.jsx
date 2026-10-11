@@ -184,24 +184,17 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
     if (!currentSettings) {
       const wantPrevious = window.confirm(
         '⚠️ ยังไม่ได้ตั้งค่าราคาประจำวัน\n\n' +
-        'คุณต้องการใช้ราคาวันก่อนหน้าหรือไม่?\n\n' +
-        '- กด OK เพื่อดึงราคาวันก่อนหน้ามาบันทึกและดำเนินการต่อ\n' +
+        'คุณต้องการใช้ราคาครั้งล่าสุดหรือไม่?\n\n' +
+        '- กด OK เพื่อดึงราคาครั้งล่าสุดมาบันทึกและดำเนินการต่อ\n' +
         '- กด Cancel เพื่อไปตั้งค่าราคาด้วยตนเอง'
       );
       if (wantPrevious) {
         setCreatingTx(true);
         try {
-          let prevSettings = null;
-          for (let i = 1; i <= 7; i++) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const pastDateStr = d.toISOString().split('T')[0];
-            prevSettings = await db.getDailySettings(pastDateStr);
-            if (prevSettings) break;
-          }
+          const todayStr = new Date().toISOString().split('T')[0];
+          const prevSettings = await db.getLatestDailySettings(todayStr);
 
           if (prevSettings) {
-            const todayStr = new Date().toISOString().split('T')[0];
             const newSettings = {
               ...prevSettings,
               id: undefined,
@@ -216,7 +209,7 @@ function ClerkPortal({ currentUser, dailySettings, transactions, onCreateTransac
             currentSettings = newSettings;
             // continue below to save weight in...
           } else {
-            alert('ไม่พบข้อมูลราคาย้อนหลังภายใน 7 วัน กรุณาไปตั้งค่าราคาด้วยตนเอง');
+            alert('ไม่พบข้อมูลการตั้งค่าราคาครั้งล่าสุดในระบบ กรุณาไปตั้งค่าราคาด้วยตนเอง');
             setCreatingTx(false);
             return;
           }

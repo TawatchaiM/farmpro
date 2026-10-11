@@ -731,6 +731,78 @@ export const db = {
     }
   },
 
+  getLatestDailySettings: async (beforeDateStr = null) => {
+    const storeId = getCurrentStoreId();
+    if (isMock) {
+      await delay(200);
+      const settingsList = safeJsonParse('farmpro_daily_settings', []);
+      let filtered = settingsList.filter(s => {
+        if (storeId && s.store_owner_id && s.store_owner_id !== storeId) return false;
+        if (beforeDateStr && s.date >= beforeDateStr) return false;
+        return true;
+      });
+      filtered.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      if (filtered.length > 0) return filtered[0];
+
+      // Fallback: If beforeDateStr was passed but nothing found before it, check if any settings exist for other dates
+      if (beforeDateStr) {
+        let otherDates = settingsList.filter(s => {
+          if (storeId && s.store_owner_id && s.store_owner_id !== storeId) return false;
+          return s.date !== beforeDateStr;
+        });
+        otherDates.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        if (otherDates.length > 0) return otherDates[0];
+      }
+      return null;
+    }
+
+    try {
+      let query = supabase
+        .from('daily_settings')
+        .select('*');
+      if (storeId) query = query.eq('store_owner_id', storeId);
+      if (beforeDateStr) query = query.lt('date', beforeDateStr);
+      query = query.order('date', { ascending: false }).limit(1);
+
+      const { data, error } = await query.maybeSingle();
+      if (error) throw error;
+      if (data) return data;
+
+      // Fallback if beforeDateStr yielded no results (e.g. date mismatch or only other dates)
+      if (beforeDateStr) {
+        let fallbackQuery = supabase
+          .from('daily_settings')
+          .select('*');
+        if (storeId) fallbackQuery = fallbackQuery.eq('store_owner_id', storeId);
+        fallbackQuery = fallbackQuery.neq('date', beforeDateStr).order('date', { ascending: false }).limit(1);
+        const { data: fallbackData, error: fallbackError } = await fallbackQuery.maybeSingle();
+        if (!fallbackError && fallbackData) return fallbackData;
+      }
+
+      return null;
+    } catch (err) {
+      console.error('Error fetching latest daily settings:', err);
+      const settingsList = safeJsonParse('farmpro_daily_settings', []);
+      let filtered = settingsList.filter(s => {
+        if (storeId && s.store_owner_id && s.store_owner_id !== storeId) return false;
+        if (beforeDateStr && s.date >= beforeDateStr) return false;
+        return true;
+      });
+      filtered.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      if (filtered.length > 0) return filtered[0];
+
+      if (beforeDateStr) {
+        let otherDates = settingsList.filter(s => {
+          if (storeId && s.store_owner_id && s.store_owner_id !== storeId) return false;
+          return s.date !== beforeDateStr;
+        });
+        otherDates.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        if (otherDates.length > 0) return otherDates[0];
+      }
+      return null;
+    }
+  },
+
   saveDailySettings: async (settings) => {
     const storeId = getCurrentStoreId();
     // ---- Always persist to localStorage first (offline + fast) ----

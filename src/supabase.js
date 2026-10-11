@@ -1410,22 +1410,80 @@ export const db = {
       return newExpense;
     }
     try {
+      const payload = {
+        plot_id: expenseData.plot_id,
+        recorded_by: expenseData.recorded_by,
+        expense_date: expenseData.expense_date,
+        category: expenseData.category,
+        amount: expenseData.amount,
+        description: expenseData.description
+      };
+      if (expenseData.receipt_url) {
+        payload.receipt_url = expenseData.receipt_url;
+      }
       const { data, error } = await supabase
         .from('plot_expenses')
-        .insert([{
-          plot_id: expenseData.plot_id,
-          recorded_by: expenseData.recorded_by,
-          expense_date: expenseData.expense_date,
-          category: expenseData.category,
-          amount: expenseData.amount,
-          description: expenseData.description
-        }])
-        .select()
+        .insert([payload])
+        .select('*, recorder:profiles!plot_expenses_recorded_by_fkey(full_name)')
         .single();
-      if (error) throw error;
+      if (error) {
+        // Fallback without receipt_url if column does not exist
+        delete payload.receipt_url;
+        const { data: fbData, error: fbErr } = await supabase
+          .from('plot_expenses')
+          .insert([payload])
+          .select('*, recorder:profiles!plot_expenses_recorded_by_fkey(full_name)')
+          .single();
+        if (fbErr) throw fbErr;
+        return fbData;
+      }
       return data;
     } catch (err) {
       console.error('Error adding plot expense:', err);
+      throw err;
+    }
+  },
+
+  updatePlotExpense: async (id, updates) => {
+    if (isMock) {
+      await delay(200);
+      let expenses = safeJsonParse('farmpro_plot_expenses', []);
+      expenses = expenses.map(e => e.expense_id === id ? { ...e, ...updates, updated_at: new Date().toISOString() } : e);
+      localStorage.setItem('farmpro_plot_expenses', JSON.stringify(expenses));
+      try { localStorage.setItem('farmpro_plot_expenses_event', JSON.stringify({ eventType: 'UPDATE', id, new: updates, timestamp: Date.now() })); } catch (e) {}
+      return { success: true };
+    }
+    try {
+      const payload = {
+        plot_id: updates.plot_id,
+        expense_date: updates.expense_date,
+        category: updates.category,
+        amount: updates.amount,
+        description: updates.description
+      };
+      if (updates.receipt_url !== undefined) {
+        payload.receipt_url = updates.receipt_url;
+      }
+      const { data, error } = await supabase
+        .from('plot_expenses')
+        .update(payload)
+        .eq('expense_id', id)
+        .select('*, recorder:profiles!plot_expenses_recorded_by_fkey(full_name)')
+        .single();
+      if (error) {
+        delete payload.receipt_url;
+        const { data: fbData, error: fbErr } = await supabase
+          .from('plot_expenses')
+          .update(payload)
+          .eq('expense_id', id)
+          .select('*, recorder:profiles!plot_expenses_recorded_by_fkey(full_name)')
+          .single();
+        if (fbErr) throw fbErr;
+        return fbData;
+      }
+      return data;
+    } catch (err) {
+      console.error('Error updating plot expense:', err);
       throw err;
     }
   },

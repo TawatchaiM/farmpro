@@ -2215,6 +2215,16 @@ export const db = {
                 candidateEmails.push(vEmail);
               }
             }
+            // Check if username holds original registration phone (before user changed phone number)
+            if (bestProf?.username) {
+              const uCleanPhone = normalizePhone(bestProf.username);
+              if (uCleanPhone && uCleanPhone !== normalizePhone(bestProf.phone_number)) {
+                const uEmail = phoneToVirtualEmail(uCleanPhone);
+                if (uEmail && !candidateEmails.includes(uEmail)) {
+                  candidateEmails.push(uEmail);
+                }
+              }
+            }
           }
         } catch (lookupErr) {
           console.warn('[Auth] Pre-login profile lookup warning:', lookupErr);
@@ -2306,6 +2316,20 @@ export const db = {
                 profile.user_id = authUserId;
               } catch (linkErr) {
                 console.warn('[Auth] Could not auto-link user_id in profiles:', linkErr);
+              }
+            }
+
+            // Auto-sync real email to Supabase Auth if user logged in via virtual phone email
+            // but now has a real email in profile (e.g. added email after phone registration)
+            if (profile.email && data.user.email !== profile.email.toLowerCase().trim() && data.user.email.endsWith('@farmpro.local')) {
+              console.log('[Auth] Auto-syncing updated real email to Supabase auth:', profile.email);
+              try {
+                await supabase.auth.updateUser({ 
+                  email: profile.email.toLowerCase().trim(),
+                  data: { phone_number: profile.phone_number || cleanPhone }
+                });
+              } catch (syncErr) {
+                console.warn('[Auth] Background auth email sync warning:', syncErr);
               }
             }
 
@@ -2945,20 +2969,66 @@ export const db = {
         }
       }
 
-      // Sync email to Supabase Auth if provided, so password reset can work for this email
-      if (updateData.email) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session && session.user) {
-            // Check if the current authenticated user owns this profile (either by ID or by matching current email)
-            const isOwner = session.user.id === id || session.user.email === mergedProfile.email || session.user.email === currentProfile.email;
-            if (isOwner && session.user.email !== updateData.email) {
-              await supabase.auth.updateUser({ email: updateData.email });
+      // Sync email and phone to Supabase Auth if provided, so password reset and login work for updated credentials
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user) {
+          const isOwner = session.user.id === id || 
+                          session.user.id === mergedProfile.user_id || 
+                          session.user.id === currentProfile.user_id ||
+                          session.user.email === mergedProfile.email || 
+                          session.user.email === currentProfile.email ||
+                          (mergedProfile.phone_number && session.user.email === phoneToVirtualEmail(mergedProfile.phone_number));
+
+          if (isOwner) {
+            const cleanNewEmail = updateData.email ? updateData.email.trim().toLowerCase() : '';
+            const cleanNewPhone = updateData.phone_number ? normalizePhone(updateData.phone_number) : '';
+            const isCurrentVirtual = session.user.email && session.user.email.endsWith('@farmpro.local');
+
+            // 1. If user provided a new real email, update auth user email
+            if (cleanNewEmail && session.user.email !== cleanNewEmail) {
+              console.log('[Auth] Updating auth user email to:', cleanNewEmail);
+              try {
+                await supabase.auth.updateUser({ 
+                  email: cleanNewEmail,
+                  data: { 
+                    phone_number: cleanNewPhone || mergedProfile.phone_number,
+                    email: cleanNewEmail
+                  } 
+                });
+              } catch (updateEmailErr) {
+                console.warn('Could not sync email to auth.users:', updateEmailErr);
+              }
+            } else if (cleanNewPhone) {
+              // 2. If user updated phone number and is still using virtual email, update virtual email to new phone
+              if (isCurrentVirtual && !cleanNewEmail) {
+                const newVirtualEmail = phoneToVirtualEmail(cleanNewPhone);
+                if (session.user.email !== newVirtualEmail) {
+                  console.log('[Auth] Updating virtual auth email to new phone:', newVirtualEmail);
+                  try {
+                    await supabase.auth.updateUser({ 
+                      email: newVirtualEmail,
+                      data: { phone_number: cleanNewPhone }
+                    });
+                  } catch (updatePhoneErr) {
+                    console.warn('Could not sync phone virtual email to auth.users:', updatePhoneErr);
+                  }
+                }
+              } else {
+                // Otherwise update metadata phone
+                try {
+                  await supabase.auth.updateUser({ 
+                    data: { phone_number: cleanNewPhone }
+                  });
+                } catch (updateMetaErr) {
+                  console.warn('Could not sync phone metadata to auth.users:', updateMetaErr);
+                }
+              }
             }
           }
-        } catch (authErr) {
-          console.warn('Could not sync email to auth.users:', authErr);
         }
+      } catch (authErr) {
+        console.warn('Could not sync credentials to auth.users:', authErr);
       }
 
       try {

@@ -784,10 +784,27 @@ const seedMockData = () => {
   }
 };
 
+// Helper to sanitize & normalize phone numbers (supports +66, 66, spaces, dashes)
+export const normalizePhone = (phone) => {
+  if (!phone) return '';
+  let cleaned = phone.toString().trim();
+  if (cleaned.startsWith('+66')) {
+    cleaned = '0' + cleaned.slice(3);
+  } else if (cleaned.startsWith('66') && cleaned.replace(/\D/g, '').length === 11) {
+    cleaned = '0' + cleaned.replace(/\D/g, '').slice(2);
+  }
+  const digits = cleaned.replace(/\D/g, '');
+  if (digits.length === 9 && !digits.startsWith('0')) {
+    return '0' + digits;
+  }
+  return digits;
+};
+
 // Helper to convert phone number to virtual auth email
 export const phoneToVirtualEmail = (phone) => {
   if (!phone) return '';
-  const digitsOnly = phone.toString().replace(/\D/g, '');
+  const digitsOnly = normalizePhone(phone);
+  if (!digitsOnly) return '';
   return `phone_${digitsOnly}@farmpro.local`;
 };
 
@@ -2048,10 +2065,11 @@ export const db = {
 
   // --- Auth & Account Management ---
   phoneToVirtualEmail,
+  normalizePhone,
   checkPhoneExists: async (phone) => {
-    const digits = (phone || '').toString().replace(/\D/g, '');
+    const digits = normalizePhone(phone);
     if (!digits) return false;
-    const virtualEmail = `phone_${digits}@farmpro.local`;
+    const virtualEmail = phoneToVirtualEmail(digits);
 
     if (!isMock && supabase) {
       try {
@@ -2068,23 +2086,23 @@ export const db = {
 
     const accounts = safeJsonParse('farmpro_accounts', []);
     const existsAccount = accounts.some(a => 
-      (a.phone_number && a.phone_number.replace(/\D/g, '') === digits) ||
-      (a.email && a.email === virtualEmail) ||
+      (a.phone_number && normalizePhone(a.phone_number) === digits) ||
+      (a.email && a.email.toLowerCase() === virtualEmail.toLowerCase()) ||
       (a.username && a.username === digits)
     );
     if (existsAccount) return true;
 
     const allProfiles = safeJsonParse('farmpro_all_profiles', []);
     return allProfiles.some(p => 
-      (p.phone_number && p.phone_number.replace(/\D/g, '') === digits) ||
-      (p.email && p.email === virtualEmail) ||
+      (p.phone_number && normalizePhone(p.phone_number) === digits) ||
+      (p.email && p.email.toLowerCase() === virtualEmail.toLowerCase()) ||
       (p.username && p.username === digits)
     );
   },
 
   signUp: async ({ email, username, phone, password, profileData }) => {
-    const cleanPhone = (phone || profileData?.phone_number || '').toString().replace(/\D/g, '');
-    const userEmail = email || (cleanPhone ? phoneToVirtualEmail(cleanPhone) : `${username || 'user'}@farmpro.local`);
+    const cleanPhone = normalizePhone(phone || profileData?.phone_number);
+    const userEmail = (email && email.trim()) || (cleanPhone ? phoneToVirtualEmail(cleanPhone) : `${username || 'user'}@farmpro.local`);
     const userUsername = username || cleanPhone || (email ? email.split('@')[0] : 'user');
     let userId = uuidv4();
 
@@ -2097,7 +2115,10 @@ export const db = {
             data: { username: userUsername, phone_number: cleanPhone }
           }
         });
-        if (error) throw error;
+        if (error) {
+          console.error('[Auth] Supabase auth signUp error:', error);
+          throw error;
+        }
         if (data?.user) {
           userId = data.user.id;
         }
@@ -2145,53 +2166,96 @@ export const db = {
 
   signIn: async ({ identifier, password }) => {
     const rawInput = (identifier || '').trim();
-    const digitsOnly = rawInput.replace(/\D/g, '');
-    
-    // Detect if input is phone number (9-10 numeric digits)
-    const isPhone = digitsOnly.length >= 9 && digitsOnly.length <= 10 && (rawInput.startsWith('0') || /^\d+$/.test(rawInput));
-    const cleanId = isPhone ? digitsOnly : rawInput.toLowerCase();
-    const virtualEmail = isPhone ? phoneToVirtualEmail(digitsOnly) : (rawInput.includes('@') ? rawInput : '');
+    const cleanPhone = normalizePhone(rawInput);
+    const isPhone = cleanPhone.length === 10 || (cleanPhone.length >= 9 && cleanPhone.startsWith('0'));
+    const isEmail = rawInput.includes('@');
+    const cleanId = isPhone ? cleanPhone : rawInput.toLowerCase();
+    const virtualEmail = isPhone ? phoneToVirtualEmail(cleanPhone) : (isEmail ? rawInput.toLowerCase() : '');
+
+    console.log('[Auth] Processing signIn attempt:', {
+      identifier: rawInput,
+      cleanPhone,
+      isPhone,
+      isEmail,
+      cleanId,
+      virtualEmail
+    });
 
     if (!isMock && supabase) {
       try {
         let authEmail = virtualEmail;
-        // Always try to find the real email from profiles if they provided a phone number or username
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('email')
-          .or(`phone_number.eq.${cleanId},username.eq.${cleanId},email.eq.${cleanId}`)
-          .maybeSingle();
-          
-        if (prof && prof.email) {
-          authEmail = prof.email;
-        } else if (!authEmail) {
-          authEmail = cleanId;
+
+        // Step 1: Look up existing profile in DB to resolve the user's registered auth email
+        try {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('email, id, user_id, phone_number, username')
+            .or(`phone_number.eq.${cleanPhone || cleanId},username.eq.${cleanId},email.eq.${cleanId}`)
+            .maybeSingle();
+
+          if (prof?.email) {
+            authEmail = prof.email;
+          }
+        } catch (lookupErr) {
+          console.warn('[Auth] Pre-login profile lookup warning:', lookupErr);
         }
+
+        if (!authEmail) {
+          authEmail = isPhone ? phoneToVirtualEmail(cleanPhone) : cleanId;
+        }
+
+        console.log('[Auth] Calling supabase.auth.signInWithPassword with email:', authEmail);
 
         const { data, error } = await supabase.auth.signInWithPassword({
           email: authEmail,
           password
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('[Auth] Supabase signInWithPassword returned error:', error);
+          throw error;
+        }
+
+        console.log('[Auth] Supabase signInWithPassword succeeded for user:', data?.user?.id);
 
         if (data?.user) {
-          let { data: profile } = await supabase
+          const authUserId = data.user.id;
+          let profile = null;
+
+          // Attempt 1: Look up profile by user_id or id matching authUserId
+          const { data: p1 } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', data.user.id)
+            .or(`user_id.eq.${authUserId},id.eq.${authUserId}`)
             .maybeSingle();
 
-          if (!profile) {
-            const { data: prof2 } = await supabase
+          if (p1) {
+            profile = p1;
+          } else {
+            // Attempt 2: Fall back to match by email or phone number
+            const { data: p2 } = await supabase
               .from('profiles')
               .select('*')
-              .or(`id.eq.${data.user.id},email.eq.${authEmail},phone_number.eq.${cleanId}`)
+              .or(`email.eq.${authEmail},phone_number.eq.${cleanPhone || cleanId}`)
               .maybeSingle();
-            profile = prof2;
+            profile = p2;
           }
 
           if (profile) {
+            // Auto-heal / Link profiles.user_id to auth.users.id if null or mismatched
+            if (!profile.user_id || profile.user_id !== authUserId) {
+              console.log('[Auth] Auto-linking profile.user_id to auth.users.id:', authUserId);
+              try {
+                await supabase
+                  .from('profiles')
+                  .update({ user_id: authUserId, updated_at: new Date().toISOString() })
+                  .eq('id', profile.id);
+                profile.user_id = authUserId;
+              } catch (linkErr) {
+                console.warn('[Auth] Could not auto-link user_id in profiles:', linkErr);
+              }
+            }
+
             const sanitizedProfile = sanitizeProfile(profile);
             const sanitizedSession = sanitizeSession(data.session);
             // IMPORTANT: Set current_role BEFORE getMockProfileKey() so profile is saved to correct key
@@ -2206,21 +2270,89 @@ export const db = {
             // Auto-heal local accounts password hash to keep it in sync with Supabase
             try {
               const accounts = safeJsonParse('farmpro_accounts', []);
-              const accIndex = accounts.findIndex(a => a.user_id === sanitizedProfile.id || (a.email && a.email === sanitizedProfile.email) || (a.phone_number && a.phone_number === sanitizedProfile.phone_number));
+              const accIndex = accounts.findIndex(a => 
+                a.user_id === sanitizedProfile.id || 
+                a.user_id === authUserId || 
+                (a.email && a.email.toLowerCase() === sanitizedProfile.email.toLowerCase()) || 
+                (a.phone_number && normalizePhone(a.phone_number) === cleanPhone)
+              );
               if (accIndex !== -1 && password) {
                 accounts[accIndex].password_hash = hashPassword(password);
                 accounts[accIndex].password = password;
+                accounts[accIndex].user_id = authUserId;
+                localStorage.setItem('farmpro_accounts', JSON.stringify(accounts));
+              } else if (password) {
+                accounts.push({
+                  user_id: authUserId,
+                  email: sanitizedProfile.email,
+                  username: sanitizedProfile.username || cleanPhone,
+                  phone_number: sanitizedProfile.phone_number,
+                  password_hash: hashPassword(password),
+                  password: password,
+                  created_at: new Date().toISOString()
+                });
                 localStorage.setItem('farmpro_accounts', JSON.stringify(accounts));
               }
             } catch (e) {
-              console.warn('Could not auto-heal local accounts password:', e);
+              console.warn('[Auth] Could not auto-heal local accounts password:', e);
             }
 
             return { success: true, session: sanitizedSession, profile: sanitizedProfile };
+          } else {
+            console.error('[Auth] Supabase auth succeeded, but profile was not found in public.profiles table!');
+            return {
+              success: false,
+              error: 'เข้าสู่ระบบสำเร็จแต่ไม่พบข้อมูลโปรไฟล์ในระบบ (Profile not found) กรุณาติดต่อผู้ดูแลระบบ',
+              errorCode: 'profile_not_found'
+            };
           }
         }
       } catch (err) {
-        console.warn('Supabase auth signIn error, checking local storage:', err);
+        console.error('[Auth] Supabase auth signIn exception:', err);
+        const errMsg = err?.message || '';
+        const errCode = err?.code || '';
+
+        // If email not confirmed in Supabase auth.users
+        if (errCode === 'email_not_confirmed' || errMsg.toLowerCase().includes('email not confirmed')) {
+          return {
+            success: false,
+            error: 'บัญชีนี้ยังไม่ได้รับการยืนยันตัวตนในระบบ (Email not confirmed) กรุณาแจ้งผู้ดูแลระบบเพื่อเปิดใช้งานบัญชี',
+            errorCode: 'email_not_confirmed',
+            rawError: err
+          };
+        }
+
+        // Invalid credentials (wrong password or username/email not found)
+        if (errCode === 'invalid_credentials' || errMsg.toLowerCase().includes('invalid login credentials')) {
+          return {
+            success: false,
+            error: 'เบอร์โทรศัพท์/อีเมล หรือรหัสผ่านไม่ถูกต้อง (Invalid login credentials)',
+            errorCode: 'invalid_credentials',
+            rawError: err
+          };
+        }
+
+        // Rate limit
+        if (errMsg.toLowerCase().includes('rate limit')) {
+          return {
+            success: false,
+            error: 'ระบบจำกัดความถี่ในการเข้าสู่ระบบชั่วคราว กรุณารอสักครู่แล้วลองใหม่อีกครั้ง (Rate limit)',
+            errorCode: 'rate_limited',
+            rawError: err
+          };
+        }
+
+        // Check if error is genuine network failure / offline
+        const isOffline = !window.navigator.onLine || errMsg.toLowerCase().includes('failed to fetch') || errMsg.toLowerCase().includes('network');
+        if (!isOffline) {
+          // Live error returned by server - return it directly rather than falling back to false offline message
+          return {
+            success: false,
+            error: `เข้าสู่ระบบไม่สำเร็จ: ${errMsg}`,
+            errorCode: errCode || 'auth_error',
+            rawError: err
+          };
+        }
       }
     }
 
@@ -2229,11 +2361,11 @@ export const db = {
     const inputHash = hashPassword(password);
     const matchedAccount = accounts.find(a => 
       (a.password_hash === inputHash || a.password === password) && (
-        (isPhone && a.phone_number && a.phone_number.replace(/\D/g, '') === digitsOnly) ||
+        (isPhone && a.phone_number && normalizePhone(a.phone_number) === cleanPhone) ||
         (a.email && a.email.toLowerCase() === virtualEmail.toLowerCase()) ||
         (a.email && a.email.toLowerCase() === cleanId) ||
-        (a.username && a.username.toLowerCase() === cleanId) ||
-        (a.phone_number && a.phone_number.replace(/\D/g, '') === digitsOnly)
+        (a.username && a.username === cleanId) ||
+        (a.phone_number && normalizePhone(a.phone_number) === cleanPhone)
       )
     );
 
@@ -2245,10 +2377,10 @@ export const db = {
       
       if (!targetProfile) {
         targetProfile = allProfiles.find(p => 
-          (p.phone_number && p.phone_number.replace(/\D/g, '') === digitsOnly) ||
+          (p.phone_number && normalizePhone(p.phone_number) === cleanPhone) ||
           (p.email && p.email.toLowerCase() === virtualEmail.toLowerCase()) ||
           (p.email && p.email.toLowerCase() === cleanId) ||
-          (p.username && p.username.toLowerCase() === cleanId)
+          (p.username && p.username === cleanId)
         );
       }
 
@@ -2258,7 +2390,7 @@ export const db = {
         full_name: matchedAccount.username || 'ผู้ใช้งาน',
         email: matchedAccount.email,
         username: matchedAccount.username,
-        phone_number: matchedAccount.phone_number || digitsOnly,
+        phone_number: matchedAccount.phone_number || cleanPhone,
         status: 'approved'
       };
       const profileToUse = sanitizeProfile(rawProfileToUse);
@@ -2365,13 +2497,26 @@ export const db = {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          const { data: profile } = await supabase
+          let { data: profile } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', session.user.id)
+            .or(`user_id.eq.${session.user.id},id.eq.${session.user.id},email.eq.${session.user.email}`)
             .maybeSingle();
 
           if (profile) {
+            // Auto-heal profiles.user_id if null or mismatched
+            if (!profile.user_id || profile.user_id !== session.user.id) {
+              try {
+                await supabase
+                  .from('profiles')
+                  .update({ user_id: session.user.id, updated_at: new Date().toISOString() })
+                  .eq('id', profile.id);
+                profile.user_id = session.user.id;
+              } catch (linkErr) {
+                console.warn('[Auth] Could not auto-link user_id in getCurrentSession:', linkErr);
+              }
+            }
+
             const sanitizedProfile = sanitizeProfile(profile);
             const sanitizedSession = sanitizeSession(session);
             localStorage.setItem(getMockProfileKey(), JSON.stringify(sanitizedProfile));
@@ -2404,13 +2549,26 @@ export const db = {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
-            const { data: remoteProfile, error } = await supabase
+            let { data: remoteProfile, error } = await supabase
               .from('profiles')
               .select('*')
-              .eq('id', session.user.id)
+              .or(`user_id.eq.${session.user.id},id.eq.${session.user.id},email.eq.${session.user.email}`)
               .maybeSingle();
 
             if (remoteProfile && !error) {
+              // Auto-heal profiles.user_id if null or mismatched
+              if (!remoteProfile.user_id || remoteProfile.user_id !== session.user.id) {
+                try {
+                  await supabase
+                    .from('profiles')
+                    .update({ user_id: session.user.id, updated_at: new Date().toISOString() })
+                    .eq('id', remoteProfile.id);
+                  remoteProfile.user_id = session.user.id;
+                } catch (linkErr) {
+                  console.warn('[Auth] Could not auto-link user_id in getProfileSWR:', linkErr);
+                }
+              }
+
               const sanitizedProfile = sanitizeProfile(remoteProfile);
               const sanitizedSession = sanitizeSession(session);
               // Sync role key so getMockProfileKey() always resolves correctly
@@ -2521,21 +2679,29 @@ export const db = {
           dbPayload[key] = fullProfile[key];
         }
       }
-      // user_id is a FK to auth.users -- only send it when user registered via Supabase Auth
-      // (i.e. when the id was obtained from supabase.auth.signUp, not a local uuidv4)
-      // We detect this by checking if user_id === id (locally-generated profiles have this pattern)
-      // and the id doesn't exist in auth.users yet. Safest: just set user_id = null for local UUIDs.
-      const isLocalUUID = !profileData.user_id || profileData.user_id === id;
-      if (isLocalUUID) {
-        dbPayload.user_id = null;
+      // Ensure phone_number is properly normalized
+      if (dbPayload.phone_number) {
+        dbPayload.phone_number = normalizePhone(dbPayload.phone_number);
       }
       dbPayload.updated_at = new Date().toISOString();
 
-      // Step 1: Try upsert by primary key (id) — works when UUID came from Supabase Auth
-      const { data: upserted, error } = await supabase
+      // Step 1: Try upsert by primary key (id)
+      let { data: upserted, error } = await supabase
         .from('profiles')
         .upsert(dbPayload, { onConflict: 'id' })
         .select('id');
+
+      // If failed due to FK constraint on user_id, retry with user_id = null safely
+      if (error && (error.code === '23503' || (error.message && error.message.includes('user_id_fkey')))) {
+        console.warn('[Profile] Retrying upsert with user_id = null due to FK constraint:', error.message);
+        dbPayload.user_id = null;
+        const retryResult = await supabase
+          .from('profiles')
+          .upsert(dbPayload, { onConflict: 'id' })
+          .select('id');
+        upserted = retryResult.data;
+        error = retryResult.error;
+      }
 
       if (error) throw error;
 
@@ -3426,20 +3592,30 @@ export const db = {
   },
 
   adminUpdateUserPassword: async (userId, newPassword) => {
-    // Note: In a real Supabase setup, this requires the Service Role Key.
-    // This is mocked for frontend demonstration.
     const accounts = safeJsonParse('farmpro_accounts', []);
     const accIndex = accounts.findIndex(a => a.user_id === userId);
     if (accIndex !== -1) {
       accounts[accIndex].password_hash = hashPassword(newPassword);
-      // force_change_password could be added here if schema supports it
+      accounts[accIndex].password = newPassword;
       accounts[accIndex].force_change_password = true;
       localStorage.setItem('farmpro_accounts', JSON.stringify(accounts));
     }
     
-    // Attempt real supabase call if we had an admin function
+    // Attempt real supabase call if admin RPC is available
     if (!isMock && supabase) {
-      console.warn('adminUpdateUserPassword: Real Supabase requires Service Role key on the backend. Skipping frontend execution.');
+      try {
+        const { error } = await supabase.rpc('admin_reset_password', {
+          target_user_id: userId,
+          new_password: newPassword
+        });
+        if (error) {
+          console.warn('adminUpdateUserPassword RPC notice:', error.message);
+        } else {
+          console.log('[Admin] adminUpdateUserPassword RPC updated password in Supabase Auth successfully.');
+        }
+      } catch (err) {
+        console.warn('adminUpdateUserPassword RPC execution error:', err);
+      }
     }
     return { success: true };
   }

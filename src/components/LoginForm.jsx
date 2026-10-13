@@ -51,6 +51,7 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
           onLoginSuccess(res.session, res.profile);
         }
       } else {
+        console.error('[LoginForm] Login rejected:', res);
         const isOffline = !window.navigator.onLine;
         if (isOffline) {
           setErrorMsg('ขณะนี้อุปกรณ์ออฟไลน์อยู่ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
@@ -61,12 +62,12 @@ function LoginForm({ onLoginSuccess, onSwitchToRegister, onGoHome }) {
         }
       }
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('[LoginForm] Login exception caught:', err);
       const isOffline = !window.navigator.onLine;
       if (isOffline || err?.message?.toLowerCase().includes('fetch') || err?.message?.toLowerCase().includes('network')) {
         setErrorMsg('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
       } else {
-        setErrorMsg('ระบบเข้าสู่ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้ง');
+        setErrorMsg(err.message || 'ระบบเข้าสู่ระบบขัดข้องชั่วคราว กรุณาลองใหม่อีกครั้ง');
       }
     } finally {
       setLoading(false);

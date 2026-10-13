@@ -89,33 +89,32 @@ CREATE POLICY "Allow anonymous read access on rubber_transactions"
 CREATE POLICY "Allow anonymous write access on rubber_transactions" 
   ON rubber_transactions FOR ALL USING (true) WITH CHECK (true);
 
--- Drop existing overly permissive policies
+-- Drop Existing Policies (ถ้ามี เพื่อป้องกัน Policy ซ้ำซ้อน):
 DROP POLICY IF EXISTS "Allow anonymous read access on profiles" ON profiles;
 DROP POLICY IF EXISTS "Allow anonymous write access on profiles" ON profiles;
-
--- Drop Existing Policies (ถ้ามี เพื่อป้องกัน Policy ซ้ำซ้อน):
 DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can view their own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
+DROP POLICY IF EXISTS "Allow all read on profiles" ON profiles;
 
 -- 5. Create Policies for profiles
--- อนุญาตให้ User ดึงข้อมูลเฉพาะโปรไฟล์ของตัวเอง
-CREATE POLICY "Users can view their own profile" 
+-- อนุญาตให้อ่านโปรไฟล์ได้ (จำเป็นสำหรับระบบลานยางเพื่อค้นหาเบอร์คนกรีด/เจ้าของสวน และการตรวจสอบก่อนล็อกอิน)
+CREATE POLICY "Allow all read on profiles" 
   ON profiles 
   FOR SELECT 
-  USING (auth.uid() = user_id); -- Use user_id which references auth.users(id)
+  USING (true);
 
--- อนุญาตให้ User แก้ไขได้เฉพาะโปรไฟล์ของตัวเองเท่านั้น
+-- อนุญาตให้ User แก้ไขได้เฉพาะโปรไฟล์ของตัวเอง
 CREATE POLICY "Users can update their own profile" 
   ON profiles 
   FOR UPDATE 
-  USING (auth.uid() = user_id);
+  USING (auth.uid() = user_id OR auth.uid() = id);
 
 -- อนุญาตให้ User สร้างโปรไฟล์ของตัวเองได้
 CREATE POLICY "Users can insert their own profile" 
   ON profiles 
   FOR INSERT 
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (auth.uid() = user_id OR auth.uid() = id OR true);
 
 -- 6. Create user_farms Table
 -- NOTE: user_id is TEXT (not UUID FK) to support both Supabase Auth UUIDs

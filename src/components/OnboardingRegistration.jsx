@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Leaf, Eye, EyeOff } from 'lucide-react';
 import { provinces as THAI_PROVINCES, districts as THAI_DISTRICTS, subDistricts as THAI_SUBDISTRICTS } from '@bilions/thailand-address';
-import { db } from '../supabase';
+import { db, normalizePhone } from '../supabase';
 import './OperationalWorkflow.css';
 import PricingTable from './PricingTable';
 
@@ -49,7 +49,7 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
 
   const handlePhoneChange = async (val) => {
     setPhoneNumber(val);
-    const digits = val.replace(/\D/g, '');
+    const digits = normalizePhone(val);
     if (digits.length === 10) {
       try {
         const exists = await db.checkPhoneExists(digits);
@@ -349,7 +349,7 @@ function OnboardingRegistration({ onComplete, onGoHome, onSwitchToLogin }) {
       return;
     }
 
-    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    const cleanPhone = normalizePhone(phoneNumber);
     if (cleanPhone.length !== 10) {
       setErrorMsg('กรุณากรอกเบอร์โทรศัพท์ 10 หลักให้ถูกต้อง');
       return;

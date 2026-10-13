@@ -2183,50 +2183,111 @@ export const db = {
 
     if (!isMock && supabase) {
       try {
-        let authEmail = virtualEmail;
+        // Build list of candidate emails to authenticate against Supabase Auth
+        const candidateEmails = [];
 
-        // Step 1: Look up existing profile in DB to resolve the user's registered auth email
+        // 1. Primary candidate based on user input
+        if (isPhone && cleanPhone) {
+          candidateEmails.push(phoneToVirtualEmail(cleanPhone));
+        } else if (isEmail) {
+          candidateEmails.push(rawInput.toLowerCase());
+        }
+
+        // 2. Query profiles table to discover linked email or phone number
         try {
-          const { data: prof } = await supabase
+          const { data: profList } = await supabase
             .from('profiles')
-            .select('email, id, user_id, phone_number, username')
+            .select('email, id, user_id, phone_number, username, full_name')
             .or(`phone_number.eq.${cleanPhone || cleanId},username.eq.${cleanId},email.eq.${cleanId}`)
-            .maybeSingle();
+            .limit(5);
 
-          if (prof?.email) {
-            authEmail = prof.email;
+          if (profList && profList.length > 0) {
+            const bestProf = profList.find(p => p.full_name && p.phone_number) || profList[0];
+            if (bestProf?.email) {
+              const lowerEmail = bestProf.email.toLowerCase().trim();
+              if (!candidateEmails.includes(lowerEmail)) {
+                candidateEmails.push(lowerEmail);
+              }
+            }
+            if (bestProf?.phone_number) {
+              const vEmail = phoneToVirtualEmail(bestProf.phone_number);
+              if (vEmail && !candidateEmails.includes(vEmail)) {
+                candidateEmails.push(vEmail);
+              }
+            }
           }
         } catch (lookupErr) {
           console.warn('[Auth] Pre-login profile lookup warning:', lookupErr);
         }
 
-        if (!authEmail) {
-          authEmail = isPhone ? phoneToVirtualEmail(cleanPhone) : cleanId;
+        // 3. Fallback candidates if empty
+        if (candidateEmails.length === 0) {
+          candidateEmails.push(isPhone ? phoneToVirtualEmail(cleanPhone) : cleanId);
         }
 
-        console.log('[Auth] Calling supabase.auth.signInWithPassword with email:', authEmail);
+        console.log('[Auth] Attempting login with candidate emails:', candidateEmails);
 
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: authEmail,
-          password
-        });
+        let authData = null;
+        let successfulEmail = null;
+        let lastAuthError = null;
 
-        if (error) {
-          console.error('[Auth] Supabase signInWithPassword returned error:', error);
-          throw error;
+        for (const candidate of candidateEmails) {
+          try {
+            console.log('[Auth] Trying candidate auth email:', candidate);
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email: candidate,
+              password
+            });
+
+            if (!error && data?.user) {
+              authData = data;
+              successfulEmail = candidate;
+              console.log('[Auth] Supabase signInWithPassword succeeded with candidate:', candidate, 'user id:', data.user.id);
+              break;
+            } else if (error) {
+              lastAuthError = error;
+              console.warn('[Auth] Candidate', candidate, 'failed:', error.message);
+              // Halt immediately if email confirmation is required
+              if (error.code === 'email_not_confirmed' || error.message?.toLowerCase().includes('email not confirmed')) {
+                throw error;
+              }
+            }
+          } catch (candErr) {
+            lastAuthError = candErr;
+            if (candErr.code === 'email_not_confirmed' || candErr.message?.toLowerCase().includes('email not confirmed')) {
+              throw candErr;
+            }
+          }
         }
 
-        console.log('[Auth] Supabase signInWithPassword succeeded for user:', data?.user?.id);
+        if (!authData || !authData.user) {
+          console.error('[Auth] All candidate emails failed for identifier:', rawInput, lastAuthError);
+          throw lastAuthError || new Error('Invalid login credentials');
+        }
+
+        const data = authData;
+        const authEmail = successfulEmail || candidateEmails[0];
 
         if (data?.user) {
           const authUserId = data.user.id;
           let profile = null;
 
           // Look up profile by user_id, id, email, or phone number
+          const orConditions = [
+            `user_id.eq.${authUserId}`,
+            `id.eq.${authUserId}`,
+            `email.eq.${cleanId}`,
+            `email.eq.${authEmail}`
+          ];
+          if (cleanPhone) orConditions.push(`phone_number.eq.${cleanPhone}`);
+
+          const vPhoneMatch = authEmail.match(/^phone_(\d{9,10})@/);
+          if (vPhoneMatch) orConditions.push(`phone_number.eq.${vPhoneMatch[1]}`);
+
           const { data: pList } = await supabase
             .from('profiles')
             .select('*')
-            .or(`user_id.eq.${authUserId},id.eq.${authUserId},email.eq.${authEmail},phone_number.eq.${cleanPhone || cleanId}`)
+            .or(orConditions.join(','))
             .order('updated_at', { ascending: false });
 
           if (pList && pList.length > 0) {
@@ -2258,6 +2319,14 @@ export const db = {
             localStorage.setItem('farmpro_profile_id', sanitizedProfile.id);
             localStorage.setItem('farmpro_registered', 'true');
             localStorage.setItem('farmpro_session', JSON.stringify(sanitizedSession));
+            sessionStorage.setItem('farmpro_tab_authenticated', 'true');
+
+            // Clear opposite role cache to prevent cross-contamination
+            if (currentRole === 'SELLER') {
+              localStorage.removeItem('farmpro_mock_buyer');
+            } else {
+              localStorage.removeItem('farmpro_mock_seller');
+            }
             
             // Auto-heal local accounts password hash to keep it in sync with Supabase
             try {
@@ -2493,10 +2562,22 @@ export const db = {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
+          const userEmail = session.user.email || '';
+          const phoneMatch = userEmail.match(/^phone_(\d{9,10})@/);
+          const phoneFromEmail = phoneMatch ? phoneMatch[1] : '';
+          const orFilters = [
+            `user_id.eq.${session.user.id}`,
+            `id.eq.${session.user.id}`,
+            `email.eq.${userEmail}`
+          ];
+          if (phoneFromEmail) {
+            orFilters.push(`phone_number.eq.${phoneFromEmail}`);
+          }
+
           let { data: pList } = await supabase
             .from('profiles')
             .select('*')
-            .or(`user_id.eq.${session.user.id},id.eq.${session.user.id},email.eq.${session.user.email}`)
+            .or(orFilters.join(','))
             .order('updated_at', { ascending: false });
 
           let profile = (pList && pList.length > 0)
@@ -2560,10 +2641,22 @@ export const db = {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
+            const userEmail = session.user.email || '';
+            const phoneMatch = userEmail.match(/^phone_(\d{9,10})@/);
+            const phoneFromEmail = phoneMatch ? phoneMatch[1] : '';
+            const orFilters = [
+              `user_id.eq.${session.user.id}`,
+              `id.eq.${session.user.id}`,
+              `email.eq.${userEmail}`
+            ];
+            if (phoneFromEmail) {
+              orFilters.push(`phone_number.eq.${phoneFromEmail}`);
+            }
+
             let { data: pList, error } = await supabase
               .from('profiles')
               .select('*')
-              .or(`user_id.eq.${session.user.id},id.eq.${session.user.id},email.eq.${session.user.email}`)
+              .or(orFilters.join(','))
               .order('updated_at', { ascending: false });
 
             let remoteProfile = (pList && pList.length > 0 && !error)

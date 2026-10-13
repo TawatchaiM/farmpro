@@ -1,7 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-function ReviewForm({ initialData, onSave, onCancel, isEdit = false, isManual = false, onShowTrash }) {
+function ReviewForm({ initialData, onSave, onCancel, isEdit = false, isManual = false, onShowTrash, plots = [] }) {
   const [formData, setFormData] = useState(initialData);
+
+  useEffect(() => {
+    if (!formData.plot_id && plots && plots.length === 1) {
+      const singlePlot = plots[0];
+      setFormData(prev => ({
+        ...prev,
+        plot_id: singlePlot.plot_id || singlePlot.id,
+        plot_name: singlePlot.plot_name
+      }));
+    }
+  }, [plots]);
 
   // Revenue share options states: '55' | '50' | '60' | '100' | 'custom'
   const initialSharePct = initialData?.owner_share_percentage 
@@ -96,6 +107,45 @@ function ReviewForm({ initialData, onSave, onCancel, isEdit = false, isManual = 
 
       <form onSubmit={handleSubmit}>
         <div className="form-grid">
+          {plots && plots.length > 0 && (
+            <div className="form-group" style={{ gridColumn: '1 / -1', background: '#f0fdf4', padding: '0.85rem 1rem', borderRadius: '12px', border: '1.5px solid #bbf7d0' }}>
+              <label style={{ color: '#166534', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                <span>🌳 แปลงสวนยาง:</span>
+              </label>
+              <select 
+                name="plot_id" 
+                value={formData.plot_id || ''} 
+                onChange={(e) => {
+                  const pId = e.target.value;
+                  const selectedPlot = plots.find(p => (p.plot_id || p.id) === pId);
+                  setFormData(prev => ({
+                    ...prev,
+                    plot_id: pId || null,
+                    plot_name: selectedPlot ? selectedPlot.plot_name : ''
+                  }));
+                  if (selectedPlot?.default_share_ratio) {
+                    const ratioStr = String(selectedPlot.default_share_ratio);
+                    if (['50', '55', '60', '100'].includes(ratioStr)) {
+                      setShareOption(ratioStr);
+                    } else {
+                      setShareOption('custom');
+                      setCustomPct(ratioStr);
+                    }
+                  }
+                }} 
+                className="form-input"
+                style={{ padding: '0.65rem 0.85rem', background: '#ffffff', borderColor: '#86efac', fontWeight: '600' }}
+              >
+                <option value="">-- ไม่ระบุแปลงสวน (ทุกแปลงสวน) --</option>
+                {plots.map(p => (
+                  <option key={p.plot_id || p.id} value={p.plot_id || p.id}>
+                    {p.plot_name} {p.default_share_ratio ? `(สัดส่วนเจ้าของ ${p.default_share_ratio}%)` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="form-group">
             <label style={{ color: '#334155', fontWeight: '600' }}>วันที่ขาย <span style={{ color: '#ef4444' }}>*</span></label>
             <input 

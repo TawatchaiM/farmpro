@@ -1888,13 +1888,17 @@ export const db = {
     }
   },
 
-  getAllTransactions: async (sellerPhone = null) => {
+  getAllTransactions: async (sellerPhone = null, isSuperAdmin = false) => {
     if (isMock) {
       await delay(200);
       let txs = safeJsonParse('farmpro_transactions', []).filter(t => !t.deleted_at);
       if (sellerPhone) {
         const cleanP = normalizePhone(sellerPhone);
-        txs = txs.filter(t => normalizePhone(t.phone_number) === cleanP);
+        if (cleanP === '0811704028' || isSuperAdmin) {
+          txs = txs.filter(t => !t.phone_number || normalizePhone(t.phone_number) === cleanP);
+        } else {
+          txs = txs.filter(t => normalizePhone(t.phone_number) === cleanP);
+        }
       }
       return txs;
     }
@@ -1909,7 +1913,11 @@ export const db = {
       if (sellerPhone) {
         const cleanP = normalizePhone(sellerPhone);
         if (cleanP) {
-          query = query.eq('phone_number', cleanP);
+          if (cleanP === '0811704028' || isSuperAdmin) {
+            query = query.or(`phone_number.eq.${cleanP},phone_number.is.null`);
+          } else {
+            query = query.eq('phone_number', cleanP);
+          }
         }
       }
 

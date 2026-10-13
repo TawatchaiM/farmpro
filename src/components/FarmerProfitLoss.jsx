@@ -100,7 +100,7 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete }) {
     try {
       const [userPlots, allTxs, allExps] = await Promise.all([
         fetchPlots(),
-        db.getAllTransactions(userPhone),
+        db.getAllTransactions(userPhone, currentUser?.role === 'SUPER_ADMIN'),
         db.getPlotExpenses(selectedPlotId === 'all' ? null : selectedPlotId, profileId || authUserId)
       ]);
 
@@ -126,7 +126,14 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete }) {
           (!tx.buyer_id || tx.queue_number === 'E-BILL' || isMyPhone)
         );
 
-        const belongsToCurrentSeller = isMyPhone || isMyPlot || isMySellerId || isMyName;
+        // Fallback for Tawatchai / Super Admin legacy E-Bills
+        const isTawatchaiLegacy = Boolean(
+          (userPhone === '0811704028' || currentUser?.role === 'SUPER_ADMIN') &&
+          tx.queue_number === 'E-BILL' &&
+          (!tx.phone_number || normalizePhone(tx.phone_number) === '0811704028' || tx.seller_name === 'ชาวสวนยาง' || tx.seller_name === 'Tawatchai Matlee')
+        );
+
+        const belongsToCurrentSeller = isMyPhone || isMyPlot || isMySellerId || isMyName || isTawatchaiLegacy;
         if (!belongsToCurrentSeller) return false;
 
         // Date filter
@@ -135,7 +142,8 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete }) {
 
         // Plot filter
         if (selectedPlotId !== 'all') {
-          return tx.plot_id === selectedPlotId;
+          const matchesPlot = tx.plot_id === selectedPlotId || (!tx.plot_id && userPlots.length === 1 && (userPlots[0].plot_id || userPlots[0].id) === selectedPlotId);
+          if (!matchesPlot) return false;
         }
 
         return true;

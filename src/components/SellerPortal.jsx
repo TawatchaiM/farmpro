@@ -40,6 +40,15 @@ function SellerPortal({ currentUser }) {
   const [editId, setEditId] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0); 
   const [showTrash, setShowTrash] = useState(false);
+  const [userPlots, setUserPlots] = useState([]);
+
+  React.useEffect(() => {
+    if (currentUser?.id || currentUser?.user_id) {
+      db.getRubberPlots(currentUser.id, currentUser.user_id)
+        .then(plots => setUserPlots(plots || []))
+        .catch(err => console.warn('Failed to load user plots in SellerPortal:', err));
+    }
+  }, [currentUser]);
 
   const defaultManualData = {
     date: new Date().toISOString().split('T')[0],
@@ -80,13 +89,25 @@ function SellerPortal({ currentUser }) {
       const ownerShareAmt = parseFloat(finalData.owner_share_amount || finalData.owner_share_55_thb) || 0;
       const tapperShareAmt = parseFloat(finalData.tapper_share_amount) || (parseFloat(finalData.total_amount_thb || 0) - ownerShareAmt);
 
-      const cleanUserPhone = currentUser?.phone_number ? normalizePhone(currentUser.phone_number) : '';
-      const cleanUserName = currentUser?.full_name || 'ชาวสวนยาง';
+      const cleanUserPhone = normalizePhone(currentUser?.phone_number || currentUser?.phone || currentUser?.tel || '');
+      const cleanUserName = (currentUser?.full_name || currentUser?.name || 'ชาวสวนยาง').trim();
+
+      // Auto-assign plot if single plot exists and not explicitly selected
+      let assignedPlotId = finalData.plot_id || null;
+      let assignedPlotName = finalData.plot_name || null;
+      if (!assignedPlotId && userPlots.length === 1) {
+        assignedPlotId = userPlots[0].plot_id || userPlots[0].id;
+        assignedPlotName = userPlots[0].plot_name;
+      } else if (assignedPlotId && !assignedPlotName) {
+        const found = userPlots.find(p => (p.plot_id || p.id) === assignedPlotId);
+        if (found) assignedPlotName = found.plot_name;
+      }
 
       if (editMode) {
         await db.updateTransaction(editId, {
           buyer_name: finalData.buyer_name || 'ร้านรับซื้อยาง FarmPro',
           buyer_id: null,
+          seller_id: currentUser?.id || currentUser?.user_id || null,
           seller_name: cleanUserName,
           phone_number: cleanUserPhone,
           date: finalData.date,
@@ -99,13 +120,15 @@ function SellerPortal({ currentUser }) {
           owner_share_amount: ownerShareAmt,
           tapper_share_amount: tapperShareAmt,
           note: finalData.note || '',
-          plot_id: finalData.plot_id || null
+          plot_id: assignedPlotId,
+          plot_name: assignedPlotName
         }, isOffline);
       } else {
         await db.createTransaction({
           queue_number: 'E-BILL',
           source: 'seller',
           buyer_id: null,
+          seller_id: currentUser?.id || currentUser?.user_id || null,
           seller_name: cleanUserName,
           phone_number: cleanUserPhone,
           buyer_name: finalData.buyer_name || 'ร้านรับซื้อยาง FarmPro',
@@ -119,7 +142,8 @@ function SellerPortal({ currentUser }) {
           owner_share_amount: ownerShareAmt,
           tapper_share_amount: tapperShareAmt,
           note: finalData.note || '',
-          plot_id: finalData.plot_id || null,
+          plot_id: assignedPlotId,
+          plot_name: assignedPlotName,
           status: 'paid' // directly set as paid/completed
         }, isOffline);
       }
@@ -385,6 +409,7 @@ function SellerPortal({ currentUser }) {
                   initialData={defaultManualData} 
                   onSave={handleSave} 
                   isManual={true}
+                  plots={userPlots}
                   onCancel={() => setEntryMode('ai')}
                   onShowTrash={() => setShowTrash(true)}
                 />
@@ -405,6 +430,7 @@ function SellerPortal({ currentUser }) {
               initialData={extractedData} 
               onSave={handleSave} 
               isEdit={editMode}
+              plots={userPlots}
               onCancel={() => {
                 setAppState('upload');
                 if (editMode) setActiveTab('pnl');

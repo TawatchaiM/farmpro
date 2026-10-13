@@ -84,7 +84,7 @@ function App() {
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Restore authenticated session on app load (Stale-While-Revalidate pattern)
+  // Restore authenticated session on app load (Tab-Isolated session pattern)
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -92,6 +92,7 @@ function App() {
         const urlParams = new URLSearchParams(window.location.search);
         const shouldForceLogout = urlParams.get('logout') === 'true' || window.location.hash === '#logout';
         if (shouldForceLogout) {
+          sessionStorage.removeItem('farmpro_tab_authenticated');
           await db.signOut();
           setCurrentUser(null);
           setAuthSession(null);
@@ -101,7 +102,30 @@ function App() {
           return;
         }
 
-        // Instant Render from Local Cache + Background Sync
+        // Security Policy: Every fresh visit (from Vercel, link click, or new tab) MUST ALWAYS start at the Login screen.
+        // Only allow session restoration if this specific browser tab has an active, explicit login session.
+        const isTabAuthenticated = sessionStorage.getItem('farmpro_tab_authenticated') === 'true';
+        if (!isTabAuthenticated) {
+          // Purge any stale profile or role cache so no previous user's profile is ever shown
+          localStorage.removeItem('farmpro_mock_buyer');
+          localStorage.removeItem('farmpro_mock_seller');
+          localStorage.removeItem('farmpro_session');
+          localStorage.removeItem('farmpro_profile_id');
+          if (supabase) {
+            try {
+              await supabase.auth.signOut();
+            } catch (e) {
+              // Ignore sign out errors on clean visit
+            }
+          }
+          setCurrentUser(null);
+          setAuthSession(null);
+          setAuthView('login');
+          setLoading(false);
+          return;
+        }
+
+        // Restore active session for this specific working tab (e.g. user refreshed the page while working)
         const res = await db.getProfileSWR((freshData) => {
           if (freshData && freshData.profile && (isMock || freshData.session?.user)) {
             setCurrentUser(freshData.profile);
@@ -115,7 +139,7 @@ function App() {
             else if (role === 'seller') setActivePortal('seller');
             else if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BASIC_ADMIN') setActivePortal('admin');
           } else if (freshData && (!freshData.profile || (!isMock && !freshData.session?.user))) {
-            // Live session is invalid or logged out
+            sessionStorage.removeItem('farmpro_tab_authenticated');
             setCurrentUser(null);
             setAuthSession(null);
             setAuthView('login');
@@ -136,12 +160,14 @@ function App() {
             setActivePortal('admin');
           }
         } else {
+          sessionStorage.removeItem('farmpro_tab_authenticated');
           setCurrentUser(null);
           setAuthSession(null);
           setAuthView('login');
         }
       } catch (err) {
         console.error('Failed to init auth session:', err);
+        sessionStorage.removeItem('farmpro_tab_authenticated');
         setCurrentUser(null);
         setAuthSession(null);
         setAuthView('login');
@@ -171,6 +197,7 @@ function App() {
   }, []);
 
   const handleLoginSuccess = (session, profile) => {
+    sessionStorage.setItem('farmpro_tab_authenticated', 'true');
     setAuthSession(session);
     setCurrentUser(profile);
     setAuthView('authenticated');
@@ -187,6 +214,7 @@ function App() {
   };
 
   const handleOnboardingComplete = (profileData, session) => {
+    sessionStorage.setItem('farmpro_tab_authenticated', 'true');
     if (session) setAuthSession(session);
     setCurrentUser(profileData);
     setAuthView('authenticated');
@@ -214,6 +242,7 @@ function App() {
 
 
   const handleLogout = async () => {
+    sessionStorage.removeItem('farmpro_tab_authenticated');
     await db.signOut();
     setCurrentUser(null);
     setAuthSession(null);

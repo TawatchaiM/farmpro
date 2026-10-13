@@ -61,8 +61,7 @@ function ExpenseManagement({ currentUser, onShowTrash }) {
   const loadPlots = useCallback(async () => {
     if (!currentUser) return [];
     try {
-      const userId = currentUser.user_id || currentUser.id;
-      const userPlots = await db.getRubberPlots(userId);
+      const userPlots = await db.getRubberPlots(currentUser.id, currentUser.user_id);
       setPlots(userPlots || []);
       return userPlots || [];
     } catch (err) {
@@ -73,17 +72,32 @@ function ExpenseManagement({ currentUser, onShowTrash }) {
 
   // 2. Load plot expenses
   const loadExpenses = useCallback(async () => {
+    if (!currentUser) return;
     setLoading(true);
     try {
-      const data = await db.getPlotExpenses(selectedPlotId === 'all' ? null : selectedPlotId);
-      setExpenses(Array.isArray(data) ? data : []);
+      const profileId = currentUser.id;
+      const authUserId = currentUser.user_id;
+      const data = await db.getPlotExpenses(selectedPlotId === 'all' ? null : selectedPlotId, profileId || authUserId);
+      
+      // Strict user scoping: only allow expenses on user's own plots or recorded by user
+      const userPlotIds = new Set((plots || []).map(p => p.plot_id || p.id));
+      const safeData = (Array.isArray(data) ? data : []).filter(e => {
+        if (e.deleted_at) return false;
+        const isMyPlot = Boolean(e.plot_id && userPlotIds.has(e.plot_id));
+        const isMyRecord = Boolean(
+          (profileId && e.recorded_by === profileId) || 
+          (authUserId && e.recorded_by === authUserId)
+        );
+        return isMyPlot || isMyRecord;
+      });
+      setExpenses(safeData);
     } catch (err) {
       console.error('Failed to load plot expenses:', err);
       setExpenses([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedPlotId]);
+  }, [selectedPlotId, currentUser, plots]);
 
   useEffect(() => {
     loadPlots();
@@ -127,7 +141,7 @@ function ExpenseManagement({ currentUser, onShowTrash }) {
       return;
     }
 
-    const targetPlotId = formData.plot_id || (plots.length > 0 ? plots[0].plot_id : null);
+    const targetPlotId = formData.plot_id || (plots.length > 0 ? (plots[0].plot_id || plots[0].id) : null);
     if (!targetPlotId) {
       alert('กรุณาเลือกแปลงสวนก่อนบันทึก');
       return;
@@ -137,7 +151,7 @@ function ExpenseManagement({ currentUser, onShowTrash }) {
     try {
       const payload = {
         plot_id: targetPlotId,
-        recorded_by: currentUser?.user_id || currentUser?.id,
+        recorded_by: currentUser?.id || currentUser?.user_id,
         category: formData.category,
         amount: amount,
         expense_date: formData.expense_date,
@@ -195,8 +209,20 @@ function ExpenseManagement({ currentUser, onShowTrash }) {
 
   // Filter Expenses
   const filteredExpenses = useMemo(() => {
+    const userPlotIds = new Set((plots || []).map(p => p.plot_id || p.id));
+    const profileId = currentUser?.id;
+    const authUserId = currentUser?.user_id;
+
     return expenses.filter(e => {
       if (e.deleted_at) return false;
+
+      // STRICT PRIVACY CHECK: Must belong to user's plot or recorded by user
+      const isMyPlot = Boolean(e.plot_id && userPlotIds.has(e.plot_id));
+      const isMyRecord = Boolean(
+        (profileId && e.recorded_by === profileId) || 
+        (authUserId && e.recorded_by === authUserId)
+      );
+      if (!isMyPlot && !isMyRecord) return false;
 
       // Plot filter
       if (selectedPlotId !== 'all' && e.plot_id !== selectedPlotId) {

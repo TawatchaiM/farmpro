@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { db } from '../supabase';
+import { db, normalizePhone } from '../supabase';
 import {
   TrendingUp, TrendingDown, DollarSign, Scale, Percent, Calendar, Download, RefreshCw,
   AlertTriangle, CheckCircle2, Award, PieChart as PieIcon, BarChart3, ArrowUpRight, ArrowDownRight,
@@ -79,8 +79,7 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete }) {
   const fetchPlots = useCallback(async () => {
     if (!currentUser) return [];
     try {
-      const userId = currentUser.user_id || currentUser.id;
-      const userPlots = await db.getRubberPlots(userId);
+      const userPlots = await db.getRubberPlots(currentUser.id, currentUser.user_id);
       setPlots(userPlots || []);
       return userPlots || [];
     } catch (err) {
@@ -91,23 +90,44 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete }) {
 
   // 3. Load all Transactions & Expenses (YTD by default)
   const loadData = useCallback(async () => {
+    if (!currentUser) return;
     setLoading(true);
-    const userId = currentUser?.user_id || currentUser?.id;
-    const userPhone = currentUser?.phone_number;
+    const profileId = currentUser.id;
+    const authUserId = currentUser.user_id;
+    const userPhone = currentUser.phone_number ? normalizePhone(currentUser.phone_number) : '';
+    const userName = (currentUser.full_name || '').trim().toLowerCase();
 
     try {
       const [userPlots, allTxs, allExps] = await Promise.all([
         fetchPlots(),
-        db.getAllTransactions(),
-        db.getPlotExpenses(selectedPlotId === 'all' ? null : selectedPlotId)
+        db.getAllTransactions(userPhone),
+        db.getPlotExpenses(selectedPlotId === 'all' ? null : selectedPlotId, profileId || authUserId)
       ]);
 
-      const userPlotIds = new Set((userPlots || []).map(p => p.plot_id));
+      const userPlotIds = new Set((userPlots || []).map(p => p.plot_id || p.id));
 
-      // Filter transactions for this seller & date range & selected plot
+      // Filter transactions STRICTLY for this seller & date range & selected plot
       const sellerTxs = (Array.isArray(allTxs) ? allTxs : []).filter(tx => {
         if (tx.deleted_at) return false;
         if (tx.status !== 'paid' && tx.status !== 'completed') return false;
+
+        // STRICT SELLER PRIVACY VERIFICATION
+        const txPhone = tx.phone_number ? normalizePhone(tx.phone_number) : '';
+        const isMyPhone = Boolean(userPhone && txPhone && txPhone === userPhone);
+        const isMyPlot = Boolean(tx.plot_id && userPlotIds.has(tx.plot_id));
+        const isMySellerId = Boolean(
+          (profileId && tx.seller_id === profileId) || 
+          (authUserId && tx.seller_id === authUserId)
+        );
+        const isMyName = Boolean(
+          userName && 
+          tx.seller_name && 
+          tx.seller_name.trim().toLowerCase() === userName &&
+          (!tx.buyer_id || tx.queue_number === 'E-BILL' || isMyPhone)
+        );
+
+        const belongsToCurrentSeller = isMyPhone || isMyPlot || isMySellerId || isMyName;
+        if (!belongsToCurrentSeller) return false;
 
         // Date filter
         const txDate = tx.date ? String(tx.date).substring(0, 10) : '';
@@ -118,18 +138,22 @@ function FarmerProfitLoss({ currentUser, onEdit, onDelete }) {
           return tx.plot_id === selectedPlotId;
         }
 
-        // 'all' plots filter: belongs to seller's plot or is manual E-BILL / seller phone
-        const isUserPlot = tx.plot_id && userPlotIds.has(tx.plot_id);
-        const isSellerBill = tx.queue_number === 'E-BILL' || !tx.buyer_id;
-        const isUserPhone = userPhone && tx.phone_number && tx.phone_number === userPhone;
-        const isUserSellerId = userId && tx.seller_id && tx.seller_id === userId;
-
-        return isUserPlot || isSellerBill || isUserPhone || isUserSellerId;
+        return true;
       });
 
-      // Filter expenses for selected plot & date range
+      // Filter expenses STRICTLY for this seller & date range & selected plot
       const validExps = (Array.isArray(allExps) ? allExps : []).filter(e => {
         if (e.deleted_at) return false;
+
+        // STRICT EXPENSE PRIVACY VERIFICATION
+        const isMyPlot = Boolean(e.plot_id && userPlotIds.has(e.plot_id));
+        const isMyRecord = Boolean(
+          (profileId && e.recorded_by === profileId) || 
+          (authUserId && e.recorded_by === authUserId)
+        );
+        if (!isMyPlot && !isMyRecord) return false;
+
+        // Date filter
         const expDate = e.expense_date ? String(e.expense_date).substring(0, 10) : '';
         if (expDate < dateRange.start || expDate > dateRange.end) return false;
 

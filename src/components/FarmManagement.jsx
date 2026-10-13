@@ -24,7 +24,7 @@ function FarmManagement({ currentUser, onShowTrash }) {
     if (!currentUser) return;
     setLoading(true);
     try {
-      const data = await db.getRubberPlots(currentUser.user_id || currentUser.id);
+      const data = await db.getRubberPlots(currentUser.id, currentUser.user_id);
       setPlots(data);
     } catch (err) {
       console.error(err);

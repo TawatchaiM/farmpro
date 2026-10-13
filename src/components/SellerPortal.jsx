@@ -6,7 +6,7 @@ import FarmerProfitLoss from './FarmerProfitLoss';
 import FarmManagement from './FarmManagement';
 import ExpenseManagement from './ExpenseManagement';
 import TrashModal from './TrashModal';
-import { db } from '../supabase';
+import { db, normalizePhone } from '../supabase';
 import useSubscription from '../hooks/useSubscription';
 
 const scriptURL = import.meta.env.VITE_GOOGLE_SCRIPT_URL;
@@ -80,10 +80,15 @@ function SellerPortal({ currentUser }) {
       const ownerShareAmt = parseFloat(finalData.owner_share_amount || finalData.owner_share_55_thb) || 0;
       const tapperShareAmt = parseFloat(finalData.tapper_share_amount) || (parseFloat(finalData.total_amount_thb || 0) - ownerShareAmt);
 
+      const cleanUserPhone = currentUser?.phone_number ? normalizePhone(currentUser.phone_number) : '';
+      const cleanUserName = currentUser?.full_name || 'ชาวสวนยาง';
+
       if (editMode) {
         await db.updateTransaction(editId, {
           buyer_name: finalData.buyer_name || 'ร้านรับซื้อยาง FarmPro',
           buyer_id: null,
+          seller_name: cleanUserName,
+          phone_number: cleanUserPhone,
           date: finalData.date,
           raw_weight_kg: parseFloat(finalData.raw_weight_kg) || 0,
           drc_percentage: parseFloat(finalData.drc_percentage) || 0,
@@ -93,15 +98,16 @@ function SellerPortal({ currentUser }) {
           owner_share_percentage: ownerSharePct,
           owner_share_amount: ownerShareAmt,
           tapper_share_amount: tapperShareAmt,
-          note: finalData.note || ''
+          note: finalData.note || '',
+          plot_id: finalData.plot_id || null
         }, isOffline);
       } else {
         await db.createTransaction({
           queue_number: 'E-BILL',
           source: 'seller',
           buyer_id: null,
-          seller_name: currentUser?.full_name || 'ชาวสวนยาง',
-          phone_number: currentUser?.phone_number || '',
+          seller_name: cleanUserName,
+          phone_number: cleanUserPhone,
           buyer_name: finalData.buyer_name || 'ร้านรับซื้อยาง FarmPro',
           date: finalData.date,
           raw_weight_kg: parseFloat(finalData.raw_weight_kg) || 0,
@@ -113,6 +119,7 @@ function SellerPortal({ currentUser }) {
           owner_share_amount: ownerShareAmt,
           tapper_share_amount: tapperShareAmt,
           note: finalData.note || '',
+          plot_id: finalData.plot_id || null,
           status: 'paid' // directly set as paid/completed
         }, isOffline);
       }
@@ -132,7 +139,7 @@ function SellerPortal({ currentUser }) {
       setAppState('upload');
       setExtractedData(null);
     }, 2500);
-  }, [editMode, editId]);
+  }, [editMode, editId, currentUser]);
 
   const handleEdit = (record) => {
     const dataForForm = {

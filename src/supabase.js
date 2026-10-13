@@ -1254,21 +1254,31 @@ export const db = {
 
   // --- Rubber Plots Management ---
 
-  getRubberPlots: async (userId) => {
+  getRubberPlots: async (userId, profileId = null) => {
+    const ids = [userId, profileId].filter(Boolean);
     const manualPlots = safeJsonParse('farmpro_manual_plots', []);
-    const userManualPlots = manualPlots.filter(p => p.owner_id === userId || p.tapper_id === userId);
+    const userManualPlots = manualPlots.filter(p => ids.includes(p.owner_id) || ids.includes(p.tapper_id));
 
-    if (isMock || userId?.startsWith('ab-')) {
+    if (ids.length === 0) {
+      return [...userManualPlots];
+    }
+
+    if (isMock || ids.some(id => String(id).startsWith('ab-'))) {
       await delay(200);
       const plots = safeJsonParse('farmpro_rubber_plots', []);
-      const userPlots = plots.filter(p => (p.owner_id === userId || p.tapper_id === userId) && !p.deleted_at);
+      const userPlots = plots.filter(p => (ids.includes(p.owner_id) || ids.includes(p.tapper_id)) && !p.deleted_at);
       return [...userPlots, ...userManualPlots];
     }
     try {
+      const orClauses = [];
+      for (const id of ids) {
+        orClauses.push(`owner_id.eq.${id}`);
+        orClauses.push(`tapper_id.eq.${id}`);
+      }
       const { data, error } = await supabase
         .from('rubber_plots')
         .select('*, owner:profiles!rubber_plots_owner_id_fkey(full_name), tapper:profiles!rubber_plots_tapper_id_fkey(full_name)')
-        .or(`owner_id.eq.${userId},tapper_id.eq.${userId}`)
+        .or(orClauses.join(','))
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -1388,11 +1398,16 @@ export const db = {
 
   // --- Plot Expenses Management ---
 
-  getPlotExpenses: async (plotId = null) => {
+  getPlotExpenses: async (plotId = null, userId = null) => {
     if (isMock) {
       await delay(200);
       const expenses = safeJsonParse('farmpro_plot_expenses', []);
-      return expenses.filter(e => (!plotId || plotId === 'all' || e.plot_id === plotId) && !e.deleted_at);
+      return expenses.filter(e => {
+        if (e.deleted_at) return false;
+        if (plotId && plotId !== 'all') return e.plot_id === plotId;
+        if (userId) return e.recorded_by === userId;
+        return true;
+      });
     }
     try {
       let query = supabase
@@ -1400,12 +1415,35 @@ export const db = {
         .select('*, recorder:profiles!plot_expenses_recorded_by_fkey(full_name)')
         .is('deleted_at', null)
         .order('expense_date', { ascending: false });
+
       if (plotId && plotId !== 'all') {
         query = query.eq('plot_id', plotId);
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
       }
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+
+      if (userId) {
+        // Find plots owned by or tapped by this user
+        const { data: userPlots } = await supabase
+          .from('rubber_plots')
+          .select('plot_id')
+          .or(`owner_id.eq.${userId},tapper_id.eq.${userId}`)
+          .is('deleted_at', null);
+
+        const plotIds = (userPlots || []).map(p => p.plot_id).filter(Boolean);
+        const orClauses = [`recorded_by.eq.${userId}`];
+        if (plotIds.length > 0) {
+          orClauses.push(`plot_id.in.(${plotIds.join(',')})`);
+        }
+        query = query.or(orClauses.join(','));
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
+      }
+
+      // If neither plotId nor userId is specified, return empty array to prevent data leak
+      return [];
     } catch (err) {
       console.error('Error fetching plot expenses:', err);
       return [];
@@ -1850,21 +1888,34 @@ export const db = {
     }
   },
 
-  getAllTransactions: async () => {
+  getAllTransactions: async (sellerPhone = null) => {
     if (isMock) {
       await delay(200);
-      return safeJsonParse('farmpro_transactions', []).filter(t => !t.deleted_at);
+      let txs = safeJsonParse('farmpro_transactions', []).filter(t => !t.deleted_at);
+      if (sellerPhone) {
+        const cleanP = normalizePhone(sellerPhone);
+        txs = txs.filter(t => normalizePhone(t.phone_number) === cleanP);
+      }
+      return txs;
     }
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('rubber_transactions')
         .select('*')
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
+      if (sellerPhone) {
+        const cleanP = normalizePhone(sellerPhone);
+        if (cleanP) {
+          query = query.eq('phone_number', cleanP);
+        }
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      return data;
+      return data || [];
     } catch (err) {
       console.error('Error fetching all transactions:', err);
       return safeJsonParse('farmpro_transactions', []).filter(t => !t.deleted_at);
@@ -2351,6 +2402,12 @@ export const db = {
             } else {
               localStorage.removeItem('farmpro_mock_seller');
             }
+
+            // Clear stale transaction, expense, and plot caches from previous sessions
+            localStorage.removeItem('farmpro_transactions');
+            localStorage.removeItem('farmpro_plot_expenses');
+            localStorage.removeItem('farmpro_rubber_plots');
+            localStorage.removeItem('farmpro_manual_plots');
             
             // Auto-heal local accounts password hash to keep it in sync with Supabase
             try {
@@ -2515,6 +2572,10 @@ export const db = {
     localStorage.removeItem('farmpro_store_profile');
     localStorage.removeItem('farmpro_is_demo');
     localStorage.removeItem('farmpro_user_profile');
+    localStorage.removeItem('farmpro_transactions');
+    localStorage.removeItem('farmpro_plot_expenses');
+    localStorage.removeItem('farmpro_rubber_plots');
+    localStorage.removeItem('farmpro_manual_plots');
     return { success: true };
   },
 

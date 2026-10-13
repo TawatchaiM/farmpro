@@ -72,7 +72,7 @@ import OfflineStatusBar from './components/OfflineStatusBar';
 import AdminLogin from './components/AdminLogin';
 import LabStation from './components/LabStation';
 import UpdatePasswordForm from './components/UpdatePasswordForm';
-import { db, supabase } from './supabase';
+import { db, supabase, isMock } from './supabase';
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -88,9 +88,22 @@ function App() {
   useEffect(() => {
     const initAuth = async () => {
       try {
+        // Handle explicit force logout via query (?logout=true) or hash (#logout)
+        const urlParams = new URLSearchParams(window.location.search);
+        const shouldForceLogout = urlParams.get('logout') === 'true' || window.location.hash === '#logout';
+        if (shouldForceLogout) {
+          await db.signOut();
+          setCurrentUser(null);
+          setAuthSession(null);
+          setAuthView('login');
+          window.history.replaceState({}, document.title, window.location.pathname);
+          setLoading(false);
+          return;
+        }
+
         // Instant Render from Local Cache + Background Sync
         const res = await db.getProfileSWR((freshData) => {
-          if (freshData && freshData.profile) {
+          if (freshData && freshData.profile && (isMock || freshData.session?.user)) {
             setCurrentUser(freshData.profile);
             setAuthSession(freshData.session);
             setAuthView('authenticated');
@@ -101,10 +114,15 @@ function App() {
             else if (role === 'buyer' || role === 'CLERK' || role === 'DRC_LAB') setActivePortal('buyer');
             else if (role === 'seller') setActivePortal('seller');
             else if (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'BASIC_ADMIN') setActivePortal('admin');
+          } else if (freshData && (!freshData.profile || (!isMock && !freshData.session?.user))) {
+            // Live session is invalid or logged out
+            setCurrentUser(null);
+            setAuthSession(null);
+            setAuthView('login');
           }
         });
 
-        if (res && res.profile) {
+        if (res && res.profile && (isMock || res.session?.user)) {
           setCurrentUser(res.profile);
           setAuthSession(res.session);
           setAuthView('authenticated');
@@ -118,10 +136,14 @@ function App() {
             setActivePortal('admin');
           }
         } else {
+          setCurrentUser(null);
+          setAuthSession(null);
           setAuthView('login');
         }
       } catch (err) {
         console.error('Failed to init auth session:', err);
+        setCurrentUser(null);
+        setAuthSession(null);
         setAuthView('login');
       } finally {
         setLoading(false);
@@ -319,19 +341,41 @@ function App() {
           <span style={{ fontSize: '1.25rem' }}>FarmPro</span>
         </div>
         {currentUser && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <div 
               style={{
-                width: '32px', height: '32px', borderRadius: '50%',
+                width: '34px', height: '34px', borderRadius: '50%',
                 background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: '#fff', fontWeight: 'bold', cursor: 'pointer',
                 boxShadow: '0 2px 5px rgba(34, 197, 94, 0.3)'
               }}
               onClick={() => setShowEditProfile(true)}
+              title="แก้ไขข้อมูลโปรไฟล์"
             >
               {displayStoreName?.charAt(0).toUpperCase() || 'U'}
             </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                color: '#ef4444',
+                padding: '0.35rem 0.65rem',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+              title="ออกจากระบบ"
+            >
+              <LogOut size={13} />
+              <span>ออก</span>
+            </button>
           </div>
         )}
       </div>
@@ -727,6 +771,7 @@ function App() {
           activePortal={activePortal}
           onClose={() => setShowEditProfile(false)}
           onSaveSuccess={(updated) => setCurrentUser(updated)}
+          onLogout={handleLogout}
         />
       )}
 

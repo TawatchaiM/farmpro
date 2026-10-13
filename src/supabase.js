@@ -2426,6 +2426,10 @@ export const db = {
     localStorage.removeItem('farmpro_current_role');
     localStorage.removeItem('farmpro_session');
     localStorage.removeItem('farmpro_registered');
+    localStorage.removeItem('farmpro_profile_id');
+    localStorage.removeItem('farmpro_store_profile');
+    localStorage.removeItem('farmpro_is_demo');
+    localStorage.removeItem('farmpro_user_profile');
     return { success: true };
   },
 
@@ -2523,6 +2527,14 @@ export const db = {
             localStorage.setItem('farmpro_session', JSON.stringify(sanitizedSession));
             return { session: sanitizedSession, profile: sanitizedProfile };
           }
+        } else {
+          // If in live Supabase mode and no active session exists, purge any old cached profiles
+          localStorage.removeItem('farmpro_mock_buyer');
+          localStorage.removeItem('farmpro_mock_seller');
+          localStorage.removeItem('farmpro_current_role');
+          localStorage.removeItem('farmpro_session');
+          localStorage.removeItem('farmpro_profile_id');
+          return { session: null, profile: null };
         }
       } catch (err) {
         console.warn('Error fetching Supabase auth session:', err);
@@ -2531,6 +2543,9 @@ export const db = {
 
     const session = sanitizeSession(safeJsonParse('farmpro_session', null));
     const profile = sanitizeProfile(safeJsonParse(getMockProfileKey(), null));
+    if (!isMock && !session?.user) {
+      return { session: null, profile: null };
+    }
     return { session, profile };
   },
 
@@ -2544,7 +2559,7 @@ export const db = {
 
     // 2. Background Sync with Supabase
     const isDemo = localStorage.getItem('farmpro_is_demo') === 'true';
-    if (!isDemo && !isMock && supabase && window.navigator.onLine) {
+    if (!isDemo && !isMock && supabase) {
       (async () => {
         try {
           const { data: { session } } = await supabase.auth.getSession();
@@ -2580,12 +2595,35 @@ export const db = {
               if (typeof onBackgroundUpdate === 'function') {
                 onBackgroundUpdate({ session: sanitizedSession, profile: sanitizedProfile });
               }
+            } else {
+              // Profile not found for this user in DB
+              localStorage.removeItem(getMockProfileKey());
+              localStorage.removeItem('farmpro_session');
+              localStorage.removeItem('farmpro_profile_id');
+              if (typeof onBackgroundUpdate === 'function') {
+                onBackgroundUpdate({ session: null, profile: null });
+              }
+            }
+          } else {
+            // No active session in Supabase: Clear stale local cache
+            localStorage.removeItem('farmpro_mock_buyer');
+            localStorage.removeItem('farmpro_mock_seller');
+            localStorage.removeItem('farmpro_current_role');
+            localStorage.removeItem('farmpro_session');
+            localStorage.removeItem('farmpro_profile_id');
+            if (typeof onBackgroundUpdate === 'function') {
+              onBackgroundUpdate({ session: null, profile: null });
             }
           }
         } catch (err) {
           console.warn('SWR background profile sync error (retaining local cache):', err);
         }
       })();
+    }
+
+    // In live mode (!isMock), if there is no session in localStorage, do NOT return a phantom cached profile
+    if (!isMock && !cachedSession?.user) {
+      return { session: null, profile: null };
     }
 
     return { session: cachedSession, profile: cachedProfile };

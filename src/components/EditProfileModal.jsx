@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { X, Save, User, Phone, Store, MapPin, Clock, FileText, CheckCircle, Search, Eye, EyeOff } from 'lucide-react';
+import { X, Save, User, Phone, Store, MapPin, Clock, FileText, CheckCircle, Search, Eye, EyeOff, LogOut } from 'lucide-react';
 import { provinces as THAI_PROVINCES, districts as THAI_DISTRICTS, subDistricts as THAI_SUBDISTRICTS } from '@bilions/thailand-address';
 import { db } from '../supabase';
 
-function EditProfileModal({ profile, activePortal, onClose, onSaveSuccess }) {
+function EditProfileModal({ profile, activePortal, onClose, onSaveSuccess, onLogout }) {
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [phoneNumber, setPhoneNumber] = useState(profile?.phone_number || '');
   const [email, setEmail] = useState(profile?.email || '');
@@ -867,24 +867,54 @@ function EditProfileModal({ profile, activePortal, onClose, onSaveSuccess }) {
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              className="onboarding-btn-secondary"
-              style={{ padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}
-            >
-              ยกเลิก
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="onboarding-btn-primary"
-              style={{ padding: '0.75rem 1.75rem', fontSize: '0.95rem' }}
-            >
-              <Save size={18} />
-              <span>{saving ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}</span>
-            </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {onLogout && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('คุณต้องการออกจากระบบหรือไม่?')) {
+                    onLogout();
+                    onClose();
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  color: '#ef4444',
+                  padding: '0.75rem 1.25rem',
+                  borderRadius: '10px',
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <LogOut size={16} />
+                <span>ออกจากระบบ</span>
+              </button>
+            )}
+            <div style={{ display: 'flex', gap: '0.75rem', marginLeft: 'auto' }}>
+              <button
+                type="button"
+                onClick={onClose}
+                className="onboarding-btn-secondary"
+                style={{ padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="onboarding-btn-primary"
+                style={{ padding: '0.75rem 1.75rem', fontSize: '0.95rem' }}
+              >
+                <Save size={18} />
+                <span>{saving ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

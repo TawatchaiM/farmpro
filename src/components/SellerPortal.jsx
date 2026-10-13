@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { FileText, DollarSign, TrendingUp, Trees, Sparkles, CheckCircle2 } from 'lucide-react';
 import ImageUpload from './ImageUpload';
 import ReviewForm from './ReviewForm';
 import FarmerProfitLoss from './FarmerProfitLoss';
@@ -6,6 +7,7 @@ import FarmManagement from './FarmManagement';
 import ExpenseManagement from './ExpenseManagement';
 import TrashModal from './TrashModal';
 import { db } from '../supabase';
+import useSubscription from '../hooks/useSubscription';
 
 const scriptURL = import.meta.env.VITE_GOOGLE_SCRIPT_URL;
 
@@ -28,6 +30,7 @@ const mockExtractData = () => {
 };
 
 function SellerPortal({ currentUser }) {
+  const sub = useSubscription(currentUser);
   const [activeTab, setActiveTab] = useState('upload'); 
   const [entryMode, setEntryMode] = useState('ai'); // 'ai' or 'manual'
   const [appState, setAppState] = useState('upload'); 
@@ -169,6 +172,76 @@ function SellerPortal({ currentUser }) {
 
   return (
     <div>
+      {/* Subscription Tier Status Banner */}
+      {sub.isPro ? (
+        <div style={{
+          background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+          border: '1.5px solid #86efac',
+          borderRadius: '14px',
+          padding: '0.85rem 1rem',
+          marginBottom: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+          boxShadow: '0 2px 8px rgba(22, 163, 74, 0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <span style={{ fontSize: '1.5rem' }}>🌟</span>
+            <div>
+              <div style={{ fontWeight: 'bold', color: '#166534', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <span>ชาวสวนมืออาชีพ (Pro Farmer)</span>
+                <span style={{ background: '#16a34a', color: '#fff', fontSize: '0.68rem', padding: '2px 7px', borderRadius: '6px', fontWeight: 700 }}>
+                  PRO ACTIVE
+                </span>
+              </div>
+              <div style={{ fontSize: '0.78rem', color: '#15803d', marginTop: '0.15rem' }}>
+                🌳 ไม่จำกัดแปลงสวน • 📈 วิเคราะห์กำไร P&L ตลอดชีพ • 📊 ส่งออก Excel / CSV • ⚡ สแกน AI ไม่จำกัด
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize: '0.78rem', color: '#15803d', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            <span>ปลดล็อกทุกฟีเจอร์แล้ว</span>
+            <CheckCircle2 size={16} color="#16a34a" />
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '12px',
+          padding: '0.65rem 0.95rem',
+          marginBottom: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.5rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#475569' }}>
+            <span>🌱 แพ็กเกจฟรี (จำกัด 2 แปลง, สแกน AI 15 ครั้ง/ด.)</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.location.href = '/pricing'}
+            style={{
+              background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+              color: '#fff',
+              border: 'none',
+              padding: '0.4rem 0.85rem',
+              borderRadius: '8px',
+              fontSize: '0.78rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)'
+            }}
+          >
+            🚀 สมัคร Pro Farmer (฿99)
+          </button>
+        </div>
+      )}
+
       <div 
         className="nav-tabs" 
         style={{ 
@@ -343,6 +416,49 @@ function SellerPortal({ currentUser }) {
           )}
         </>
       )}
+
+      {/* Mobile Bottom Navigation for Seller */}
+      <div className="mobile-bottom-nav">
+        <div 
+          className={`bottom-nav-item ${activeTab === 'upload' ? 'active' : ''}`}
+          onClick={() => {
+            if (editMode) {
+              if (window.confirm('คุณกำลังแก้ไขข้อมูลอยู่ ต้องการยกเลิกและบันทึกบิลใหม่ใช่หรือไม่?')) {
+                setEditMode(false);
+                setEditId(null);
+                setAppState('upload');
+              } else {
+                return;
+              }
+            }
+            setActiveTab('upload');
+          }}
+        >
+          <FileText />
+          <span>บันทึกขาย</span>
+        </div>
+        <div 
+          className={`bottom-nav-item ${activeTab === 'expense_management' ? 'active' : ''}`}
+          onClick={() => setActiveTab('expense_management')}
+        >
+          <DollarSign />
+          <span>บันทึกรายจ่าย</span>
+        </div>
+        <div 
+          className={`bottom-nav-item ${activeTab === 'pnl' ? 'active' : ''}`}
+          onClick={() => setActiveTab('pnl')}
+        >
+          <TrendingUp />
+          <span>กำไร-ขาดทุน</span>
+        </div>
+        <div 
+          className={`bottom-nav-item ${activeTab === 'farm_management' ? 'active' : ''}`}
+          onClick={() => setActiveTab('farm_management')}
+        >
+          <Trees />
+          <span>สวนของฉัน</span>
+        </div>
+      </div>
     </div>
   );
 }

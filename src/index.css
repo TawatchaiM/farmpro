@@ -189,7 +189,23 @@ body {
     display: none !important; /* Hide massive desktop header */
   }
   .nav-tabs {
-    display: none !important; /* Hide desktop pills nav */
+    display: flex !important;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    padding: 0.25rem 0.25rem 0.75rem 0.25rem;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .nav-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .nav-tab {
+    flex-shrink: 0;
+    padding: 0.5rem 0.95rem;
+    font-size: 0.85rem;
   }
   .card {
     padding: 1rem;

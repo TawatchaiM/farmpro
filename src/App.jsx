@@ -528,7 +528,9 @@ function App() {
                         fontSize: '0.825rem', 
                         color: currentUser.plan_id === 'pro' ? '#7e22ce' : (currentUser.plan_id === 'free' ? '#334155' : '#047857') 
                       }}>
-                        {currentUser.plan_id === 'pro' ? 'Pro Plan' : (currentUser.plan_id === 'free' ? 'Free Plan' : 'Standard Plan')}
+                        {currentUser.role === 'seller'
+                          ? (currentUser.plan_id === 'pro' ? 'Pro Farmer (฿99)' : 'ฟรี (Free)')
+                          : (currentUser.plan_id === 'pro' ? 'Pro Business (฿399)' : (currentUser.plan_id === 'free' ? 'Starter Free (฿0)' : 'Standard (฿199)'))}
                       </div>
                     </div>
                   </div>

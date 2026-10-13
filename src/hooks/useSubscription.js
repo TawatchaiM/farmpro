@@ -41,18 +41,27 @@ export function useSubscription(userProp = null) {
 
   const subscriptionInfo = useMemo(() => {
     const role = (profile?.role || 'buyer').toLowerCase();
+    const isSeller = role === 'seller';
+    const isBuyer = role === 'buyer' || role === 'clerk' || role === 'drc_lab';
+
     const rawTier = (profile?.subscription_tier || profile?.plan_id || profile?.subscription_plan || 'free').toLowerCase();
-    const rawPlanType = profile?.plan_type || (role === 'seller' ? (rawTier === 'pro' ? 'seller_pro' : 'seller_free') : (rawTier === 'pro' ? 'buyer_pro' : (rawTier === 'standard' ? 'buyer_standard' : 'buyer_free')));
 
     // Check expiration
     const expiryDate = profile?.subscription_expiry_date ? new Date(profile.subscription_expiry_date) : null;
     const isExpired = expiryDate ? expiryDate < new Date() : false;
 
     // Normalizing tier (fallback to free if expired)
-    const effectiveTier = isExpired ? 'free' : (['pro', 'standard', 'free'].includes(rawTier) ? rawTier : 'free');
+    // For sellers: sellers only have free or pro (Pro Farmer). If a seller has standard or pro, normalize to pro.
+    let normalizedTier = 'free';
+    if (isSeller) {
+      normalizedTier = (rawTier === 'pro' || rawTier === 'standard' || rawTier === 'seller_pro') ? 'pro' : 'free';
+    } else {
+      normalizedTier = ['pro', 'standard', 'free'].includes(rawTier) ? rawTier : 'free';
+    }
+    const effectiveTier = isExpired ? 'free' : normalizedTier;
 
-    const isSeller = role === 'seller';
-    const isBuyer = role === 'buyer' || role === 'clerk' || role === 'drc_lab';
+    const rawPlanType = profile?.plan_type || (isSeller ? (effectiveTier === 'pro' ? 'seller_pro' : 'seller_free') : (effectiveTier === 'pro' ? 'buyer_pro' : (effectiveTier === 'standard' ? 'buyer_standard' : 'buyer_free')));
+
     const isPro = effectiveTier === 'pro';
     const isStandard = effectiveTier === 'standard';
     const isFree = effectiveTier === 'free';

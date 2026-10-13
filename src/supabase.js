@@ -2800,21 +2800,32 @@ export const db = {
     }
 
     try {
-      // Filter updateData to only known DB columns to prevent 400 Bad Request
+      // Map subscription_tier/subscription_plan into plan_id
+      const effectivePlanId = updateData.plan_id || updateData.subscription_tier || updateData.subscription_plan;
+      let finalPlanId = effectivePlanId;
+      const targetRole = (updateData.role || mergedProfile.role || '').toLowerCase();
+      if (targetRole === 'seller' && (finalPlanId === 'standard' || finalPlanId === 'seller_pro')) {
+        finalPlanId = 'pro';
+      }
+
+      // Filter updateData to only known DB columns in public.profiles to prevent 400 Bad Request
       const profileSchemaKeys = [
         'id', 'user_id', 'username', 'email', 'role', 'full_name',
         'phone_number', 'subdistrict', 'district', 'province', 'postal_code',
         'latitude', 'longitude', 'google_maps_url', 'store_name',
         'vendor_category', 'vendor_description', 'business_hours',
-        'status', 'plan_id', 'subscription_plan', 'subscription_tier', 'plan_type',
-        'storage_limit_mb', 'bill_quota_monthly', 'billing_cycle', 'subscription_expiry_date',
-        'address_details', 'created_at', 'updated_at'
+        'status', 'plan_id', 'subscription_expiry_date',
+        'address_details', 'pdpa_accepted', 'pdpa_accepted_at', 'marketing_opt_in',
+        'used_storage_mb', 'is_online', 'last_active_at', 'created_at', 'updated_at'
       ];
       const dbUpdatePayload = {};
       for (const key of profileSchemaKeys) {
         if (updateData[key] !== undefined) {
           dbUpdatePayload[key] = updateData[key];
         }
+      }
+      if (finalPlanId !== undefined) {
+        dbUpdatePayload.plan_id = finalPlanId;
       }
       // Always set updated_at so the DB row reflects the latest change time
       dbUpdatePayload.updated_at = new Date().toISOString();

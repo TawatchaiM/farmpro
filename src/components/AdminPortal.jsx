@@ -12,6 +12,7 @@ function AdminPortal() {
   const [notification, setNotification] = useState('');
   
   // Subscriptions Tab State
+  const [subRoleFilter, setSubRoleFilter] = useState('all'); // 'all' | 'seller' | 'buyer'
   const [subFilterPlan, setSubFilterPlan] = useState('all');
   const [subFilterCycle, setSubFilterCycle] = useState('all');
   const [subSearchTerm, setSubSearchTerm] = useState('');
@@ -171,10 +172,16 @@ function AdminPortal() {
   };
 
   const handleOpenEditPackage = (user) => {
-    let currentTier = user.subscription_tier || user.subPlan || 'free';
-    if (currentTier === 'seller_pro' || currentTier === 'buyer_pro') currentTier = 'pro';
-    if (currentTier === 'buyer_standard') currentTier = 'standard';
-    if (currentTier === 'seller_free' || currentTier === 'buyer_free') currentTier = 'free';
+    let currentTier = user.subscription_tier || user.plan_id || user.subPlan || 'free';
+    const isSeller = (user.role || '').toLowerCase() === 'seller';
+    if (isSeller) {
+      if (currentTier === 'seller_pro' || currentTier === 'pro' || currentTier === 'standard') currentTier = 'pro';
+      else currentTier = 'free';
+    } else {
+      if (currentTier === 'buyer_pro' || currentTier === 'pro') currentTier = 'pro';
+      else if (currentTier === 'buyer_standard' || currentTier === 'standard') currentTier = 'standard';
+      else currentTier = 'free';
+    }
 
     let currentCycle = user.billing_cycle;
     if (!currentCycle || currentCycle === '-') {
@@ -243,6 +250,8 @@ function AdminPortal() {
       }
 
       const updatePayload = {
+        plan_id: pkgFormData.tier,
+        subscription_plan: pkgFormData.tier,
         subscription_tier: pkgFormData.tier,
         plan_type: planType,
         billing_cycle: pkgFormData.cycle,
@@ -269,7 +278,9 @@ function AdminPortal() {
         return p;
       }));
 
-      const planNameTh = pkgFormData.tier === 'pro' ? 'Pro' : (pkgFormData.tier === 'standard' ? 'Standard' : 'Free');
+      const planNameTh = isSeller 
+        ? (pkgFormData.tier === 'pro' ? 'ชาวสวนมืออาชีพ (Pro Farmer - ฿99)' : 'ฟรี (Free)')
+        : (pkgFormData.tier === 'pro' ? 'ลานมืออาชีพ (Pro Business - ฿399)' : (pkgFormData.tier === 'standard' ? 'ลานมาตรฐาน (Standard - ฿199)' : 'เริ่มต้น (Starter Free)'));
       setNotification(`✅ อัปเดตแพ็กเกจให้ "${editPkgUser.store_name || editPkgUser.full_name}" เป็น ${planNameTh} เรียบร้อยแล้ว`);
       setEditPkgUser(null);
       setTimeout(() => setNotification(''), 4000);
@@ -430,11 +441,29 @@ function AdminPortal() {
     .filter(p => (p.status || 'pending') === 'approved')
     .map(p => {
     let plan = 'free';
-    const tier = p.subscription_tier || p.plan_id || p.subscription_plan;
-    if (tier === 'standard' || tier === 'buyer_standard') plan = 'standard';
-    else if (tier === 'pro' || tier === 'buyer_pro' || tier === 'seller_pro') plan = 'pro';
+    const tier = (p.subscription_tier || p.plan_id || p.subscription_plan || 'free').toLowerCase();
+    const r = (p.role || '').toLowerCase();
     
-    // Mock billing cycle deterministically
+    // Normalization per role
+    if (r === 'seller') {
+      // Sellers only have 'free' or 'pro' (Pro Farmer ฿99). Any non-free tier is Pro Farmer!
+      if (tier === 'pro' || tier === 'seller_pro' || tier === 'standard') {
+        plan = 'pro';
+      } else {
+        plan = 'free';
+      }
+    } else {
+      // Buyers have 'standard', 'pro', or 'free'
+      if (tier === 'standard' || tier === 'buyer_standard') {
+        plan = 'standard';
+      } else if (tier === 'pro' || tier === 'buyer_pro') {
+        plan = 'pro';
+      } else {
+        plan = 'free';
+      }
+    }
+    
+    // Deterministic billing cycle if not explicitly saved
     let cycle = p.billing_cycle;
     if (!cycle && plan !== 'free') {
       cycle = (p.id?.charCodeAt(0) || 0) % 2 === 0 ? 'yearly' : 'monthly';
@@ -443,10 +472,9 @@ function AdminPortal() {
     }
 
     let mrr = 0;
-    const r = (p.role || '').toLowerCase();
     if (r === 'super_admin' || r === 'admin' || r === 'basic_admin') {
       mrr = 0;
-    } else if (cycle === 'lifetime' || cycle === 'none') {
+    } else if (cycle === 'lifetime' || cycle === 'none' || plan === 'free') {
       mrr = 0;
     } else if (r === 'seller') {
       if (plan === 'pro') {
@@ -463,19 +491,43 @@ function AdminPortal() {
     return { ...p, subPlan: plan, subCycle: cycle, mrr };
   });
 
+  // 1) Sellers Segment Stats
+  const sellerSubProfiles = subProfiles.filter(p => (p.role || '').toLowerCase() === 'seller');
+  const sellerFreeCount = sellerSubProfiles.filter(p => p.subPlan === 'free').length;
+  const sellerProProfiles = sellerSubProfiles.filter(p => p.subPlan === 'pro');
+  const sellerProMonthlyCount = sellerProProfiles.filter(p => p.subCycle === 'monthly').length;
+  const sellerProYearlyCount = sellerProProfiles.filter(p => p.subCycle === 'yearly').length;
+  const sellerMRR = sellerSubProfiles.reduce((sum, p) => sum + (p.mrr || 0), 0);
+
+  // 2) Buyers Segment Stats
+  const buyerSubProfiles = subProfiles.filter(p => {
+    const r = (p.role || '').toLowerCase();
+    return r !== 'seller' && r !== 'super_admin' && r !== 'admin' && r !== 'basic_admin';
+  });
+  const buyerFreeCount = buyerSubProfiles.filter(p => p.subPlan === 'free').length;
+  const buyerStandardProfiles = buyerSubProfiles.filter(p => p.subPlan === 'standard');
+  const buyerStandardMonthlyCount = buyerStandardProfiles.filter(p => p.subCycle === 'monthly').length;
+  const buyerStandardYearlyCount = buyerStandardProfiles.filter(p => p.subCycle === 'yearly').length;
+  const buyerProProfiles = buyerSubProfiles.filter(p => p.subPlan === 'pro');
+  const buyerProMonthlyCount = buyerProProfiles.filter(p => p.subCycle === 'monthly').length;
+  const buyerProYearlyCount = buyerProProfiles.filter(p => p.subCycle === 'yearly').length;
+  const buyerMRR = buyerSubProfiles.reduce((sum, p) => sum + (p.mrr || 0), 0);
+
+  // 3) Overall Stats
   const countFree = subProfiles.filter(p => p.subPlan === 'free').length;
-  
   const standardProfiles = subProfiles.filter(p => p.subPlan === 'standard');
   const countStandardMonthly = standardProfiles.filter(p => p.subCycle === 'monthly').length;
   const countStandardYearly = standardProfiles.filter(p => p.subCycle === 'yearly').length;
-
   const proProfiles = subProfiles.filter(p => p.subPlan === 'pro');
   const countProMonthly = proProfiles.filter(p => p.subCycle === 'monthly').length;
   const countProYearly = proProfiles.filter(p => p.subCycle === 'yearly').length;
-
   const totalMRR = subProfiles.reduce((sum, p) => sum + (p.mrr || 0), 0);
 
   const filteredSubProfiles = subProfiles.filter(p => {
+    const r = (p.role || '').toLowerCase();
+    if (subRoleFilter === 'seller' && r !== 'seller') return false;
+    if (subRoleFilter === 'buyer' && r === 'seller') return false;
+
     if (subFilterPlan !== 'all' && p.subPlan !== subFilterPlan) return false;
     if (subFilterCycle !== 'all' && p.subCycle !== subFilterCycle) return false;
     if (subSearchTerm.trim()) {
@@ -1289,62 +1341,257 @@ function AdminPortal() {
       {/* TAB 3: SUBSCRIPTIONS & REVENUE */}
       {activeTab === 'subscriptions' && (
         <div>
-          {/* Dashboard Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
-            <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-              <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>🌱 Free Plan (฿0)</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#334155', marginTop: '0.2rem' }}>{countFree} <span style={{fontSize: '1rem'}}>ราย</span></div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.4rem' }}>
-                ชาวสวน 2 แปลง (100MB) | ร้านค้า 150 บิล/ด.
-              </div>
-            </div>
-            
-            <div style={{ background: '#f0fdf4', padding: '1.25rem', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-              <div style={{ color: '#166534', fontSize: '0.85rem', fontWeight: 'bold' }}>⚡ Standard Plan (฿199)</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#16a34a', marginTop: '0.2rem' }}>{standardProfiles.length} <span style={{fontSize: '1rem'}}>ราย</span></div>
-              <div style={{ fontSize: '0.75rem', color: '#15803d', marginTop: '0.4rem' }}>
-                ร้านรับซื้อยาง | รายเดือน: {countStandardMonthly} | รายปี: {countStandardYearly}
-              </div>
-            </div>
+          {/* Segmented Role Switcher: ทั้งหมด | สำหรับชาวสวนยาง (Sellers) | สำหรับร้านรับซื้อยาง (Buyers) */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            background: '#f1f5f9',
+            padding: '0.35rem',
+            borderRadius: '14px',
+            marginBottom: '1.5rem',
+            width: 'fit-content',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              type="button"
+              onClick={() => setSubRoleFilter('all')}
+              style={{
+                padding: '0.55rem 1.15rem',
+                borderRadius: '10px',
+                border: 'none',
+                background: subRoleFilter === 'all' ? '#ffffff' : 'transparent',
+                color: subRoleFilter === 'all' ? '#0f172a' : '#64748b',
+                fontWeight: subRoleFilter === 'all' ? 700 : 500,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                boxShadow: subRoleFilter === 'all' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem'
+              }}
+            >
+              <span>🌐 ทั้งหมด (All Roles)</span>
+              <span style={{
+                background: subRoleFilter === 'all' ? '#e2e8f0' : 'rgba(0,0,0,0.05)',
+                padding: '2px 7px',
+                borderRadius: '10px',
+                fontSize: '0.75rem'
+              }}>
+                {subProfiles.length}
+              </span>
+            </button>
 
-            <div style={{ background: '#faf5ff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
-              <div style={{ color: '#6b21a8', fontSize: '0.85rem', fontWeight: 'bold' }}>🚀 Pro Plan (฿99 / ฿399)</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#9333ea', marginTop: '0.2rem' }}>{proProfiles.length} <span style={{fontSize: '1rem'}}>ราย</span></div>
-              <div style={{ fontSize: '0.75rem', color: '#7e22ce', marginTop: '0.4rem' }}>
-                ชาวสวน ฿99 ({subProfiles.filter(p => p.role === 'seller' && p.subPlan === 'pro').length}) | ร้านค้า ฿399 ({subProfiles.filter(p => p.role !== 'seller' && p.subPlan === 'pro').length})
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setSubRoleFilter('seller')}
+              style={{
+                padding: '0.55rem 1.15rem',
+                borderRadius: '10px',
+                border: 'none',
+                background: subRoleFilter === 'seller' ? '#ffffff' : 'transparent',
+                color: subRoleFilter === 'seller' ? '#166534' : '#64748b',
+                fontWeight: subRoleFilter === 'seller' ? 700 : 500,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                boxShadow: subRoleFilter === 'seller' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem'
+              }}
+            >
+              <span>🧑‍🌾 สำหรับชาวสวนยาง (Sellers)</span>
+              <span style={{
+                background: subRoleFilter === 'seller' ? '#dcfce7' : 'rgba(0,0,0,0.05)',
+                color: subRoleFilter === 'seller' ? '#15803d' : '#64748b',
+                padding: '2px 7px',
+                borderRadius: '10px',
+                fontSize: '0.75rem'
+              }}>
+                {sellerSubProfiles.length}
+              </span>
+            </button>
 
-            <div style={{ background: 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)', padding: '1.25rem', borderRadius: '12px', border: 'none', color: '#fff', boxShadow: '0 4px 15px rgba(15,118,110,0.3)' }}>
-              <div style={{ color: '#ccfbf1', fontSize: '0.85rem', fontWeight: 'bold' }}>💰 รายรับเฉลี่ย (MRR)</div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#fff', marginTop: '0.2rem' }}>
-                ฿{totalMRR.toLocaleString(undefined, {maximumFractionDigits: 0})} <span style={{fontSize: '1rem'}}>/เดือน</span>
-              </div>
-              <div style={{ fontSize: '0.75rem', color: '#99f6e4', marginTop: '0.4rem' }}>
-                ประมาณการต่อปี (ARR): ฿{(totalMRR * 12).toLocaleString(undefined, {maximumFractionDigits: 0})}
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setSubRoleFilter('buyer')}
+              style={{
+                padding: '0.55rem 1.15rem',
+                borderRadius: '10px',
+                border: 'none',
+                background: subRoleFilter === 'buyer' ? '#ffffff' : 'transparent',
+                color: subRoleFilter === 'buyer' ? '#0369a1' : '#64748b',
+                fontWeight: subRoleFilter === 'buyer' ? 700 : 500,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                boxShadow: subRoleFilter === 'buyer' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem'
+              }}
+            >
+              <span>🏢 สำหรับร้านรับซื้อยาง (Buyers)</span>
+              <span style={{
+                background: subRoleFilter === 'buyer' ? '#e0f2fe' : 'rgba(0,0,0,0.05)',
+                color: subRoleFilter === 'buyer' ? '#0284c7' : '#64748b',
+                padding: '2px 7px',
+                borderRadius: '10px',
+                fontSize: '0.75rem'
+              }}>
+                {buyerSubProfiles.length}
+              </span>
+            </button>
           </div>
+
+          {/* Dynamic Segmented Stats Cards */}
+          {subRoleFilter === 'seller' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+              <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+                <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>🌱 ฟรี (Free Farmer ฿0)</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#334155', marginTop: '0.2rem' }}>{sellerFreeCount} <span style={{fontSize: '1rem'}}>ราย</span></div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.4rem' }}>
+                  จำกัด 2 แปลง | พื้นที่ 100 MB | สแกน AI 15 ครั้ง/ด.
+                </div>
+              </div>
+
+              <div style={{ background: '#faf5ff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
+                <div style={{ color: '#6b21a8', fontSize: '0.85rem', fontWeight: 'bold' }}>🚀 ชาวสวนมืออาชีพ (Pro Farmer ฿99)</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#9333ea', marginTop: '0.2rem' }}>{sellerProProfiles.length} <span style={{fontSize: '1rem'}}>ราย</span></div>
+                <div style={{ fontSize: '0.75rem', color: '#7e22ce', marginTop: '0.4rem' }}>
+                  รายเดือน: {sellerProMonthlyCount} | รายปี: {sellerProYearlyCount} (฿990/ปี)
+                </div>
+              </div>
+
+              <div style={{ background: 'linear-gradient(135deg, #166534 0%, #15803d 100%)', padding: '1.25rem', borderRadius: '12px', border: 'none', color: '#fff', boxShadow: '0 4px 15px rgba(22,101,52,0.3)' }}>
+                <div style={{ color: '#bbf7d0', fontSize: '0.85rem', fontWeight: 'bold' }}>💰 รายรับฝั่งชาวสวน (MRR)</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#fff', marginTop: '0.2rem' }}>
+                  ฿{sellerMRR.toLocaleString(undefined, {maximumFractionDigits: 0})} <span style={{fontSize: '1rem'}}>/เดือน</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#86efac', marginTop: '0.4rem' }}>
+                  ประมาณการต่อปี (ARR): ฿{(sellerMRR * 12).toLocaleString(undefined, {maximumFractionDigits: 0})}
+                </div>
+              </div>
+
+              <div style={{ background: '#f0fdf4', padding: '1.25rem', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+                <div style={{ color: '#166534', fontSize: '0.85rem', fontWeight: 'bold' }}>📈 สัดส่วน Pro Farmer</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#16a34a', marginTop: '0.2rem' }}>
+                  {sellerSubProfiles.length > 0 ? ((sellerProProfiles.length / sellerSubProfiles.length) * 100).toFixed(0) : 0}%
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#15803d', marginTop: '0.4rem' }}>
+                  จากชาวสวนทั้งหมด {sellerSubProfiles.length} ราย
+                </div>
+              </div>
+            </div>
+          )}
+
+          {subRoleFilter === 'buyer' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+              <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+                <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>🌱 เริ่มต้น (Starter Free ฿0)</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#334155', marginTop: '0.2rem' }}>{buyerFreeCount} <span style={{fontSize: '1rem'}}>ราย</span></div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.4rem' }}>
+                  จำกัด 150 บิล/ด. | พื้นที่จัดเก็บ 200 MB
+                </div>
+              </div>
+
+              <div style={{ background: '#f0fdf4', padding: '1.25rem', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+                <div style={{ color: '#166534', fontSize: '0.85rem', fontWeight: 'bold' }}>⚡ ลานมาตรฐาน (Standard ฿199)</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#16a34a', marginTop: '0.2rem' }}>{buyerStandardProfiles.length} <span style={{fontSize: '1rem'}}>ราย</span></div>
+                <div style={{ fontSize: '0.75rem', color: '#15803d', marginTop: '0.4rem' }}>
+                  รายเดือน: {buyerStandardMonthlyCount} | รายปี: {buyerStandardYearlyCount}
+                </div>
+              </div>
+
+              <div style={{ background: '#faf5ff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
+                <div style={{ color: '#6b21a8', fontSize: '0.85rem', fontWeight: 'bold' }}>🚀 ลานมืออาชีพ (Pro Business ฿399)</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#9333ea', marginTop: '0.2rem' }}>{buyerProProfiles.length} <span style={{fontSize: '1rem'}}>ราย</span></div>
+                <div style={{ fontSize: '0.75rem', color: '#7e22ce', marginTop: '0.4rem' }}>
+                  รายเดือน: {buyerProMonthlyCount} | รายปี: {buyerProYearlyCount} (฿3,990/ปี)
+                </div>
+              </div>
+
+              <div style={{ background: 'linear-gradient(135deg, #0369a1 0%, #0284c7 100%)', padding: '1.25rem', borderRadius: '12px', border: 'none', color: '#fff', boxShadow: '0 4px 15px rgba(3,105,161,0.3)' }}>
+                <div style={{ color: '#e0f2fe', fontSize: '0.85rem', fontWeight: 'bold' }}>💰 รายรับฝั่งร้านรับซื้อ (MRR)</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#fff', marginTop: '0.2rem' }}>
+                  ฿{buyerMRR.toLocaleString(undefined, {maximumFractionDigits: 0})} <span style={{fontSize: '1rem'}}>/เดือน</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#bae6fd', marginTop: '0.4rem' }}>
+                  ประมาณการต่อปี (ARR): ฿{(buyerMRR * 12).toLocaleString(undefined, {maximumFractionDigits: 0})}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {subRoleFilter === 'all' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+              <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+                <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>🌱 รวมแพ็กเกจฟรี (฿0)</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#334155', marginTop: '0.2rem' }}>{countFree} <span style={{fontSize: '1rem'}}>ราย</span></div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.4rem' }}>
+                  ชาวสวน: {sellerFreeCount} ราย | ร้านรับซื้อ: {buyerFreeCount} ราย
+                </div>
+              </div>
+              
+              <div style={{ background: '#f0fdf4', padding: '1.25rem', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+                <div style={{ color: '#166534', fontSize: '0.85rem', fontWeight: 'bold' }}>⚡ Standard Plan (฿199)</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#16a34a', marginTop: '0.2rem' }}>{buyerStandardProfiles.length} <span style={{fontSize: '1rem'}}>ราย</span></div>
+                <div style={{ fontSize: '0.75rem', color: '#15803d', marginTop: '0.4rem' }}>
+                  ร้านรับซื้อยาง | รายเดือน: {buyerStandardMonthlyCount} | รายปี: {buyerStandardYearlyCount}
+                </div>
+              </div>
+
+              <div style={{ background: '#faf5ff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
+                <div style={{ color: '#6b21a8', fontSize: '0.85rem', fontWeight: 'bold' }}>🚀 Pro Plan รวม (฿99 / ฿399)</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#9333ea', marginTop: '0.2rem' }}>{proProfiles.length} <span style={{fontSize: '1rem'}}>ราย</span></div>
+                <div style={{ fontSize: '0.75rem', color: '#7e22ce', marginTop: '0.4rem' }}>
+                  ชาวสวน ฿99 ({sellerProProfiles.length}) | ร้านค้า ฿399 ({buyerProProfiles.length})
+                </div>
+              </div>
+
+              <div style={{ background: 'linear-gradient(135deg, #0f766e 0%, #0d9488 100%)', padding: '1.25rem', borderRadius: '12px', border: 'none', color: '#fff', boxShadow: '0 4px 15px rgba(15,118,110,0.3)' }}>
+                <div style={{ color: '#ccfbf1', fontSize: '0.85rem', fontWeight: 'bold' }}>💰 รายรับรวมเฉลี่ย (Total MRR)</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#fff', marginTop: '0.2rem' }}>
+                  ฿{totalMRR.toLocaleString(undefined, {maximumFractionDigits: 0})} <span style={{fontSize: '1rem'}}>/เดือน</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#99f6e4', marginTop: '0.4rem' }}>
+                  ประมาณการต่อปี (ARR): ฿{(totalMRR * 12).toLocaleString(undefined, {maximumFractionDigits: 0})}
+                </div>
+              </div>
+            </div>
+          )}
 
           <h3 style={{ fontSize: '1.15rem', fontWeight: 'bold', color: '#1e293b', marginBottom: '1rem' }}>รายชื่อผู้สมัครแพ็กเกจ (Deep Dive)</h3>
           
           {/* Filters */}
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
             <select 
+              value={subRoleFilter}
+              onChange={(e) => setSubRoleFilter(e.target.value)}
+              style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', background: '#fff', fontWeight: 600 }}
+            >
+              <option value="all">🌐 ทุกบทบาท (Roles)</option>
+              <option value="seller">🧑‍🌾 ชาวสวนยาง (Sellers)</option>
+              <option value="buyer">🏢 ร้านรับซื้อยาง (Buyers)</option>
+            </select>
+
+            <select 
               value={subFilterPlan}
               onChange={(e) => setSubFilterPlan(e.target.value)}
-              style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
+              style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', background: '#fff' }}
             >
-              <option value="all">ทุกแพ็กเกจ</option>
-              <option value="free">Free Plan</option>
-              <option value="standard">Standard Plan</option>
-              <option value="pro">Pro Plan</option>
+              <option value="all">ทุกระดับแพ็กเกจ</option>
+              <option value="free">Free Plan (฿0)</option>
+              <option value="standard">Standard Plan (฿199)</option>
+              <option value="pro">Pro Plan (฿99 / ฿399)</option>
             </select>
 
             <select 
               value={subFilterCycle}
               onChange={(e) => setSubFilterCycle(e.target.value)}
-              style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
+              style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', background: '#fff' }}
             >
               <option value="all">ทุกรอบบิล</option>
               <option value="monthly">รายเดือน</option>
@@ -1394,20 +1641,30 @@ function AdminPortal() {
                       </td>
                       <td style={{ padding: '1rem', color: '#64748b' }}>{p.phone_number || '-'}</td>
                       <td style={{ padding: '1rem' }}>
-                        {p.subPlan === 'pro' && (
-                          <span style={{ background: '#f3e8ff', color: '#7e22ce', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                            🚀 Pro {p.role === 'seller' ? '(฿99)' : '(฿399)'}
-                          </span>
-                        )}
-                        {p.subPlan === 'standard' && (
-                          <span style={{ background: '#dcfce7', color: '#15803d', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                            ⚡ Standard (฿199)
-                          </span>
-                        )}
-                        {p.subPlan === 'free' && (
-                          <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                            🌱 Free (฿0)
-                          </span>
+                        {p.role === 'seller' ? (
+                          p.subPlan === 'pro' ? (
+                            <span style={{ background: '#f3e8ff', color: '#7e22ce', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                              🚀 Pro Farmer (฿99)
+                            </span>
+                          ) : (
+                            <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                              🌱 ฟรี (Free - ฿0)
+                            </span>
+                          )
+                        ) : (
+                          p.subPlan === 'pro' ? (
+                            <span style={{ background: '#f3e8ff', color: '#7e22ce', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                              🚀 Pro Business (฿399)
+                            </span>
+                          ) : p.subPlan === 'standard' ? (
+                            <span style={{ background: '#dcfce7', color: '#15803d', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                              ⚡ Standard (฿199)
+                            </span>
+                          ) : (
+                            <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                              🌱 Starter Free (฿0)
+                            </span>
+                          )
                         )}
                       </td>
                       <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.9rem' }}>

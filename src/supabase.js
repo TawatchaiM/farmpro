@@ -2222,23 +2222,15 @@ export const db = {
           const authUserId = data.user.id;
           let profile = null;
 
-          // Attempt 1: Look up profile by user_id or id matching authUserId
-          const { data: p1 } = await supabase
+          // Look up profile by user_id, id, email, or phone number
+          const { data: pList } = await supabase
             .from('profiles')
             .select('*')
-            .or(`user_id.eq.${authUserId},id.eq.${authUserId}`)
-            .maybeSingle();
+            .or(`user_id.eq.${authUserId},id.eq.${authUserId},email.eq.${authEmail},phone_number.eq.${cleanPhone || cleanId}`)
+            .order('updated_at', { ascending: false });
 
-          if (p1) {
-            profile = p1;
-          } else {
-            // Attempt 2: Fall back to match by email or phone number
-            const { data: p2 } = await supabase
-              .from('profiles')
-              .select('*')
-              .or(`email.eq.${authEmail},phone_number.eq.${cleanPhone || cleanId}`)
-              .maybeSingle();
-            profile = p2;
+          if (pList && pList.length > 0) {
+            profile = pList.find(p => p.full_name && p.phone_number) || pList[0];
           }
 
           if (profile) {
@@ -2501,11 +2493,15 @@ export const db = {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          let { data: profile } = await supabase
+          let { data: pList } = await supabase
             .from('profiles')
             .select('*')
             .or(`user_id.eq.${session.user.id},id.eq.${session.user.id},email.eq.${session.user.email}`)
-            .maybeSingle();
+            .order('updated_at', { ascending: false });
+
+          let profile = (pList && pList.length > 0)
+            ? (pList.find(p => p.full_name && p.phone_number) || pList[0])
+            : null;
 
           if (profile) {
             // Auto-heal profiles.user_id if null or mismatched
@@ -2564,11 +2560,15 @@ export const db = {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
-            let { data: remoteProfile, error } = await supabase
+            let { data: pList, error } = await supabase
               .from('profiles')
               .select('*')
               .or(`user_id.eq.${session.user.id},id.eq.${session.user.id},email.eq.${session.user.email}`)
-              .maybeSingle();
+              .order('updated_at', { ascending: false });
+
+            let remoteProfile = (pList && pList.length > 0 && !error)
+              ? (pList.find(p => p.full_name && p.phone_number) || pList[0])
+              : null;
 
             if (remoteProfile && !error) {
               // Auto-heal profiles.user_id if null or mismatched
